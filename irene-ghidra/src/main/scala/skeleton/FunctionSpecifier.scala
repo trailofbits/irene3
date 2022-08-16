@@ -1,7 +1,6 @@
 package skeleton
 
 import ghidra.program.model.listing.Function;
-import functions.Person;
 
 object FunctionSpecifier {
 
