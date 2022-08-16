@@ -63,5 +63,67 @@ repositories {
 dependencies {
 	// Any external dependencies added here will automatically be copied to the lib/ directory when
 	// this extension is built.	
-	implementation 'org.scala-lang:scala-library:2.13.8'
+	implementation 'org.scala-lang:scala3-library_3:3.1.3'
 }
+
+
+// The following installation helpers were copied from
+// https://github.com/cmu-sei/kaiju/blob/c00a351aa4332e8b6e2be94f6fe52418f8946b11/build.gradle
+task uninstallPreviousIRENEGhidra {
+    description = "Removes a previous IRENEGhidra installation, or notifies user of previous installation"
+
+    doFirst {
+
+        // check if a previous IRENEGhidra installation exists
+        if (file(ghidraInstallDir + '/Ghidra/Extensions/' + 'irene-ghidra/').exists()) {
+
+            // automatically remove past install if user specifies
+            if (project.hasProperty('IRENEGHIDRA_AUTO_REMOVE')) {
+                def ooDir = new File(ghidraInstallDir + '/Ghidra/Extensions/' + 'irene-ghidra/')
+                ooDir.deleteDir()
+                logger.quiet("SUCCESS! Previous standalone IRENEGhidra installation was removed automatically by gradle.")
+            } else {
+                throw new GradleException("FATAL ERROR! A previous installation of IRENEGhidra was detected. It is recommended that you either manually remove this installation before re-installing IRENEGhidra, or re-run this gradle installation script with the -PIRENEGHIDRA_AUTO_REMOVE option.")
+            }
+        }
+    }
+
+    outputs.upToDateWhen { false } // ensures never cached, always runs if user enables
+}
+buildHelp.dependsOn uninstallPreviousIRENEGhidra
+
+task copyZip(type: Copy) {
+
+    group = "Installation"
+    description = "Copies zip contents into special Extensions directory so user may enable or disable easily with reinstalling from gradle each time."
+
+    from "${buildExtension.destinationDirectory.get()}/${buildExtension.archiveBaseName.get()}.${buildExtension.archiveExtension.get()}"
+    into ghidraInstallDir + '/Extensions/Ghidra'
+
+    dependsOn buildExtension
+}
+
+task installZip(type: Exec) {
+
+    group = "Installation"
+    description = "Installs the zip package in installed Ghidra's default extension directory"
+
+    workingDir ghidraInstallDir + '/Ghidra/Extensions'
+    commandLine 'unzip', '-o', "${buildExtension.destinationDirectory.get()}/${buildExtension.archiveBaseName.get()}.${buildExtension.archiveExtension.get()}"
+
+    dependsOn copyZip
+    mustRunAfter copyZip
+}
+
+task install() {
+    dependsOn installZip
+
+    group = "Installation"
+    description = "Alternate name for installZip task"
+
+    doLast {
+        // Empty action list
+        logger.quiet("Installed Trail of Bits IRENEGhidra from zip!")
+    }
+}
+// End copy
