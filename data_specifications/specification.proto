@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package specification;
+
+enum Arch {
+  ARCH_UNSPECIFIED = 0;
+  ARCH_X86 = 1;
+  ARCH_X86_AVX = 2;
+  ARCH_X86_AVX512 = 3;
+  ARCH_AMD64 = 4;
+  ARCH_AMD64_AVX = 5;
+  ARCH_ADM64_AVX512 = 6;
+  ARCH_AARCH64 = 7;
+  ARCH_AARCH32 = 8;
+  ARCH_SPARC32 = 9;
+  ARCH_SPARC64 = 10;
+}
+
+enum OS {
+  OS_UNSPECIFIED = 0;
+  OS_LINUX = 1;
+  OS_MACOS = 2;
+  OS_WINDOWS = 3;
+  OS_SOLARIS = 4;
+}
+
+message TypeSpec {
+  //TODO(Ian): dont do this
+  string type_repr = 1;
+}
+
+message Register {
+  string register_name = 1;
+}
+
+message Memory {
+  string base_reg = 1;
+  int64 offset = 2;
+}
+
+message Value {
+  oneof inner_value {
+    Register reg = 1;
+    Memory mem = 2;
+  }
+
+  TypeSpec type = 3;
+}
+
+message Parameter {
+  optional string name = 1;
+  Value value = 2;
+}
+
+enum CallingConvention {
+  CALLING_CONVENTION_UNSPECIFIED = 0;
+  CALLING_CONVENTION_CDECL = 1;
+  CALLING_CONVENTION_STDCALL = 64;
+  CALLING_CONVENTION_FASTCALL = 65;
+  CALLING_CONVENTION_THISCALL = 70;
+  CALLING_CONVENTION_AMD64_SYSV = 78;
+  CALLING_CONVENTION_WIN64 = 79;
+  CALLING_CONVENTION_VECTORCALL = 80;
+}
+
+message Function {
+  uint64 entry_address = 1;
+  Value return_address = 2;
+  repeated Parameter parameters = 3;
+  repeated Value returns = 4;
+  bool is_variadic = 5;
+  bool is_noreturn = 6;
+  CallingConvention calling_convention = 7;
+}
+
+message GlobalVariable {
+  TypeSpec type = 1;
+  uint64 address = 2;
+}
+
+message Symbol {
+  string name = 1;
+  uint64 address = 2;
+}
+
+message MemoryRange {
+  uint64 address = 1;
+  bool is_writeable = 2;
+  bool is_executable = 3;
+  bytes values = 4;
+}
+
+
+message Specification {
+  Arch arch = 1;
+  OS operating_system = 2;
+  repeated Function functions = 3;
+  repeated GlobalVariable global_variables = 4;
+  repeated Symbol symbols = 5;
+  repeated MemoryRange memory_ranges = 6;
+}
+

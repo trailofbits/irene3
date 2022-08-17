@@ -1,0 +1,28 @@
+name: CI
+on:
+  pull_request:
+    branches:
+      - '*'
+  push:
+    branches:
+      - 'main'
+
+jobs:
+    test:
+      runs-on: ubuntu-20.04
+      steps:
+        - uses: actions/checkout@v2
+          with:
+            submodules: true
+        - name: 'Install Just'
+          run: |
+            brew install just
+        - name: 'Setup Ghidra'
+          run: |
+            wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.1.5_build/ghidra_10.1.5_PUBLIC_20220726.zip --output-document=ghidra.zip
+            unzip ghidra.zip
+            echo "GHIDRA_INSTALL_DIR=$(pwd)/ghidra_10.1.5_PUBLIC" >> $GITHUB_ENV
+        - name: "IRENE Ghidra tests"
+          run: |
+            just test-irene-ghidra
+        
