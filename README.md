@@ -31,3 +31,7 @@ Then add gradle.properties to the assume unchanged list with `git update-index -
 Afterwards you can modify gradle.properties with the path to your Ghidra install without having those changes pushed to main.
 
 You can also add the GHIDRA_INSTALL_DIR to your environment variables, but your IDE may not pick the environment variable up depending on your situation.  
+
+`just test-irene-ghidra` will run the unit tests for the plugin. 
+
+Provided your `gradle.properties` file is up to date any Scala IDE should work without any setup. Given the mixing of Java and Scala an IDE that supports both is ideal. Vscode with Metals + the Java extension pack works well. 
