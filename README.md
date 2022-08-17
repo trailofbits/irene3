@@ -14,7 +14,7 @@ Anti-Goals
 * Supporting multiple concurrent users
 * Being a distributed system
 * Encoding decisions and heuristics into the core lifting pipeline
-* Perofmance (Currently)
+* Performance (Currently)
 * Provide UI components outside of typical RE workflow
 
 ## Repository Layout
