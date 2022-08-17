@@ -67,7 +67,7 @@ repositories {
 dependencies {
 	// Any external dependencies added here will automatically be copied to the lib/ directory when
 	// this extension is built.	
-	implementation 'org.scala-lang:scala3-library_3:3.1.3'
+  implementation 'org.scala-lang:scala3-library_3:3.1.3'
   implementation "com.thesamet.scalapb:scalapb-runtime_3:${scalapbVersion}"
   testImplementation 'junit:junit:4.13.2'
   testRuntimeOnly files("lib")
@@ -119,7 +119,6 @@ task installZip(type: Exec) {
     commandLine 'unzip', '-o', "${buildExtension.destinationDirectory.get()}/${buildExtension.archiveBaseName.get()}.${buildExtension.archiveExtension.get()}"
 
     dependsOn copyZip
-    mustRunAfter copyZip
 }
 
 task install() {
