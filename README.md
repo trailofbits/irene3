@@ -2,7 +2,7 @@
 
 IRENE-3 is a decompilation tool that ties together anvill, remill, rellic, and ghidra to lift compileable llvm and C from a binary.
 
-The decompilation provides bindings to vscode 
+The decompilation provides syncrhonization between Ghidra and VSCode allowing for seamless navigation between source and binary. 
 
 Goals
 * Heuristics/learned information should be explicitly recorded in a form that users can modify 
