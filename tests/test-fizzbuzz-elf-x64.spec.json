@@ -1,0 +1,1068 @@
+{
+  "arch": "amd64",
+  "os": "linux",
+  "functions": [
+    {
+      "address": 4144,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": false,
+      "is_noreturn": false,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "parameters": [
+        {
+          "register": "RDI",
+          "type": "*"
+        }
+      ],
+      "return_values": [
+        {
+          "register": "RAX",
+          "type": "i"
+        }
+      ]
+    },
+    {
+      "address": 4160,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": true,
+      "is_noreturn": false,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "parameters": [
+        {
+          "register": "RDI",
+          "type": "*"
+        }
+      ],
+      "return_values": [
+        {
+          "register": "RAX",
+          "type": "i"
+        }
+      ]
+    },
+    {
+      "address": 4176,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": false,
+      "is_noreturn": false,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "parameters": [
+        {
+          "register": "RDI",
+          "type": "*"
+        }
+      ],
+      "return_values": []
+    },
+    {
+      "address": 4192,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": false,
+      "is_noreturn": true,
+      "calling_convention": 0,
+      "parameters": [
+        {
+          "register": "RDI",
+          "type": "L"
+        },
+        {
+          "register": "RSI",
+          "type": "L"
+        },
+        {
+          "register": "RDX",
+          "type": "*"
+        }
+      ],
+      "return_values": [
+        {
+          "register": "RAX",
+          "type": "l"
+        }
+      ]
+    },
+    {
+      "address": 4432,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": false,
+      "is_noreturn": true,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "parameters": [
+        {
+          "register": "RDI",
+          "type": "I"
+        }
+      ],
+      "return_values": [
+        {
+          "register": "RAX",
+          "type": "L"
+        }
+      ]
+    },
+    {
+      "address": 4624,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": false,
+      "is_noreturn": true,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "parameters": [
+        {
+          "register": "RDI",
+          "type": "i"
+        },
+        {
+          "register": "RSI",
+          "type": "*"
+        },
+        {
+          "register": "RDX",
+          "type": "*"
+        }
+      ],
+      "return_values": [
+        {
+          "register": "RAX",
+          "type": "i"
+        }
+      ]
+    },
+    {
+      "address": 16464,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": false,
+      "is_noreturn": false,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "type": "(*v)"
+    },
+    {
+      "address": 16480,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": false,
+      "is_noreturn": true,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "type": "(*i*****v)"
+    },
+    {
+      "address": 16488,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": true,
+      "is_noreturn": false,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "type": "(*&i)"
+    },
+    {
+      "address": 16496,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": false,
+      "is_noreturn": false,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "type": "(*i)"
+    }
+  ],
+  "variables": [
+    {
+      "address": 0,
+      "type": "=0{=1{[bx4]BBBBB[bx7]}HHI*LLIHHHHHH}"
+    },
+    {
+      "address": 64,
+      "type": "[=0{IILLLLLL}x11]"
+    },
+    {
+      "address": 680,
+      "type": "[bx28]"
+    },
+    {
+      "address": 784,
+      "type": "[=0{IBBHLL}x8]"
+    },
+    {
+      "address": 8192,
+      "type": "I"
+    },
+    {
+      "address": 8196,
+      "type": "[bx5]"
+    },
+    {
+      "address": 8201,
+      "type": "[bx5]"
+    },
+    {
+      "address": 8206,
+      "type": "[Bx1]"
+    },
+    {
+      "address": 8208,
+      "type": "[Bx1]"
+    },
+    {
+      "address": 8212,
+      "type": "[Bx1]"
+    },
+    {
+      "address": 15864,
+      "type": "[=0{LL}x26]"
+    },
+    {
+      "address": 16344,
+      "type": "*"
+    },
+    {
+      "address": 16352,
+      "type": "*"
+    },
+    {
+      "address": 16360,
+      "type": "*"
+    },
+    {
+      "address": 16368,
+      "type": "*"
+    },
+    {
+      "address": 16376,
+      "type": "*"
+    },
+    {
+      "address": 16384,
+      "type": "[Bx1]"
+    },
+    {
+      "address": 16408,
+      "type": "*"
+    },
+    {
+      "address": 16416,
+      "type": "*"
+    },
+    {
+      "address": 16424,
+      "type": "[Bx1]"
+    },
+    {
+      "address": 16432,
+      "type": "*"
+    },
+    {
+      "address": 16440,
+      "type": "B"
+    },
+    {
+      "address": 16448,
+      "type": "[Bx1]"
+    },
+    {
+      "address": 16456,
+      "type": "[Bx1]"
+    },
+    {
+      "address": 16472,
+      "type": "[Bx1]"
+    }
+  ],
+  "symbols": [
+    [
+      0,
+      "__elf_header"
+    ],
+    [
+      64,
+      "__elf_program_headers"
+    ],
+    [
+      680,
+      "__elf_interp"
+    ],
+    [
+      784,
+      "__elf_symbol_table"
+    ],
+    [
+      4096,
+      "_init"
+    ],
+    [
+      4144,
+      "puts"
+    ],
+    [
+      4160,
+      "printf"
+    ],
+    [
+      4176,
+      "__cxa_finalize"
+    ],
+    [
+      4192,
+      "_start"
+    ],
+    [
+      4240,
+      "deregister_tm_clones"
+    ],
+    [
+      4416,
+      "j_sub_10c0"
+    ],
+    [
+      4432,
+      "fizz_buzz"
+    ],
+    [
+      4624,
+      "main"
+    ],
+    [
+      4664,
+      "_fini"
+    ],
+    [
+      8192,
+      "_IO_stdin_used"
+    ],
+    [
+      8212,
+      "__GNU_EH_FRAME_HDR"
+    ],
+    [
+      15864,
+      "_DYNAMIC"
+    ],
+    [
+      15864,
+      "__elf_dynamic_table"
+    ],
+    [
+      16344,
+      "__libc_start_main"
+    ],
+    [
+      16352,
+      "_ITM_deregisterTMCloneTable"
+    ],
+    [
+      16360,
+      "__gmon_start__"
+    ],
+    [
+      16368,
+      "_ITM_registerTMCloneTable"
+    ],
+    [
+      16376,
+      "__cxa_finalize"
+    ],
+    [
+      16384,
+      "_GLOBAL_OFFSET_TABLE_"
+    ],
+    [
+      16408,
+      "puts"
+    ],
+    [
+      16416,
+      "printf"
+    ],
+    [
+      16424,
+      "data_start"
+    ],
+    [
+      16424,
+      "__data_start"
+    ],
+    [
+      16432,
+      "__dso_handle"
+    ],
+    [
+      16440,
+      "__bss_start"
+    ],
+    [
+      16440,
+      "__TMC_END__"
+    ],
+    [
+      16440,
+      "_edata"
+    ],
+    [
+      16448,
+      "_ITM_deregisterTMCloneTable"
+    ],
+    [
+      16456,
+      "_ITM_registerTMCloneTable"
+    ],
+    [
+      16464,
+      "__cxa_finalize"
+    ],
+    [
+      16472,
+      "__gmon_start__"
+    ],
+    [
+      16480,
+      "__libc_start_main"
+    ],
+    [
+      16488,
+      "printf"
+    ],
+    [
+      16496,
+      "puts"
+    ]
+  ],
+  "memory": [
+    {
+      "address": 0,
+      "is_executable": false,
+      "is_writeable": false,
+      "data": "7f454c4602010100000000000000000003003e000100000060100000000000004000000000000000303500000000000000000000400038000b0040001d001c0006000000040000004000000000000000400000000000000040000000000000006802000000000000680200000000000008000000000000000300000004000000a802000000000000a802000000000000a8020000000000001c000000000000001c0000000000000001000000000000000100000004000000000000000000000000000000000000000000000000000000980500000000000098050000000000000010000000000000010000000500000000100000000000000010000000000000001000000000000041020000000000004102000000000000001000000000000001000000040000000020000000000000002000000000000000200000000000001401000000000000140100000000000000100000000000000100000006000000e82d000000000000e83d000000000000e83d0000000000005002000000000000580200000000000000100000000000000200000006000000f82d000000000000f83d000000000000f83d000000000000e001000000000000e00100000000000008000000000000000400000004000000c402000000000000c402000000000000c40200000000000020000000000000002000000000000000040000000000000050e574640400000014200000000000001420000000000000142000000000000034000000000000003400000000000000040000000000000051e574640600000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000052e5746404000000e82d000000000000e83d000000000000e83d0000000000001802000000000000180200000000000001000000000000002f6c696236342f6c642d6c696e75782d7838362d36342e736f2e3200"
+    },
+    {
+      "address": 784,
+      "is_executable": false,
+      "is_writeable": false,
+      "data": "0000000000000000000000000000000000000000000000001000000012000000000000000000000000000000000000004f00000020000000000000000000000000000000000000002200000012000000000000000000000000000000000000002700000012000000000000000000000000000000000000006b00000020000000000000000000000000000000000000007a0000002000000000000000000000000000000000000000010000002200000000000000000000000000000000000000"
+    },
+    {
+      "address": 4144,
+      "is_executable": true,
+      "is_writeable": false,
+      "data": "ff25e22f0000"
+    },
+    {
+      "address": 4160,
+      "is_executable": true,
+      "is_writeable": false,
+      "data": "ff25da2f0000"
+    },
+    {
+      "address": 4432,
+      "is_executable": true,
+      "is_writeable": false,
+      "data": "554889e54883ec10897dfcc745f8000000008b45f83b45fc0f8d970000008b45f8b90300000099f7f983fa000f850e000000488d3d7b0e0000b000e8b0feffff8b45f8b90500000099f7f983fa000f850e000000488d3d5e0e0000b000e88efeffff8b45f8b90500000099f7f983fa000f84250000008b45f8b90300000099f7f983fa000f84110000008b75f8488d3d2a0e0000b000e855feffff488d3d1e0e0000e839feffff8b45f883c0018945f8e95dffffff31c04883c4105dc3"
+    },
+    {
+      "address": 4624,
+      "is_executable": true,
+      "is_writeable": false,
+      "data": "554889e54883ec10c745fc00000000897df8488975f0bf64000000e820ffffff31c04883c4105dc3"
+    },
+    {
+      "address": 8192,
+      "is_executable": false,
+      "is_writeable": false,
+      "data": "0100020046697a7a0042757a7a0025"
+    },
+    {
+      "address": 8208,
+      "is_executable": false,
+      "is_writeable": false,
+      "data": "00"
+    },
+    {
+      "address": 8212,
+      "is_executable": false,
+      "is_writeable": false,
+      "data": "01"
+    },
+    {
+      "address": 15864,
+      "is_executable": false,
+      "is_writeable": true,
+      "data": "01000000000000002e000000000000000c0000000000000000100000000000000d0000000000000038120000000000001900000000000000e83d0000000000001b0000000000000008000000000000001a00000000000000f03d0000000000001c000000000000000800000000000000f5feff6f00000000e8020000000000000500000000000000d003000000000000060000000000000010030000000000000a0000000000000094000000000000000b00000000000000180000000000000015000000000000000000000000000000030000000000000000400000000000000200000000000000300000000000000014000000000000000700000000000000170000000000000068050000000000000700000000000000a8040000000000000800000000000000c00000000000000009000000000000001800000000000000fbffff6f000000000000000800000000feffff6f000000007804000000000000ffffff6f000000000100000000000000f0ffff6f000000006404000000000000f9ffff6f00000000030000000000000000000000000000000000000000000000"
+    },
+    {
+      "address": 16344,
+      "is_executable": false,
+      "is_writeable": true,
+      "data": "60400000000000004040000000000000584000000000000048400000000000005040000000000000f8"
+    },
+    {
+      "address": 16408,
+      "is_executable": false,
+      "is_writeable": true,
+      "data": "7040000000000000684000000000000000"
+    },
+    {
+      "address": 16432,
+      "is_executable": false,
+      "is_writeable": true,
+      "data": "304000000000000000"
+    }
+  ],
+  "control_flow_redirections": [
+    [
+      4144,
+      16496
+    ],
+    [
+      4160,
+      16488
+    ],
+    [
+      4176,
+      16464
+    ]
+  ],
+  "control_flow_targets": [
+    {
+      "source": 4144,
+      "is_complete": true,
+      "destinations": [
+        16496
+      ]
+    },
+    {
+      "source": 4160,
+      "is_complete": true,
+      "destinations": [
+        16488
+      ]
+    },
+    {
+      "source": 4176,
+      "is_complete": true,
+      "destinations": [
+        16464
+      ]
+    },
+    {
+      "source": 4219,
+      "is_complete": true,
+      "destinations": [
+        16480
+      ]
+    }
+  ],
+  "call_sites": [
+    {
+      "address": 4144,
+      "function_address": 4144,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": false,
+      "is_noreturn": false,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "parameters": [
+        {
+          "register": "RDI",
+          "type": "*"
+        }
+      ],
+      "return_values": [
+        {
+          "register": "RAX",
+          "type": "L"
+        },
+        {
+          "register": "RCX",
+          "type": "L"
+        },
+        {
+          "register": "RDX",
+          "type": "L"
+        },
+        {
+          "register": "RSI",
+          "type": "L"
+        },
+        {
+          "register": "RDI",
+          "type": "L"
+        },
+        {
+          "register": "R8",
+          "type": "L"
+        },
+        {
+          "register": "R9",
+          "type": "L"
+        },
+        {
+          "register": "R10",
+          "type": "L"
+        },
+        {
+          "register": "R11",
+          "type": "L"
+        },
+        {
+          "register": "XMM0",
+          "type": "O"
+        },
+        {
+          "register": "XMM1",
+          "type": "O"
+        },
+        {
+          "register": "XMM2",
+          "type": "O"
+        },
+        {
+          "register": "XMM3",
+          "type": "O"
+        },
+        {
+          "register": "XMM4",
+          "type": "O"
+        },
+        {
+          "register": "XMM5",
+          "type": "O"
+        },
+        {
+          "register": "XMM6",
+          "type": "O"
+        },
+        {
+          "register": "XMM7",
+          "type": "O"
+        },
+        {
+          "register": "XMM8",
+          "type": "O"
+        },
+        {
+          "register": "XMM9",
+          "type": "O"
+        },
+        {
+          "register": "XMM10",
+          "type": "O"
+        },
+        {
+          "register": "XMM11",
+          "type": "O"
+        },
+        {
+          "register": "XMM12",
+          "type": "O"
+        },
+        {
+          "register": "XMM13",
+          "type": "O"
+        },
+        {
+          "register": "XMM14",
+          "type": "O"
+        },
+        {
+          "register": "XMM15",
+          "type": "O"
+        }
+      ]
+    },
+    {
+      "address": 4160,
+      "function_address": 4160,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": false,
+      "is_noreturn": false,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "parameters": [],
+      "return_values": [
+        {
+          "register": "RAX",
+          "type": "L"
+        },
+        {
+          "register": "RCX",
+          "type": "L"
+        },
+        {
+          "register": "RDX",
+          "type": "L"
+        },
+        {
+          "register": "RSI",
+          "type": "L"
+        },
+        {
+          "register": "RDI",
+          "type": "L"
+        },
+        {
+          "register": "R8",
+          "type": "L"
+        },
+        {
+          "register": "R9",
+          "type": "L"
+        },
+        {
+          "register": "R10",
+          "type": "L"
+        },
+        {
+          "register": "R11",
+          "type": "L"
+        },
+        {
+          "register": "XMM0",
+          "type": "O"
+        },
+        {
+          "register": "XMM1",
+          "type": "O"
+        },
+        {
+          "register": "XMM2",
+          "type": "O"
+        },
+        {
+          "register": "XMM3",
+          "type": "O"
+        },
+        {
+          "register": "XMM4",
+          "type": "O"
+        },
+        {
+          "register": "XMM5",
+          "type": "O"
+        },
+        {
+          "register": "XMM6",
+          "type": "O"
+        },
+        {
+          "register": "XMM7",
+          "type": "O"
+        },
+        {
+          "register": "XMM8",
+          "type": "O"
+        },
+        {
+          "register": "XMM9",
+          "type": "O"
+        },
+        {
+          "register": "XMM10",
+          "type": "O"
+        },
+        {
+          "register": "XMM11",
+          "type": "O"
+        },
+        {
+          "register": "XMM12",
+          "type": "O"
+        },
+        {
+          "register": "XMM13",
+          "type": "O"
+        },
+        {
+          "register": "XMM14",
+          "type": "O"
+        },
+        {
+          "register": "XMM15",
+          "type": "O"
+        }
+      ]
+    },
+    {
+      "address": 4491,
+      "function_address": 4432,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": true,
+      "is_noreturn": false,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "parameters": [
+        {
+          "register": "RDI",
+          "type": "*"
+        }
+      ],
+      "return_values": [
+        {
+          "register": "RAX",
+          "type": "i"
+        }
+      ]
+    },
+    {
+      "address": 4525,
+      "function_address": 4432,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": true,
+      "is_noreturn": false,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "parameters": [
+        {
+          "register": "RDI",
+          "type": "*"
+        }
+      ],
+      "return_values": [
+        {
+          "register": "RAX",
+          "type": "i"
+        }
+      ]
+    },
+    {
+      "address": 4582,
+      "function_address": 4432,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": true,
+      "is_noreturn": false,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "parameters": [
+        {
+          "register": "RDI",
+          "type": "*"
+        },
+        {
+          "register": "RSI",
+          "type": "L"
+        },
+        {
+          "register": "RDX",
+          "type": "L"
+        },
+        {
+          "register": "RCX",
+          "type": "L"
+        }
+      ],
+      "return_values": [
+        {
+          "register": "RAX",
+          "type": "i"
+        }
+      ]
+    },
+    {
+      "address": 4594,
+      "function_address": 4432,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": false,
+      "is_noreturn": false,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "parameters": [
+        {
+          "register": "RDI",
+          "type": "*"
+        }
+      ],
+      "return_values": [
+        {
+          "register": "RAX",
+          "type": "i"
+        }
+      ]
+    },
+    {
+      "address": 4651,
+      "function_address": 4624,
+      "return_stack_pointer": {
+        "register": "RSP",
+        "offset": 8,
+        "type": "L"
+      },
+      "is_variadic": false,
+      "is_noreturn": true,
+      "calling_convention": 0,
+      "return_address": {
+        "memory": {
+          "register": "RSP",
+          "offset": 0
+        },
+        "type": "L"
+      },
+      "parameters": [
+        {
+          "register": "RDI",
+          "type": "I"
+        }
+      ],
+      "return_values": [
+        {
+          "register": "RAX",
+          "type": "L"
+        }
+      ]
+    }
+  ]
+}

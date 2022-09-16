@@ -1,0 +1,9 @@
+[submodule "vendor/anvill"]
+	path = vendor/anvill
+	url = https://github.com/lifting-bits/anvill.git
+[submodule "vendor/remill"]
+	path = vendor/remill
+	url = https://github.com/lifting-bits/remill.git
+[submodule "vendor/rellic"]
+	path = vendor/rellic
+	url = https://github.com/lifting-bits/rellic.git

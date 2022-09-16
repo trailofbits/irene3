@@ -2,3 +2,7 @@
 .metals
 .vscode
 .gradle
+.cache
+builds/
+remill-build/
+compile_commands.json

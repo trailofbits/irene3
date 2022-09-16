@@ -8,21 +8,247 @@ on:
       - 'main'
 
 jobs:
-    test:
-      runs-on: ubuntu-20.04
-      steps:
-        - uses: actions/checkout@v2
-          with:
-            submodules: true
-        - name: 'Install Just'
-          run: |
-            brew install just
-        - name: 'Setup Ghidra'
-          run: |
-            wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.1.5_build/ghidra_10.1.5_PUBLIC_20220726.zip --output-document=ghidra.zip
-            unzip ghidra.zip
-            echo "GHIDRA_INSTALL_DIR=$(pwd)/ghidra_10.1.5_PUBLIC" >> $GITHUB_ENV
-        - name: "IRENE Ghidra tests"
-          run: |
-            just test-irene-ghidra
-        
+  test-ghidra:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: 'Install Just'
+        run: |
+          brew install just
+      - name: 'Setup Ghidra'
+        run: |
+          wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.1.5_build/ghidra_10.1.5_PUBLIC_20220726.zip --output-document=ghidra.zip
+          unzip ghidra.zip
+          echo "GHIDRA_INSTALL_DIR=$(pwd)/ghidra_10.1.5_PUBLIC" >> $GITHUB_ENV
+      - name: "IRENE Ghidra tests"
+        run: |
+          just test-irene-ghidra
+  build-decompiler:
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - { name: 'ubuntu', tag: '20.04' }
+        llvm: ['14']
+        cxxcommon_version: ['0.2.10']
+
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/lifting-bits/cxx-common/vcpkg-builder-${{ matrix.image.name }}:${{ matrix.image.tag }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Setup the build paths
+        shell: bash
+        id: build_paths
+        run: |
+          rel_build_path="build"
+          rel_source_path="src"
+          rel_install_path="install"
+          rel_downloads_path="downloads"
+          rel_ccache_path="ccache"
+          rel_workspace_path="workspace"
+          mkdir -p ${rel_build_path} \
+                   ${rel_install_path} \
+                   ${rel_downloads_path} \
+                   ${rel_ccache_path} \
+                   ${rel_workspace_path}
+          echo ::set-output name=SOURCE::$(pwd)/${rel_source_path}
+          echo ::set-output name=REL_SOURCE::${rel_source_path}
+          echo ::set-output name=BUILD::$(pwd)/${rel_build_path}
+          echo ::set-output name=REL_BUILD::${rel_build_path}
+          echo ::set-output name=INSTALL::$(pwd)/${rel_install_path}
+          echo ::set-output name=DOWNLOADS::$(pwd)/${rel_downloads_path}
+          echo ::set-output name=CCACHE::$(pwd)/${rel_ccache_path}
+          echo ::set-output name=WORKSPACE::$(pwd)/${rel_workspace_path}
+      - name: Update the cache (downloads)
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.build_paths.outputs.DOWNLOADS }}
+
+          key: |
+            gitmodules_${{ matrix.image.name }}_${{ matrix.image.tag }}_${{ matrix.llvm }}_${{ matrix.cxxcommon_version }}_${{ github.sha }}
+
+          restore-keys: |
+            gitmodules_${{ matrix.image.name }}_${{ matrix.image.tag }}_${{ matrix.llvm }}_${{ matrix.cxxcommon_version }}
+
+      - name: Update the cache (ccache)
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.build_paths.outputs.CCACHE }}
+
+          key: |
+            gitmodules_${{ matrix.image.name }}_${{ matrix.image.tag }}_${{ matrix.llvm }}_${{ matrix.cxxcommon_version }}_${{ github.sha }}
+          restore-keys: |
+            gitmodules_${{ matrix.image.name }}_${{ matrix.image.tag }}_${{ matrix.llvm }}_${{ matrix.cxxcommon_version }}
+      - name: Clone the irene3 repository
+        uses: actions/checkout@v3
+        with:
+          path: ${{ steps.build_paths.outputs.REL_SOURCE }}/irene3
+          fetch-depth: 0
+          submodules: true
+      - name: Clone the remill repository
+        uses: actions/checkout@v2
+        with:
+          repository: 'lifting-bits/remill'
+          path: ${{ steps.build_paths.outputs.REL_SOURCE }}/remill
+          fetch-depth: 0
+      - name: Setup Git User for Applying Patches
+        # See this thread for more details https://github.community/t/github-actions-bot-email-address/17204/5
+        run: |
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+      - name: Download the cxx-common ${{ matrix.cxxcommon_version}} package
+        shell: bash
+        id: cxxcommon_installer
+        working-directory: ${{ steps.build_paths.outputs.DOWNLOADS }}
+        run: |
+          folder_name="vcpkg_${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm-${{ matrix.llvm }}_amd64"
+          archive_name="${folder_name}.tar.xz"
+          url="https://github.com/lifting-bits/cxx-common/releases/download/v${{ matrix.cxxcommon_version}}/${archive_name}"
+          local_path="${{ steps.build_paths.outputs.DOWNLOADS }}/${archive_name}"
+          if [[ ! -f "${local_path}" ]] ; then
+            echo "Downloading: ${url}"
+            curl "${url}" -L -o "${local_path}"
+            ls -t ${{ steps.build_paths.outputs.DOWNLOADS }}/vcpkg_* | tail -n +2 | while read archive_file ; do
+              rm "${archive_file}"
+            done
+          fi
+          tar xf "${local_path}" \
+              -C "${{ steps.build_paths.outputs.INSTALL }}"
+          destination_path="${{ steps.build_paths.outputs.INSTALL }}/vcpkg"
+          mv "${{ steps.build_paths.outputs.INSTALL }}/${folder_name}" \
+             "${destination_path}"
+          echo "${destination_path}/installed/x64-linux-rel/tools/llvm-${{matrix.llvm}}" >> $GITHUB_PATH
+          echo ::set-output name=PATH::${destination_path}
+      - name: Select the build job count
+        shell: bash
+        id: build_job_count
+        run: |
+          echo ::set-output name=VALUE::$(($(nproc) + 1))
+      - name: Configure remill
+        working-directory: ${{ steps.build_paths.outputs.BUILD }}
+
+        env:
+          CCACHE_DIR: ${{ steps.build_paths.outputs.CCACHE }}
+
+        run: |
+          mkdir remill_build && cd remill_build
+
+          cmake \
+              -DCMAKE_VERBOSE_MAKEFILE=true \
+              -DVCPKG_ROOT="${{ steps.cxxcommon_installer.outputs.PATH }}" \
+              -G Ninja \
+              ${{ steps.build_paths.outputs.SOURCE }}/remill
+
+      - name: Build remill
+        working-directory: ${{ steps.build_paths.outputs.BUILD }}
+
+        env:
+          CCACHE_DIR: ${{ steps.build_paths.outputs.CCACHE }}
+
+        run: |
+          cmake --build remill_build \
+                -j ${{ steps.build_job_count.outputs.VALUE }}
+
+      - name: Install remill
+        id: remill_installer
+        working-directory: ${{ steps.build_paths.outputs.BUILD }}
+
+        env:
+          CCACHE_DIR: ${{ steps.build_paths.outputs.CCACHE }}
+
+        run: |
+          export DESTDIR=${{ steps.build_paths.outputs.INSTALL }}/remill
+          cmake --build remill_build \
+                --target install
+          echo ::set-output name=PATH::${DESTDIR}
+      - name: Configure irene3
+        working-directory: ${{ steps.build_paths.outputs.BUILD }}
+
+        env:
+          CCACHE_DIR: ${{ steps.build_paths.outputs.CCACHE }}
+        run: |
+          mkdir irene3_build && cd irene3_build
+          cmake \
+              -DCMAKE_VERBOSE_MAKEFILE=true \
+              -DVCPKG_ROOT="${{ steps.cxxcommon_installer.outputs.PATH }}" \
+              -DIRENE3_ENABLE_INSTALL=true \
+              -G Ninja \
+              ${{ steps.build_paths.outputs.SOURCE }}/irene3
+      - name: Build irene3
+        working-directory: ${{ steps.build_paths.outputs.BUILD }}
+
+        env:
+          CCACHE_DIR: ${{ steps.build_paths.outputs.CCACHE }}
+
+        run: |
+          cmake --build irene3_build \
+                -j ${{ steps.build_job_count.outputs.VALUE }}
+      - name: Install irene3
+        id: irene3_installer
+        working-directory: ${{ steps.build_paths.outputs.BUILD }}
+
+        env:
+          CCACHE_DIR: ${{ steps.build_paths.outputs.CCACHE }}
+
+        run: |
+          export DESTDIR=${{ steps.build_paths.outputs.INSTALL }}/irene3
+          cmake --build irene3_build \
+                --target install
+          echo ::set-output name=PATH::${DESTDIR}
+      - name: Create the packages
+        shell: bash
+        working-directory: ${{ steps.build_paths.outputs.BUILD }}
+        run: |
+          irene3_tag=$(cd "${{ steps.build_paths.outputs.SOURCE }}/irene3" && git describe --tags --abbrev=0 || echo "v0")
+          irene3_commit=$(cd "${{ steps.build_paths.outputs.SOURCE }}/irene3" && git rev-parse HEAD | cut -c1-7)
+          irene3_version="${irene3_tag:1}.${irene3_commit}"
+          echo "IRENE3 Version: ${irene3_version}"
+          cpack -D IRENE3_DATA_PATH="${{ steps.irene3_installer.outputs.PATH }}" \
+                -R ${irene3_version} \
+                --config "${{ steps.build_paths.outputs.SOURCE }}/irene3/packaging/main.cmake"
+
+          remill_tag=$(cd "${{ steps.build_paths.outputs.SOURCE }}/remill" && git describe --tags --abbrev=0 || echo "0")
+          remill_commit=$(cd "${{ steps.build_paths.outputs.SOURCE }}/remill" && git rev-parse HEAD | cut -c1-7)
+          remill_version="${remill_tag:1}.${remill_commit}"
+          echo "Remill Version: ${remill_version}"
+          cpack -D REMILL_DATA_PATH="${{ steps.remill_installer.outputs.PATH }}" \
+                -R ${remill_version} \
+                --config "${{ steps.build_paths.outputs.SOURCE }}/remill/packaging/main.cmake"
+      - name: Locate the packages
+        id: package_names
+        shell: bash
+        run: |
+          echo ::set-output name=DEB_PACKAGE_PATH::${{ steps.build_paths.outputs.REL_BUILD }}/*.deb
+          echo ::set-output name=RPM_PACKAGE_PATH::${{ steps.build_paths.outputs.REL_BUILD }}/*.rpm
+          echo ::set-output name=TGZ_PACKAGE_PATH::${{ steps.build_paths.outputs.REL_BUILD }}/*.tar.gz
+      - name: Install the DEB package
+        run: |
+          dpkg -i ${{ steps.package_names.outputs.DEB_PACKAGE_PATH }}
+      - name: Test irene3
+        shell: bash
+        working-directory: ${{ steps.build_paths.outputs.BUILD }}
+        run: |
+          env CTEST_OUTPUT_ON_FAILURE=1 cmake --build irene3_build --target test
+      - name: Store the DEB package
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_deb_package
+          path: ${{ steps.package_names.outputs.DEB_PACKAGE_PATH }}
+
+      - name: Store the RPM package
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_rpm_package
+          path: ${{ steps.package_names.outputs.RPM_PACKAGE_PATH }}
+
+      - name: Store the TGZ package
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_tgz_package
+          path: ${{ steps.package_names.outputs.TGZ_PACKAGE_PATH }}
