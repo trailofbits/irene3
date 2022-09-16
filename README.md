@@ -21,6 +21,10 @@ Anti-Goals
 
 * `data_specifications` contains schemas for specifications of analysis information used to transform IRs. Currently, these schemas are expressed in protobuf
 * `irene-ghidra` a ghidra plugin for exporting first layer specifications from Ghidra to bootstrap decompilation.
+* `bin` contains C++ code for different binary utilities
+* `lib` contains C++ code for the library
+* `include` contains public headers for the library
+* `cmake` contains CMake helpers
 
 ## IRENE Ghidra Development Instructions
 
@@ -35,3 +39,20 @@ You can also add the GHIDRA_INSTALL_DIR to your environment variables, but your 
 `just test-irene-ghidra` will run the unit tests for the plugin. 
 
 Provided your `gradle.properties` file is up to date any Scala IDE should work without any setup. Given the mixing of Java and Scala an IDE that supports both is ideal. Vscode with Metals + the Java extension pack works well. 
+
+## IRENE C++ Development Instructions
+
+* Install `just` with your package manager
+* Install latest version of `cmake`
+* Install `clang-14` and `lld-14`
+* Install `g++-multilib`
+* Install `ninja-build`
+* Install or compile `cxx-common`
+* Initialize submodules with `just git-submodules`
+* Set path to `VCPKG_ROOT` in `.env`
+* Set path to `CMAKE_INSTALL_PREFIX` in `.env`
+
+`just build-irene3-cpp` will compile the C++ project
+`just install-irene3-cpp` will compile and install the C++ project to the specified install prefix
+`just test-irene3-cpp` will compile and install the C++ project to the specified install prefix and do a simple test for output on some sample specifications
+

@@ -1,0 +1,41 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 19,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "ninja-multi-vcpkg",
+            "displayName": "Ninja Multi-Config Configure Settings",
+            "description": "Configure with vcpkg toolchain",
+            "binaryDir": "${sourceDir}/builds/${presetName}",
+            "generator": "Ninja Multi-Config",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "cacheVariables": {
+                "CMAKE_CONFIGURATION_TYPES": "Release;RelWithDebInfo;Debug"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "ninja-vcpkg-deb",
+            "configurePreset": "ninja-multi-vcpkg",
+            "displayName": "Build ninja-multi-vcpkg-debug",
+            "configuration": "Debug"
+        },
+        {
+            "name": "ninja-vcpkg-relwithdebinfo",
+            "configurePreset": "ninja-multi-vcpkg",
+            "displayName": "Build ninja-multi-vcpkg-relwithdebinfo",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "ninja-vcpkg-rel",
+            "configurePreset": "ninja-multi-vcpkg",
+            "displayName": "Build ninja-multi-vcpkg-release",
+            "configuration": "Release"
+        }
+    ]
+}
