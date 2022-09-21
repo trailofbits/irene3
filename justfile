@@ -3,6 +3,17 @@ set dotenv-load
 test-irene-ghidra:
     ./gradlew test
 
+install-ghidra:
+  #!/bin/bash
+  if [[ ! -f ghidra.zip ]]
+  then
+    curl -L \
+    https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.1.5_build/ghidra_10.1.5_PUBLIC_20220726.zip \
+    --output ghidra.zip
+    unzip ghidra.zip
+    mv ghidra_10.1.5_PUBLIC ghidra
+  fi
+
 format-cpp:
     find bin/ lib/ include/ -name "*.cpp" -exec clang-format -i {} \;
 
