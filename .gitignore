@@ -2,6 +2,8 @@
 .metals
 .vscode
 .gradle
+ghidra/
+ghidra.zip
 .cache
 builds/
 remill-build/
