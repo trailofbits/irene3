@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
 
     anvill::EntityLifter lifter(options);
 
-    std::unordered_set<uint64_t> target_funcs;
+    std::unordered_set< uint64_t > target_funcs;
     if (!FLAGS_lift_list.empty()) {
         std::stringstream ss(FLAGS_lift_list);
 
@@ -162,17 +162,16 @@ int main(int argc, char *argv[]) {
 
     // lift each function in the spec
     spec.ForEachFunction([&names, &lifter, &target_funcs](auto decl) {
-        // set appropriate name
+        llvm::Function *func;
+        if (target_funcs.empty() || target_funcs.find(decl->address) != target_funcs.end()) {
+            func = lifter.LiftEntity(*decl);
+        } else {
+            func = lifter.DeclareEntity(*decl);
+        } // set appropriate name
         if (auto name_it = names.find(decl->address); name_it != names.end()) {
-            llvm::Function *func;
-            if (target_funcs.empty() || target_funcs.find(decl->address) != target_funcs.end()) {
-                func = lifter.LiftEntity(*decl);
-            } else {
-                func = lifter.DeclareEntity(*decl);
-            }
             func->setName(name_it->second);
-            LOG(INFO) << "Function (" << func->getName().str() << ")";
         }
+        LOG(INFO) << "Function (" << func->getName().str() << ")";
 
         return true;
     });
@@ -220,26 +219,9 @@ int main(int argc, char *argv[]) {
     auto result{ rellic::Decompile(std::move(module), opts) };
     if (result.Succeeded()) {
         auto value{ result.TakeValue() };
-        for (const auto &global_mod : value.module->globals()) {
-            if (auto global_ast = value.value_to_decl_map.find(&global_mod);
-                global_ast != value.value_to_decl_map.end()) {
-                auto global = clang::dyn_cast< const clang::VarDecl >(global_ast->second);
-                if (global->hasInit()) {
-                    global->print(output);
-                    output << ";\n";
-                }
-            }
-        }
-        for (const auto &func_mod : value.module->functions()) {
-            if (auto func_ast = value.value_to_decl_map.find(&func_mod);
-                func_ast != value.value_to_decl_map.end()) {
-                auto func = clang::dyn_cast< const clang::FunctionDecl >(func_ast->second);
-                if (func->hasBody()) {
-                    func->print(output);
-                    output << "\n";
-                }
-            }
-        }
+        value.ast->getASTContext().getTranslationUnitDecl()->print(output);
+    } else {
+        LOG(FATAL) << result.TakeError().message;
     }
 
     return EXIT_SUCCESS;
