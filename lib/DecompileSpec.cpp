@@ -17,6 +17,8 @@
 #include <memory>
 #include <optional>
 #include <remill/BC/Util.h>
+#include <stdint.h>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -207,7 +209,12 @@ namespace irene3
         : context(std::move(o.context))
         , target_funcs(std::move(o.target_funcs))
         , options(std::move(o.options))
-        , spec(std::move(o.spec)) {}
+        , spec(std::move(o.spec)) {
+        this->spec.ForEachSymbol([this](uint64_t addr, const std::string& name) {
+            this->symbol_map.emplace(addr, name);
+            return true;
+        });
+    }
 
     rellic::Result< SpecDecompilationJobBuilder, std::string > SpecDecompilationJobBuilder::
         CreateDefaultBuilder(llvm::json::Value spec_json) {
