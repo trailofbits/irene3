@@ -91,12 +91,6 @@ jobs:
           path: ${{ steps.build_paths.outputs.REL_SOURCE }}/irene3
           fetch-depth: 0
           submodules: true
-      - name: Clone the remill repository
-        uses: actions/checkout@v2
-        with:
-          repository: 'lifting-bits/remill'
-          path: ${{ steps.build_paths.outputs.REL_SOURCE }}/remill
-          fetch-depth: 0
       - name: Setup Git User for Applying Patches
         # See this thread for more details https://github.community/t/github-actions-bot-email-address/17204/5
         run: |
@@ -143,7 +137,7 @@ jobs:
               -DCMAKE_VERBOSE_MAKEFILE=true \
               -DVCPKG_ROOT="${{ steps.cxxcommon_installer.outputs.PATH }}" \
               -G Ninja \
-              ${{ steps.build_paths.outputs.SOURCE }}/remill
+              "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/remill"
 
       - name: Build remill
         working-directory: ${{ steps.build_paths.outputs.BUILD }}
@@ -175,6 +169,8 @@ jobs:
         run: |
           mkdir irene3_build && cd irene3_build
           cmake \
+              -Dremill_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/remill/"\
+              -Dsleigh_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/sleigh/"\
               -DCMAKE_VERBOSE_MAKEFILE=true \
               -DVCPKG_ROOT="${{ steps.cxxcommon_installer.outputs.PATH }}" \
               -DIRENE3_ENABLE_INSTALL=true \
@@ -213,13 +209,13 @@ jobs:
                 -R ${irene3_version} \
                 --config "${{ steps.build_paths.outputs.SOURCE }}/irene3/packaging/main.cmake"
 
-          remill_tag=$(cd "${{ steps.build_paths.outputs.SOURCE }}/remill" && git describe --tags --abbrev=0 || echo "0")
-          remill_commit=$(cd "${{ steps.build_paths.outputs.SOURCE }}/remill" && git rev-parse HEAD | cut -c1-7)
+          remill_tag=$(cd "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/remill" && git describe --tags --abbrev=0 || echo "0")
+          remill_commit=$(cd "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/remill" && git rev-parse HEAD | cut -c1-7)
           remill_version="${remill_tag:1}.${remill_commit}"
           echo "Remill Version: ${remill_version}"
           cpack -D REMILL_DATA_PATH="${{ steps.remill_installer.outputs.PATH }}" \
                 -R ${remill_version} \
-                --config "${{ steps.build_paths.outputs.SOURCE }}/remill/packaging/main.cmake"
+                --config "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/remill/packaging/main.cmake"
       - name: Locate the packages
         id: package_names
         shell: bash

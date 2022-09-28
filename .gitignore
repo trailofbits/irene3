@@ -5,6 +5,8 @@
 ghidra/
 ghidra.zip
 .cache
+.venv
+build
 builds/
 remill-build/
 compile_commands.json

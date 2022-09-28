@@ -18,6 +18,8 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <iostream>
+#include <irene3/DecompileSpec.h>
+#include <irene3/Util.h>
 #include <irene3/Version.h>
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/LLVMContext.h>
@@ -111,27 +113,17 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    llvm::LLVMContext context;
-    context.enableOpaquePointers();
-    auto module = std::make_unique< llvm::Module >("lifted_code", context);
+    llvm::json::Value spec = maybe_json.get();
 
-    auto maybe_spec
-        = anvill::Specification::DecodeFromJSON(context, remill::GetReference(maybe_json));
+    std::unordered_set< uint64_t > target_funcs;
+
+    auto maybe_spec = irene3::JSONPathToDecompilationBuilder(FLAGS_spec);
     if (!maybe_spec.Succeeded()) {
-        std::cerr << maybe_spec.TakeError().message << std::endl;
+        std::cerr << maybe_spec.TakeError() << std::endl;
         return EXIT_FAILURE;
     }
 
-    anvill::Specification spec = maybe_spec.TakeValue();
-    anvill::SpecificationTypeProvider spec_tp(spec);
-    anvill::SpecificationControlFlowProvider spec_cfp(spec);
-    anvill::SpecificationMemoryProvider spec_mp(spec);
-
-    anvill::LifterOptions options(spec.Arch().get(), *module, spec_tp, spec_cfp, spec_mp);
-
-    anvill::EntityLifter lifter(options);
-
-    std::unordered_set< uint64_t > target_funcs;
+    auto builder = maybe_spec.TakeValue();
     if (!FLAGS_lift_list.empty()) {
         std::stringstream ss(FLAGS_lift_list);
 
@@ -142,72 +134,31 @@ int main(int argc, char *argv[]) {
                 ss.ignore();
             }
         }
+
+        builder.target_funcs = target_funcs;
+    }
+    irene3::SpecDecompilationJob job(std::move(builder));
+
+    auto decomp_res = job.Decompile();
+    if (!decomp_res.Succeeded()) {
+        std::cerr << decomp_res.TakeError() << std::endl;
+        return EXIT_FAILURE;
     }
 
-    // save names so that they can be looked up by address
-    std::unordered_map< uint64_t, std::string > names;
-    spec.ForEachSymbol([&names, &module](uint64_t addr, const std::string &name) {
-        std::string sanitized_name = name;
-        // remove beginning underscore for mac binaries
-        if (llvm::Triple(module->getTargetTriple()).getVendor() == llvm::Triple::VendorType::Apple
-            && name.find("_", 0) == 0) {
-            sanitized_name = name.substr(1);
-            names.emplace(addr, name.substr(1));
-        } else {
-            names.emplace(addr, name);
-        }
-
-        return true;
-    });
-
-    // lift each function in the spec
-    spec.ForEachFunction([&names, &lifter, &target_funcs](auto decl) {
-        llvm::Function *func;
-        if (target_funcs.empty() || target_funcs.find(decl->address) != target_funcs.end()) {
-            func = lifter.LiftEntity(*decl);
-        } else {
-            func = lifter.DeclareEntity(*decl);
-        } // set appropriate name
-        if (auto name_it = names.find(decl->address); name_it != names.end()) {
-            func->setName(name_it->second);
-        }
-        LOG(INFO) << "Function (" << func->getName().str() << ")";
-
-        return true;
-    });
-
-    // lift each variable in spec
-    if (!FLAGS_no_lift_globals) {
-        spec.ForEachVariable([&names, &lifter](auto decl) {
-            llvm::Constant *cv = lifter.DeclareEntity(*decl);
-
-            // set appropriate name
-            if (auto name_it = names.find(decl->address); name_it != names.end()) {
-                cv->setName(name_it->second);
-            }
-            LOG(INFO) << "Variable (" << cv->getName().str() << ")";
-            return true;
-        });
-    }
-
-    anvill::OptimizeModule(lifter, *module);
+    irene3::DecompilationResult decomp = decomp_res.TakeValue();
 
     if (!FLAGS_ir_out.empty()) {
-        if (!remill::StoreModuleIRToFile(&*module, FLAGS_ir_out, true)) {
+        if (!remill::StoreModuleIRToFile(&*decomp.mod, FLAGS_ir_out, true)) {
             std::cerr << "Could not save LLVM IR to " << FLAGS_ir_out << '\n';
             return EXIT_FAILURE;
         }
     }
     if (!FLAGS_bc_out.empty()) {
-        if (!remill::StoreModuleToFile(&*module, FLAGS_bc_out, true)) {
+        if (!remill::StoreModuleToFile(&*decomp.mod, FLAGS_bc_out, true)) {
             std::cerr << "Could not save LLVM bitcode to " << FLAGS_bc_out << '\n';
             return EXIT_FAILURE;
         }
     }
-
-    rellic::DecompilationOptions opts{};
-    opts.lower_switches   = true;
-    opts.remove_phi_nodes = true;
 
     std::error_code ec;
     llvm::raw_fd_ostream output(FLAGS_c_out, ec);
@@ -216,13 +167,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    auto result{ rellic::Decompile(std::move(module), opts) };
-    if (result.Succeeded()) {
-        auto value{ result.TakeValue() };
-        value.ast->getASTContext().getTranslationUnitDecl()->print(output);
-    } else {
-        LOG(FATAL) << result.TakeError().message;
-    }
+    decomp.ast->getASTContext().getTranslationUnitDecl()->print(output);
 
     return EXIT_SUCCESS;
 }
