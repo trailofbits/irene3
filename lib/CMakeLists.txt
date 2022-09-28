@@ -22,9 +22,9 @@ set(VERSION_HEADERS "${include_dir}/${PROJECT_NAME}/Version.h")
 
 set(irene3_PUBLIC_HEADER_DIR "${PROJECT_SOURCE_DIR}/include/irene3")
 
-set(irene3_PUBLIC_HEADERS "${irene3_PUBLIC_HEADER_DIR}/Version.h")
+set(irene3_PUBLIC_HEADERS "${irene3_PUBLIC_HEADER_DIR}/Version.h" "${irene3_PUBLIC_HEADER_DIR}/DecompileSpec.h")
 
-set(irene3_SOURCES "${POST_CONFIGURE_FILE}")
+set(irene3_SOURCES "${POST_CONFIGURE_FILE}" DecompileSpec.cpp Util.cpp)
 
 add_library("${PROJECT_NAME}" STATIC ${irene3_PUBLIC_HEADERS} ${irene3_SOURCES})
 
@@ -33,7 +33,7 @@ set_target_properties(
 )
 
 # link version information
-target_link_libraries("${PROJECT_NAME}" PUBLIC glog::glog "${llvm_libs}" gflags rellic anvill)
+target_link_libraries("${PROJECT_NAME}" PUBLIC glog::glog "${llvm_libs}" gflags rellic anvill pasta)
 
 target_include_directories(
   "${PROJECT_NAME}"
@@ -43,10 +43,10 @@ target_include_directories(
 
 add_dependencies(irene3 check_git_irene3)
 
-if (IRENE3_ENABLE_INSTALL)
+if(IRENE3_ENABLE_INSTALL)
   include(GNUInstallDirs)
-  # install(DIRECTORY "${include_dir}" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
+  # install(DIRECTORY "${include_dir}" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
   install(
     TARGETS "${PROJECT_NAME}"
     EXPORT "${PROJECT_NAME}Targets"
@@ -55,4 +55,4 @@ if (IRENE3_ENABLE_INSTALL)
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}"
   )
-endif (IRENE3_ENABLE_INSTALL)
+endif(IRENE3_ENABLE_INSTALL)

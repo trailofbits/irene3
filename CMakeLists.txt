@@ -31,18 +31,19 @@ find_package(gflags CONFIG REQUIRED)
 find_package(glog CONFIG REQUIRED)
 find_package(Z3 CONFIG REQUIRED)
 find_package(LLVM CONFIG REQUIRED)
+find_package(remill CONFIG REQUIRED)
 
 include(FetchContent)
 
-set(REMILL_ENABLE_TESTING OFF)
-add_subdirectory("vendor/remill" EXCLUDE_FROM_ALL)
-set(remill_DIR ${remill_BINARY_DIR})
 set(ANVILL_ENABLE_TESTS OFF)
 add_subdirectory("vendor/anvill" EXCLUDE_FROM_ALL)
 set(RELLIC_ENABLE_TESTING OFF)
 add_subdirectory("vendor/rellic" EXCLUDE_FROM_ALL)
 
-if (IRENE3_ENABLE_INSTALL)
+set(PASTA_ENABLE_TESTING OFF)
+add_subdirectory("vendor/pasta" EXCLUDE_FROM_ALL)
+
+if(IRENE3_ENABLE_INSTALL)
   export(PACKAGE "${PROJECT_NAME}")
 
   set(CMAKE_INSTALL_DIR "lib/cmake/${PROJECT_NAME}")
@@ -54,20 +55,20 @@ if (IRENE3_ENABLE_INSTALL)
   )
 
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-          DESTINATION "${CMAKE_INSTALL_DIR}"
+    DESTINATION "${CMAKE_INSTALL_DIR}"
   )
   install(
     EXPORT "${PROJECT_NAME}Targets"
     DESTINATION "${CMAKE_INSTALL_DIR}"
     NAMESPACE "${PROJECT_NAME}::"
   )
-endif (IRENE3_ENABLE_INSTALL)
+endif(IRENE3_ENABLE_INSTALL)
 
 add_subdirectory(lib)
 add_subdirectory(bin)
 
 # tests
-if (IRENE3_ENABLE_TESTS)
+if(IRENE3_ENABLE_TESTS)
   include(CTest)
 
   find_package(
@@ -80,7 +81,7 @@ if (IRENE3_ENABLE_TESTS)
   add_test(
     NAME test_irene3_decompile
     COMMAND "${Python3_EXECUTABLE}" scripts/decompile.py $<TARGET_FILE:${IRENE3_DECOMP}> tests/
-            --timeout 30
+    --timeout 30
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   )
-endif (IRENE3_ENABLE_TESTS)
+endif(IRENE3_ENABLE_TESTS)

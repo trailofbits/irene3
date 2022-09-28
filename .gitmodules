@@ -7,3 +7,6 @@
 [submodule "vendor/rellic"]
 	path = vendor/rellic
 	url = https://github.com/lifting-bits/rellic.git
+[submodule "vendor/pasta"]
+	path = vendor/pasta
+	url = git@github.com:trailofbits/pasta.git
