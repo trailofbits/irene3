@@ -1,3 +1,3 @@
-# Simple Scala Skeleton for Ghidra Plugins
+# Irene Ghidra Plugin
 
-Just add you ghidra path to gradle.properties and you should be good to go.
+This plugin adds two ghidra exporters that export the anvill specification in JSON and protobuf formats.

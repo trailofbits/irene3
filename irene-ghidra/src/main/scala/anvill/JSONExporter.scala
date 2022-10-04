@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package skeleton;
+package anvill;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,43 +26,40 @@ import ghidra.app.util.exporter.ExporterException;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.util.task.TaskMonitor;
+import ghidra.program.model.listing.Program
+import java.io.FileOutputStream
+import scalapb.json4s.JsonFormat
+
+import scala.throws
 
 /** TODO: Provide class-level documentation that describes what this exporter
   * does.
   */
-class SkeletonExporter extends Exporter("My Exporter", "exp", null) {
+class JSONExporter extends Exporter("Anvill JSON spec", "json", null) {
 
-  // throws ExporterException, IOException
+  @throws[IOException]()
   override def `export`(
       file: File,
       domainObj: DomainObject,
       addrSet: AddressSetView,
       monitor: TaskMonitor
   ): Boolean = {
-
-    // TODO: Perform the export, and return true if it succeeded
-
-    false
+    val os = new FileOutputStream(file)
+    val spec = ProgramSpecifier.specifyProgram(domainObj.asInstanceOf[Program])
+    val json: String = JsonFormat.toJsonString(spec)
+    os.write(json.getBytes())
+    true
   }
 
   override def getOptions(
       domainObjectService: DomainObjectService
   ): List[Option] = {
     var list: List[Option] = new ArrayList();
-
-    // TODO: If this exporter has custom options, add them to 'list'
-    list.add(
-      new Option("Option name goes here", "Default option value goes here")
-    );
-
     list
   }
 
   @throws(classOf[OptionException])
   override def setOptions(
       options: List[Option]
-  ): Unit = {
-
-    // TODO: If this exporter has custom options, assign their values to the exporter here
-  }
+  ): Unit = {}
 }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package skeleton;
+package anvill;
 
 import docking.ActionContext;
 import docking.ComponentProvider;
@@ -35,10 +35,9 @@ import resources.Icons;
 @PluginInfo(
 	status = PluginStatus.STABLE,
 	packageName = ExamplesPluginPackage.NAME,
-	category = PluginCategoryNames.EXAMPLES,
-	shortDescription = "Plugin short description goes here.",
-	description = "Plugin long description goes here."
+	category = PluginCategoryNames.MISC,
+	shortDescription = "Generate Anvill specs for program.",
+	description = "Generate Anvill specs for program."
 )
 //@formatter:on
-class SkeletonPlugin(tool: PluginTool)
-    extends ProgramPlugin(tool, true, true) {}
+class AnvillPlugin(tool: PluginTool) extends ProgramPlugin(tool, true, true) {}
