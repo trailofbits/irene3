@@ -1,0 +1,12 @@
+builds/
+*build/
+install/
+deps/
+venv
+.cache/
+.env
+vendor/
+!vendor/pasta
+!vendor/remill
+!vendor/anvill
+!vendor/rellic

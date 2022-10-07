@@ -90,11 +90,6 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    if (FLAGS_c_out.empty()) {
-        std::cerr << "Must specify output file" << std::endl;
-        return EXIT_FAILURE;
-    }
-
     std::filesystem::path input_spec(FLAGS_spec);
     std::filesystem::path output_file(FLAGS_c_out);
 
@@ -160,14 +155,16 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    std::error_code ec;
-    llvm::raw_fd_ostream output(FLAGS_c_out, ec);
-    if (ec) {
-        std::cerr << "Could not open output file " << FLAGS_c_out << std::endl;
-        return EXIT_FAILURE;
-    }
+    if (!FLAGS_c_out.empty()) {
+        std::error_code ec;
+        llvm::raw_fd_ostream output(FLAGS_c_out, ec);
+        if (ec) {
+            std::cerr << "Could not open output file " << FLAGS_c_out << std::endl;
+            return EXIT_FAILURE;
+        }
 
-    decomp.ast->getASTContext().getTranslationUnitDecl()->print(output);
+        decomp.ast->getASTContext().getTranslationUnitDecl()->print(output);
+    }
 
     return EXIT_SUCCESS;
 }

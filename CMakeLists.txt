@@ -33,7 +33,6 @@ find_package(Z3 CONFIG REQUIRED)
 find_package(LLVM CONFIG REQUIRED)
 find_package(remill CONFIG REQUIRED)
 
-include(FetchContent)
 
 set(ANVILL_ENABLE_TESTS OFF)
 add_subdirectory("vendor/anvill" EXCLUDE_FROM_ALL)
@@ -71,6 +70,15 @@ add_subdirectory(bin)
 if(IRENE3_ENABLE_TESTS)
   include(CTest)
 
+  find_package(Clang CONFIG REQUIRED)
+  get_target_property(CLANG_PATH clang LOCATION)
+  message(STATUS "Clang path for tests: \"${CLANG_PATH}\"")
+
+  set(PYTHON_FIND_VIRTUALENV FIRST)
+  if (EXISTS ${CMAKE_SOURCE_DIR}/venv)
+    message(STATUS "Using virtualenv ${CMAKE_SOURCE_DIR}/venv")
+    set(Python3_ROOT_DIR "${CMAKE_SOURCE_DIR}/venv")
+  endif()
   find_package(
     Python3
     COMPONENTS Interpreter
@@ -80,8 +88,17 @@ if(IRENE3_ENABLE_TESTS)
 
   add_test(
     NAME test_irene3_decompile
-    COMMAND "${Python3_EXECUTABLE}" scripts/decompile.py $<TARGET_FILE:${IRENE3_DECOMP}> tests/
+    COMMAND "${Python3_EXECUTABLE}" scripts/decompile.py $<TARGET_FILE:${IRENE3_DECOMP}> tests/specs
     --timeout 30
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   )
+
+  if(IRENE3_TEST_ROUNDTRIP)
+    add_test(
+      NAME test_irene3_roundtrip
+      COMMAND "${Python3_EXECUTABLE}" scripts/roundtrip.py $<TARGET_FILE:${IRENE3_DECOMP}> tests/c "${CLANG_PATH}"
+      --timeout 30
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+  endif(IRENE3_TEST_ROUNDTRIP)
 endif(IRENE3_ENABLE_TESTS)

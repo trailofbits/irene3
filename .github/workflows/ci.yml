@@ -24,7 +24,7 @@ jobs:
           echo "GHIDRA_INSTALL_DIR=$(pwd)/ghidra_10.1.5_PUBLIC" >> $GITHUB_ENV
       - name: "IRENE Ghidra tests"
         run: |
-          just test-irene-ghidra
+          just test-irene3-ghidra
   build-decompiler:
     strategy:
       fail-fast: false
@@ -161,6 +161,47 @@ jobs:
           cmake --build remill_build \
                 --target install
           echo ::set-output name=PATH::${DESTDIR}
+      - name: Configure anvill
+        working-directory: ${{ steps.build_paths.outputs.BUILD }}
+
+        env:
+          CCACHE_DIR: ${{ steps.build_paths.outputs.CCACHE }}
+
+        run: |
+          mkdir anvill_build && cd anvill_build
+          cmake \
+              -DCMAKE_VERBOSE_MAKEFILE=true \
+              -DVCPKG_ROOT="${{ steps.cxxcommon_installer.outputs.PATH }}" \
+              -Dremill_DIR:PATH=${{ steps.remill_installer.outputs.PATH }}/usr/local/lib/cmake/remill \
+              -Dsleigh_DIR:PATH=${{ steps.remill_installer.outputs.PATH }}/usr/local/lib/cmake/sleigh \
+              -DANVILL_ENABLE_TESTS=true \
+              -DANVILL_ENABLE_INSTALL=true \
+              -G Ninja \
+              "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/anvill"
+      - name: Build anvill
+        working-directory: ${{ steps.build_paths.outputs.BUILD }}
+
+        env:
+          CCACHE_DIR: ${{ steps.build_paths.outputs.CCACHE }}
+
+        run: |
+          cmake \
+              --build anvill_build \
+              -j ${{ steps.build_job_count.outputs.VALUE }}
+
+      - name: Install anvill
+        id: anvill_installer
+        working-directory: ${{ steps.build_paths.outputs.BUILD }}
+
+        env:
+          CCACHE_DIR: ${{ steps.build_paths.outputs.CCACHE }}
+
+        run: |
+          export DESTDIR=${{ steps.build_paths.outputs.INSTALL }}/anvill
+          cmake --build anvill_build \
+                --target install
+          echo ::set-output name=PATH::${DESTDIR}
+
       - name: Configure irene3
         working-directory: ${{ steps.build_paths.outputs.BUILD }}
 
@@ -170,6 +211,7 @@ jobs:
           mkdir irene3_build && cd irene3_build
           cmake \
               -Dremill_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/remill/"\
+              -Danvill_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/anvill/"\
               -Dsleigh_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/sleigh/"\
               -DCMAKE_VERBOSE_MAKEFILE=true \
               -DVCPKG_ROOT="${{ steps.cxxcommon_installer.outputs.PATH }}" \
@@ -215,7 +257,15 @@ jobs:
           echo "Remill Version: ${remill_version}"
           cpack -D REMILL_DATA_PATH="${{ steps.remill_installer.outputs.PATH }}" \
                 -R ${remill_version} \
-                --config "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/remill/packaging/main.cmake"
+                --config "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/remill/packaging/main.cmake" \
+
+          anvill_tag=$(cd "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/anvill" && git describe --tags --abbrev=0 || echo "0")
+          anvill_commit=$(cd "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/anvill" && git rev-parse HEAD | cut -c1-7)
+          anvill_version="${anvill_tag:1}.${anvill_commit}"
+          echo "Anvill Version: ${anvill_version}"
+          cpack -D ANVILL_DATA_PATH="${{ steps.anvill_installer.outputs.PATH }}" \
+                -R ${anvill_version} \
+                --config "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/anvill/packaging/main.cmake"
       - name: Locate the packages
         id: package_names
         shell: bash
@@ -226,8 +276,19 @@ jobs:
       - name: Install the DEB package
         run: |
           dpkg -i ${{ steps.package_names.outputs.DEB_PACKAGE_PATH }}
+      - name: Install Binary Ninja Headless
+        shell: bash
+        env:
+          BN_LICENSE: ${{ secrets.BINJA_AMP_LICENSE }}
+
+        working-directory: ${{ steps.build_paths.outputs.SOURCE }}
+        run: |
+          ./irene3/scripts/download_headless.py --dev -i -c -d /opt
+          /usr/bin/python3 /opt/binaryninja/scripts/install_api.py
       - name: Test irene3
         shell: bash
+        env:
+          BN_LICENSE: ${{ secrets.BINJA_AMP_LICENSE }}
         working-directory: ${{ steps.build_paths.outputs.BUILD }}
         run: |
           env CTEST_OUTPUT_ON_FAILURE=1 cmake --build irene3_build --target test
@@ -248,3 +309,20 @@ jobs:
         with:
           name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_tgz_package
           path: ${{ steps.package_names.outputs.TGZ_PACKAGE_PATH }}
+  build_docker:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        ubuntu: ["20.04"]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Build Docker container
+        env:
+          BN_LICENSE: ${{ secrets.BINJA_AMP_LICENSE }}
+        run: |
+          docker build . -t docker.pkg.github.com/trailofbits/irene3/irene3-ubuntu${{ matrix.ubuntu }}-amd64:latest -f Dockerfile --build-arg UBUNTU_VERSION=${{ matrix.ubuntu }} --build-arg BN_LICENSE="${BN_LICENSE}"
+      - name: Test Docker image
+        run: |
+          docker run --rm -v $(pwd):/workspace -w /workspace docker.pkg.github.com/trailofbits/irene3/irene3-ubuntu${{ matrix.ubuntu }}-amd64:latest irene3-decompile -spec /workspace/tests/specs/test-hello-elf-x64.spec.json -bc_out /tmp/hello.bc -ir_out /tmp/hello.ll -c_out /tmp/hello.c

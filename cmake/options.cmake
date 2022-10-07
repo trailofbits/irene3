@@ -16,8 +16,9 @@ endif()
 
 set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE STRING "Build type")
 
-option(IRENE3_ENABLE_INSTALL "Set to ON to enable the install directives. This installs both the native and python components" TRUE)
+option(IRENE3_ENABLE_INSTALL "Set to ON to enable the install directives. This installs the native components" TRUE)
 option(IRENE3_ENABLE_TESTS "Set to ON to enable the tests" TRUE)
+option(IRENE3_TEST_ROUNDTRIP "Set to ON to enable the roundtrip tests" FALSE)
 option(IRENE3_ENABLE_SANITIZERS "Set to ON to enable sanitizers. May not work with VCPKG")
 
 set(VCPKG_ROOT "" CACHE FILEPATH "Root directory to use for vcpkg-managed dependencies")
