@@ -36,12 +36,12 @@ namespace irene3
         std::unordered_set< uint64_t > target_funcs;
 
         // The rellic C decompilation options
-        rellic::DecompilationOptions options;
+        std::unique_ptr< rellic::DecompilationOptions > options;
 
         SpecDecompilationJobBuilder(
             anvill::Specification spec,
             std::unordered_set< uint64_t > target_funcs,
-            rellic::DecompilationOptions options,
+            std::unique_ptr< rellic::DecompilationOptions > options,
             std::shared_ptr< llvm::LLVMContext > context);
 
         // Attempts to build a SpecDecompilationBuilder from an anvill json specification.
@@ -111,7 +111,7 @@ namespace irene3
       private:
         std::shared_ptr< llvm::LLVMContext > context;
         std::unordered_set< uint64_t > target_funcs;
-        rellic::DecompilationOptions options;
+        std::unique_ptr< rellic::DecompilationOptions > options;
         anvill::Specification spec;
 
         std::unordered_map< uint64_t, std::string > symbol_map;

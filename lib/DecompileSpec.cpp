@@ -16,6 +16,7 @@
 #include <llvm/Support/Casting.h>
 #include <memory>
 #include <optional>
+#include <remill/Arch/Arch.h>
 #include <remill/BC/Util.h>
 #include <stdint.h>
 #include <string>
@@ -194,7 +195,7 @@ namespace irene3
 
         anvill::OptimizeModule(lifter, *module);
 
-        auto res = rellic::Decompile(std::move(module), this->options);
+        auto res = rellic::Decompile(std::move(module), std::move(*this->options));
 
         if (!res.Succeeded()) {
             return res.TakeError().message;
@@ -236,14 +237,15 @@ namespace irene3
             return true;
         });
 
-        rellic::DecompilationOptions opts;
-        return SpecDecompilationJobBuilder(spec, target_function_list, opts, std::move(context));
+        auto opts = std::make_unique< rellic::DecompilationOptions >();
+        return SpecDecompilationJobBuilder(
+            spec, target_function_list, std::move(opts), std::move(context));
     }
 
     SpecDecompilationJobBuilder::SpecDecompilationJobBuilder(
         anvill::Specification spec,
         std::unordered_set< uint64_t > target_funcs,
-        rellic::DecompilationOptions options,
+        std::unique_ptr< rellic::DecompilationOptions > options,
         std::shared_ptr< llvm::LLVMContext > context)
         : context(std::move(context))
         , spec(std::move(spec))

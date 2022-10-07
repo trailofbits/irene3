@@ -2,7 +2,7 @@
 set -euo pipefail
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-ROOT_DIR="$(realpath ${DIR}/..)"
+ROOT_DIR="$(realpath "${DIR}/..")"
 
 function install_just {
   if [[ "${OSTYPE}" == "darwin"* ]]
@@ -10,17 +10,16 @@ function install_just {
     brew install just
   elif [[ ${OSTYPE} == "linux"* ]]
   then
-    local key_file="/usr/share/keyrings/prebuilt-mpr-archive-keyring.gpg"
-    if [[ ! -f "${key_file}" ]]
-    then
-      curl -q 'https://proget.makedeb.org/debian-feeds/prebuilt-mpr.pub' | gpg --dearmor | sudo tee "${key_file}" 1> /dev/null
-      echo "deb [signed-by=${key_file}] https://proget.makedeb.org prebuilt-mpr $(lsb_release -cs)" | sudo tee /etc/apt/sources.list.d/prebuilt-mpr.list
-    fi
-    sudo apt-get update && sudo apt-get -qyy install just
+    curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to "${HOME}/.local/bin"
+    echo "export PATH=\${HOME}/.local/bin:\${PATH}" >>~/.profile
+    export PATH=${HOME}/.local/bin:${PATH}
   else
     exit 1
   fi
 }
+
+sudo apt-get update
+sudo apt-get install -yq curl gpg sudo git cargo tar xz-utils unzip lsb-release wget software-properties-common gnupg build-essential python3-venv
 
 if ! command -v "just" &>/dev/null
 then
@@ -31,4 +30,7 @@ else
 fi
 
 echo "[+] Marking gradle.properties as assume-unchanged"
-git update-index --assume-unchanged  ${ROOT_DIR}/gradle.properties
+git update-index --assume-unchanged  "${ROOT_DIR}/gradle.properties"
+
+exec /bin/bash
+

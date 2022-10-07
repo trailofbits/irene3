@@ -13,6 +13,8 @@ elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
   set(CPACK_GENERATOR "TGZ")
 endif()
 
+set(CPACK_THREADS 0)
+
 if(IRENE3_DATA_PATH STREQUAL "")
   message(FATAL_ERROR "The IRENE3_DATA_PATH variable was not set")
 endif()
