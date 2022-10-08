@@ -114,6 +114,12 @@ You can also set the `GHIDRA_INSTALL_DIR` environment variable, but your IDE may
 
 Provided your `gradle.properties` file is up to date any Scala IDE should work without any setup. Given the mixing of Java and Scala an IDE that supports both is ideal. VScode with Metals + the Java extension pack works well. 
 
+### MacOS Instructions
+```sh
+brew tap homebrew/cask-versions
+brew install --cask temurin17
+```
+
 ## IRENE C++ Development Instructions
 
 * Run `./scripts/install-prereqs.sh` to install `just`
