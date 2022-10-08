@@ -16,6 +16,7 @@ CMAKE_DIR := "cmake-"+CMAKE_VERSION+"-"+CMAKE_OS+"-"+CMAKE_ARCH
 
 VIRTUAL_ENV := env_var_or_default("VIRTUAL_ENV", justfile_directory() + "/venv")
 BINJA_PATH := env_var_or_default("BINJA_PATH", justfile_directory() + "/deps/binaryninja")
+BN_LICENSE := `cat "./scripts/amp-program-headless-license.json"`
 DOCKER_CMD := "docker"
 
 # Add local cmake to path
@@ -25,13 +26,18 @@ export CC := if "macos" == os() {"clang"} else { "clang-" + LLVM_VERSION }
 export CXX := if "macos" == os() {"clang++"} else { "clang++-" + LLVM_VERSION }
 export VCPKG_ROOT := env_var_or_default("VCPKG_ROOT", justfile_directory() + "/deps/" + CXX_COMMON_NAME)
 export CMAKE_INSTALL_PREFIX := env_var_or_default("CMAKE_INSTALL_PREFIX", justfile_directory() + "/install")
-export BN_LICENSE := `cat "./scripts/amp-program-headless-license.json"`
 
 default:
     @just --list
 
 build-irene3-ghidra: install-ghidra
-    ./gradlew install
+    ./gradlew build -PIRENEGHIDRA_AUTO_REMOVE
+
+install-irene3-ghidra:
+    ./gradlew install -PIRENEGHIDRA_AUTO_REMOVE
+
+run-ghidra: install-irene3-ghidra
+    ./deps/ghidra/ghidraRun
 
 build-docker:
     {{DOCKER_CMD}} build -t irene3 {{justfile_directory()}} -f Dockerfile --build-arg BN_LICENSE="${BN_LICENSE}"
@@ -143,16 +149,10 @@ install-binja-headless: setup-venv
         if [[ "linux" == "{{os()}}" ]] && [[ "x86_64" == "{{arch()}}" ]]; then
             if [[ ! -f "{{BINJA_PATH}}/api_REVISION.txt" ]]; then
                 if [[ ! -f "deps/binja.zip" ]]; then
-                    if [[ -v BN_LICENSE ]]; then
-                        echo "Downloading Binary Ninja"
-                        mkdir -p ./deps
-                        "{{VIRTUAL_ENV}}/bin/pip3" install requests
-                        "{{VIRTUAL_ENV}}/bin/python3" ./scripts/download_headless.py --dev --output deps/binja.zip -i -d "{{parent_directory(BINJA_PATH)}}"
-                    else
-                        echo "No Binary Ninja Serial found"
-                        echo "Please set BN_LICENSE"
-                        exit 1
-                    fi
+                    echo "Downloading Binary Ninja"
+                    mkdir -p ./deps
+                    "{{VIRTUAL_ENV}}/bin/pip3" install requests
+                    "{{VIRTUAL_ENV}}/bin/python3" ./scripts/download_headless.py --dev --output deps/binja.zip -i -d "{{parent_directory(BINJA_PATH)}}"
                 else
                     echo "Extracting binary ninja"
                     unzip ./deps/binja.zip -d "{{BINJA_PATH}}"
