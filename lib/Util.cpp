@@ -10,28 +10,19 @@
 
 namespace irene3
 {
-    rellic::Result< SpecDecompilationJobBuilder, std::string > JSONPathToDecompilationBuilder(
-        const std::filesystem::path& input_spec) {
+    rellic::Result< SpecDecompilationJobBuilder, std::string > ProtobufPathToDecompilationBuilder(
+        const std::filesystem::path& input_spec, bool propagate_types) {
         auto maybe_buff = llvm::MemoryBuffer::getFileOrSTDIN(input_spec.c_str());
         if (remill::IsError(maybe_buff)) {
             std::stringstream ss;
-            ss << "Unable to read JSON spec file '" << input_spec
+            ss << "Unable to read protobuf spec file '" << input_spec
                << "': " << remill::GetErrorString(maybe_buff) << std::endl;
             return ss.str();
         }
         const std::unique_ptr< llvm::MemoryBuffer >& buff = remill::GetReference(maybe_buff);
 
-        auto maybe_json = llvm::json::parse(buff->getBuffer());
-        if (remill::IsError(maybe_json)) {
-            std::stringstream ss;
-            ss << "Unable to parse JSON spec file '" << input_spec
-               << "': " << remill::GetErrorString(maybe_json) << std::endl;
-            return ss.str();
-        }
-
-        llvm::json::Value v = maybe_json.get();
-
-        return SpecDecompilationJobBuilder::CreateDefaultBuilder(v);
+        return SpecDecompilationJobBuilder::CreateDefaultBuilder(
+            buff->getBuffer().str(), propagate_types);
     }
 
     std::optional< uint64_t > GetPCMetadata(const llvm::Value* value) {

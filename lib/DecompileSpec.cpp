@@ -1,6 +1,6 @@
+#include "SpecTypeProvider.h"
 #include "rellic/Decompiler.h"
 
-#include <anvill/JSON.h>
 #include <anvill/Lifters.h>
 #include <anvill/Optimize.h>
 #include <anvill/Providers.h>
@@ -218,14 +218,14 @@ namespace irene3
     }
 
     rellic::Result< SpecDecompilationJobBuilder, std::string > SpecDecompilationJobBuilder::
-        CreateDefaultBuilder(llvm::json::Value spec_json) {
+        CreateDefaultBuilder(const std::string& spec_pb, bool propagate_types) {
         std::shared_ptr< llvm::LLVMContext > context = std::make_shared< llvm::LLVMContext >();
         context->enableOpaquePointers();
 
-        auto maybe_spec = anvill::Specification::DecodeFromJSON(*context, spec_json);
+        auto maybe_spec = anvill::Specification::DecodeFromPB(*context, spec_pb);
 
         if (!maybe_spec.Succeeded()) {
-            return { std::string(maybe_spec.TakeError().message) };
+            return { std::string(maybe_spec.TakeError()) };
         }
 
         auto spec = maybe_spec.TakeValue();
@@ -238,6 +238,10 @@ namespace irene3
         });
 
         auto opts = std::make_unique< rellic::DecompilationOptions >();
+        if (propagate_types) {
+            opts->additional_providers.push_back(
+                std::make_unique< SpecTypeProvider::Factory >(spec));
+        }
         return SpecDecompilationJobBuilder(
             spec, target_function_list, std::move(opts), std::move(context));
     }

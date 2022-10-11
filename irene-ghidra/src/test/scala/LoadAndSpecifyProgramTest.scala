@@ -121,8 +121,8 @@ class LoadAndSpecifyProgramTest extends AbstractGhidraHeadlessIntegrationTest { 
     )
 
     assertEquals(
-      "collatz-x86 should have six memory ranges",
-      6,
+      "collatz-x86 should have five memory ranges",
+      5,
       spec.memoryRanges.length
     )
     spec.memoryRanges.foreach(range =>
@@ -152,7 +152,7 @@ class LoadAndSpecifyProgramTest extends AbstractGhidraHeadlessIntegrationTest { 
     assertEquals(
       "stack-args-x86' function should have two parameters",
       2,
-      func.parameters.length
+      func.callable.get.parameters.length
     )
 
     assertEquals(
@@ -161,7 +161,7 @@ class LoadAndSpecifyProgramTest extends AbstractGhidraHeadlessIntegrationTest { 
       spec.memoryRanges.length
     )
 
-    val maybeRetAddr = func.returnAddress
+    val maybeRetAddr = func.callable.get.returnAddress
     assertFalse(
       "stack-args-x86' memory range should not be empty",
       maybeRetAddr.isEmpty
@@ -203,7 +203,7 @@ class LoadAndSpecifyProgramTest extends AbstractGhidraHeadlessIntegrationTest { 
     assertEquals(
       "jmp-x86's function should have two parameters",
       2,
-      func.parameters.length
+      func.callable.get.parameters.length
     )
 
     assertEquals(
