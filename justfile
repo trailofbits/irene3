@@ -187,7 +187,7 @@ generate-spec binary out_json:
     #!/usr/bin/env bash
     "{{VIRTUAL_ENV}}/bin/python3" -m anvill --bin_in {{binary}} --spec_out {{out_json}} --entrypoint main --ignore_no_refs
 
-temp_json := uuid() + ".json"
+#temp_json := uuid() + ".json"
 
 check-irene3-decompile:
     #!/usr/bin/env bash
@@ -197,13 +197,13 @@ check-irene3-decompile:
     fi
     exit 0
 
-decompile-binary binary out_c: (generate-spec binary temp_json) check-irene3-decompile
-    "${CMAKE_INSTALL_PREFIX}/bin/irene3-decompile" -spec {{temp_json}} -c_out {{out_c}}
-    rm -f {{temp_json}}
+#decompile-binary binary out_c: (generate-spec binary temp_json) check-irene3-decompile
+#    "${CMAKE_INSTALL_PREFIX}/bin/irene3-decompile" -spec {{temp_json}} -c_out {{out_c}}
+#    rm -f {{temp_json}}
 
-decompile-binary-ll binary out_ir: (generate-spec binary temp_json) check-irene3-decompile
-    "${CMAKE_INSTALL_PREFIX}/bin/irene3-decompile" -spec {{temp_json}} -c_out /dev/null -ir_out {{out_ir}}
-    rm -f {{temp_json}}
+#decompile-binary-ll binary out_ir: (generate-spec binary temp_json) check-irene3-decompile
+#    "${CMAKE_INSTALL_PREFIX}/bin/irene3-decompile" -spec {{temp_json}} -c_out /dev/null -ir_out {{out_ir}}
+#    rm -f {{temp_json}}
 
 decompile-spec spec out_c: check-irene3-decompile
     "${CMAKE_INSTALL_PREFIX}/bin/irene3-decompile" -spec {{spec}} -c_out {{out_c}}

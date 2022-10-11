@@ -325,4 +325,4 @@ jobs:
           docker build . -t docker.pkg.github.com/trailofbits/irene3/irene3-ubuntu${{ matrix.ubuntu }}-amd64:latest -f Dockerfile --build-arg UBUNTU_VERSION=${{ matrix.ubuntu }} --build-arg BN_LICENSE="${BN_LICENSE}"
       - name: Test Docker image
         run: |
-          docker run --rm -v $(pwd):/workspace -w /workspace docker.pkg.github.com/trailofbits/irene3/irene3-ubuntu${{ matrix.ubuntu }}-amd64:latest irene3-decompile -spec /workspace/tests/specs/test-hello-elf-x64.spec.json -bc_out /tmp/hello.bc -ir_out /tmp/hello.ll -c_out /tmp/hello.c
+          docker run --rm -v $(pwd):/workspace -w /workspace docker.pkg.github.com/trailofbits/irene3/irene3-ubuntu${{ matrix.ubuntu }}-amd64:latest irene3-decompile -spec /workspace/tests/specs/test-hello-elf-x64.pb.bin -bc_out /tmp/hello.bc -ir_out /tmp/hello.ll -c_out /tmp/hello.c

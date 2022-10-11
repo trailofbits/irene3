@@ -71,11 +71,11 @@
           "type": "B"
         },
         {
-          "register": "R3",
+          "register": "R2",
           "type": "[Bx4]"
         },
         {
-          "register": "R4",
+          "register": "R3",
           "type": "[Bx4]"
         },
         {

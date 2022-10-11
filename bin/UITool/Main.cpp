@@ -8,7 +8,6 @@
 
 #include "JsonDecompBuilder.h"
 
-#include <anvill/JSON.h>
 #include <anvill/Lifters.h>
 #include <anvill/Optimize.h>
 #include <anvill/Providers.h>
@@ -40,6 +39,7 @@
 #include <unordered_set>
 
 DEFINE_string(spec, "", "input spec");
+DEFINE_bool(type_propagation, false, "Propagate spec types to decompiler");
 
 int main(int argc, char *argv[]) {
     google::SetUsageMessage("IRENE3 UITool");
@@ -53,7 +53,8 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    auto maybe_spec = irene3::JSONPathToDecompilationBuilder(FLAGS_spec);
+    auto maybe_spec
+        = irene3::ProtobufPathToDecompilationBuilder(FLAGS_spec, FLAGS_type_propagation);
     if (!maybe_spec.Succeeded()) {
         std::cerr << maybe_spec.TakeError() << std::endl;
         return EXIT_FAILURE;

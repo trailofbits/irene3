@@ -46,7 +46,7 @@ namespace irene3
 
         // Attempts to build a SpecDecompilationBuilder from an anvill json specification.
         static rellic::Result< SpecDecompilationJobBuilder, std::string > CreateDefaultBuilder(
-            llvm::json::Value spec);
+            const std::string& spec_pb, bool propagate_types);
     };
 
     // A decompiled function

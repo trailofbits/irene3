@@ -6,7 +6,6 @@
  * the LICENSE file found in the root directory of this source tree.
  */
 
-#include <anvill/JSON.h>
 #include <anvill/Lifters.h>
 #include <anvill/Optimize.h>
 #include <anvill/Providers.h>
@@ -39,6 +38,7 @@ DEFINE_string(bc_out, "", "LLVM Bitcode output file");
 DEFINE_string(c_out, "", "C output file");
 DEFINE_string(lift_list, "", "list of entities to lift");
 DEFINE_bool(no_lift_globals, false, "Dont' lift global variables");
+DEFINE_bool(type_propagation, false, "Should propagate types to the decompiler");
 DEFINE_bool(h, false, "help");
 
 DECLARE_bool(version);
@@ -93,26 +93,10 @@ int main(int argc, char *argv[]) {
     std::filesystem::path input_spec(FLAGS_spec);
     std::filesystem::path output_file(FLAGS_c_out);
 
-    auto maybe_buff = llvm::MemoryBuffer::getFileOrSTDIN(input_spec.c_str());
-    if (remill::IsError(maybe_buff)) {
-        std::cerr << "Unable to read JSON spec file '" << input_spec
-                  << "': " << remill::GetErrorString(maybe_buff) << std::endl;
-        return EXIT_FAILURE;
-    }
-    const std::unique_ptr< llvm::MemoryBuffer > &buff = remill::GetReference(maybe_buff);
-
-    auto maybe_json = llvm::json::parse(buff->getBuffer());
-    if (remill::IsError(maybe_json)) {
-        std::cerr << "Unable to parse JSON spec file '" << FLAGS_spec
-                  << "': " << remill::GetErrorString(maybe_json) << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    llvm::json::Value spec = maybe_json.get();
-
     std::unordered_set< uint64_t > target_funcs;
 
-    auto maybe_spec = irene3::JSONPathToDecompilationBuilder(FLAGS_spec);
+    auto maybe_spec
+        = irene3::ProtobufPathToDecompilationBuilder(FLAGS_spec, FLAGS_type_propagation);
     if (!maybe_spec.Succeeded()) {
         std::cerr << maybe_spec.TakeError() << std::endl;
         return EXIT_FAILURE;
