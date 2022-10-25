@@ -187,7 +187,10 @@ namespace irene3
         anvill::SpecificationMemoryProvider spec_mp(this->spec);
 
         anvill::LifterOptions options(spec.Arch().get(), *module, spec_tp, spec_cfp, spec_mp);
-        options.pc_metadata_name = "pc";
+        options.stack_frame_recovery_options.stack_frame_struct_init_procedure
+            = this->stack_initialization_strategy;
+        options.should_remove_anvill_pc = this->should_remove_anvill_pc;
+        options.pc_metadata_name        = "pc";
         anvill::EntityLifter lifter(options);
 
         this->LiftOrDeclareFunctionsInto(lifter);

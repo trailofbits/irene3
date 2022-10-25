@@ -93,6 +93,7 @@ import ghidra.program.model.pcode.HighParam
 import ghidra.program.model.pcode.HighSymbol
 import specification.specification.Callsite
 import java.util.Objects
+import ghidra.program.model.data.AbstractStringDataType
 
 object ProgramSpecifier {
   val integerTypes = Map(
@@ -173,6 +174,19 @@ object ProgramSpecifier {
               aliases += (id -> struct)
               getStructSpec(struct, aliases)
             })
+        case str: AbstractStringDataType => {
+          Msg.debug(this, "has string");
+          Some(
+            TypeSpec(
+              Type.Array(
+                TypeSpec.ArrayType(
+                  Some(TypeSpec(Type.Base(BT_CHAR))),
+                  str.getLength + 1
+                )
+              )
+            )
+          )
+        }
         case _ => Some(TypeSpec(Type.Unknown(t.getLength())))
     )
   }
