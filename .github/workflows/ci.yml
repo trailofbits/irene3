@@ -7,6 +7,10 @@ on:
     branches:
       - 'main'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test-ghidra:
     runs-on: ubuntu-20.04
@@ -57,14 +61,14 @@ jobs:
                    ${rel_downloads_path} \
                    ${rel_ccache_path} \
                    ${rel_workspace_path}
-          echo ::set-output name=SOURCE::$(pwd)/${rel_source_path}
-          echo ::set-output name=REL_SOURCE::${rel_source_path}
-          echo ::set-output name=BUILD::$(pwd)/${rel_build_path}
-          echo ::set-output name=REL_BUILD::${rel_build_path}
-          echo ::set-output name=INSTALL::$(pwd)/${rel_install_path}
-          echo ::set-output name=DOWNLOADS::$(pwd)/${rel_downloads_path}
-          echo ::set-output name=CCACHE::$(pwd)/${rel_ccache_path}
-          echo ::set-output name=WORKSPACE::$(pwd)/${rel_workspace_path}
+          echo "SOURCE=$(pwd)/${rel_source_path}" >> ${GITHUB_OUTPUT}
+          echo "REL_SOURCE=${rel_source_path}" >> ${GITHUB_OUTPUT}
+          echo "BUILD=$(pwd)/${rel_build_path}" >> ${GITHUB_OUTPUT}
+          echo "REL_BUILD=${rel_build_path}" >> ${GITHUB_OUTPUT}
+          echo "INSTALL=$(pwd)/${rel_install_path}" >> ${GITHUB_OUTPUT}
+          echo "DOWNLOADS=$(pwd)/${rel_downloads_path}" >> ${GITHUB_OUTPUT}
+          echo "CCACHE=$(pwd)/${rel_ccache_path}" >> ${GITHUB_OUTPUT}
+          echo "WORKSPACE=$(pwd)/${rel_workspace_path}" >> ${GITHUB_OUTPUT}
       - name: Update the cache (downloads)
         uses: actions/cache@v3
         with:
@@ -118,12 +122,12 @@ jobs:
           mv "${{ steps.build_paths.outputs.INSTALL }}/${folder_name}" \
              "${destination_path}"
           echo "${destination_path}/installed/x64-linux-rel/tools/llvm-${{matrix.llvm}}" >> $GITHUB_PATH
-          echo ::set-output name=PATH::${destination_path}
+          echo "PATH=${destination_path}" >> ${GITHUB_OUTPUT}
       - name: Select the build job count
         shell: bash
         id: build_job_count
         run: |
-          echo ::set-output name=VALUE::$(($(nproc) + 1))
+          echo "VALUE=$(($(nproc) + 1))" >> ${GITHUB_OUTPUT}
       - name: Configure remill
         working-directory: ${{ steps.build_paths.outputs.BUILD }}
 
@@ -160,7 +164,7 @@ jobs:
           export DESTDIR=${{ steps.build_paths.outputs.INSTALL }}/remill
           cmake --build remill_build \
                 --target install
-          echo ::set-output name=PATH::${DESTDIR}
+          echo "PATH=${DESTDIR}" >> ${GITHUB_OUTPUT}
       - name: Configure anvill
         working-directory: ${{ steps.build_paths.outputs.BUILD }}
 
@@ -200,7 +204,7 @@ jobs:
           export DESTDIR=${{ steps.build_paths.outputs.INSTALL }}/anvill
           cmake --build anvill_build \
                 --target install
-          echo ::set-output name=PATH::${DESTDIR}
+          echo "PATH=${DESTDIR}" >> ${GITHUB_OUTPUT}
 
       - name: Configure irene3
         working-directory: ${{ steps.build_paths.outputs.BUILD }}
@@ -238,7 +242,7 @@ jobs:
           export DESTDIR=${{ steps.build_paths.outputs.INSTALL }}/irene3
           cmake --build irene3_build \
                 --target install
-          echo ::set-output name=PATH::${DESTDIR}
+          echo "PATH=${DESTDIR}" >> ${GITHUB_OUTPUT}
       - name: Create the packages
         shell: bash
         working-directory: ${{ steps.build_paths.outputs.BUILD }}
@@ -270,9 +274,9 @@ jobs:
         id: package_names
         shell: bash
         run: |
-          echo ::set-output name=DEB_PACKAGE_PATH::${{ steps.build_paths.outputs.REL_BUILD }}/*.deb
-          echo ::set-output name=RPM_PACKAGE_PATH::${{ steps.build_paths.outputs.REL_BUILD }}/*.rpm
-          echo ::set-output name=TGZ_PACKAGE_PATH::${{ steps.build_paths.outputs.REL_BUILD }}/*.tar.gz
+          echo "DEB_PACKAGE_PATH=${{ steps.build_paths.outputs.REL_BUILD }}/*.deb" >> ${GITHUB_OUTPUT}
+          echo "RPM_PACKAGE_PATH=${{ steps.build_paths.outputs.REL_BUILD }}/*.rpm" >> ${GITHUB_OUTPUT}
+          echo "TGZ_PACKAGE_PATH=${{ steps.build_paths.outputs.REL_BUILD }}/*.tar.gz" >> ${GITHUB_OUTPUT}
       - name: Install the DEB package
         run: |
           dpkg -i ${{ steps.package_names.outputs.DEB_PACKAGE_PATH }}
@@ -314,15 +318,45 @@ jobs:
     strategy:
       matrix:
         ubuntu: ["20.04"]
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
+          fetch-depth: 2
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Docker container
         env:
           BN_LICENSE: ${{ secrets.BINJA_AMP_LICENSE }}
         run: |
-          docker build . -t docker.pkg.github.com/trailofbits/irene3/irene3-ubuntu${{ matrix.ubuntu }}-amd64:latest -f Dockerfile --build-arg UBUNTU_VERSION=${{ matrix.ubuntu }} --build-arg BN_LICENSE="${BN_LICENSE}"
+          docker build . -t ghcr.io/trailofbits/irene3/irene3-ubuntu${{ matrix.ubuntu }}-amd64:latest -f Dockerfile --build-arg UBUNTU_VERSION=${{ matrix.ubuntu }} --build-arg BN_LICENSE="${BN_LICENSE}"
       - name: Test Docker image
         run: |
-          docker run --rm -v $(pwd):/workspace -w /workspace docker.pkg.github.com/trailofbits/irene3/irene3-ubuntu${{ matrix.ubuntu }}-amd64:latest irene3-decompile -spec /workspace/tests/specs/test-hello-elf-x64.pb.bin -bc_out /tmp/hello.bc -ir_out /tmp/hello.ll -c_out /tmp/hello.c
+          docker run --rm -v $(pwd):/workspace -w /workspace ghcr.io/trailofbits/irene3/irene3-ubuntu${{ matrix.ubuntu }}-amd64:latest irene3-decompile -spec /workspace/tests/specs/test-hello-elf-x64.pb.bin -bc_out /tmp/hello.bc -ir_out /tmp/hello.ll -c_out /tmp/hello.c
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Used to get commit message since PRs are on a merge commit
+      - name: Get commit message
+        run: |
+          echo 'COMMIT_MESSAGE<<EOF' >> "$GITHUB_ENV"
+          if   [[ '${{ github.event_name }}' == 'push' ]]; then
+            echo "$(git log --format=%B -n 1 HEAD)" >> "$GITHUB_ENV"
+          elif [[ '${{ github.event_name }}' == 'pull_request' ]]; then
+            echo "$(git log --format=%B -n 1 HEAD^2)" >> "$GITHUB_ENV"
+          fi
+          echo "EOF" >> "$GITHUB_ENV"
+      - name: Push Docker image
+        if: contains(env.COMMIT_MESSAGE, 'debug artifacts') || github.ref == 'refs/head/main'
+        run: |
+          docker push ghcr.io/trailofbits/irene3/irene3-ubuntu${{ matrix.ubuntu }}-amd64:latest

@@ -108,6 +108,11 @@ namespace irene3
     };
 
     class SpecDecompilationJob {
+      public:
+        anvill::StackFrameStructureInitializationProcedure stack_initialization_strategy
+            = anvill::StackFrameStructureInitializationProcedure::kSymbolic;
+        bool should_remove_anvill_pc = true;
+
       private:
         std::shared_ptr< llvm::LLVMContext > context;
         std::unordered_set< uint64_t > target_funcs;

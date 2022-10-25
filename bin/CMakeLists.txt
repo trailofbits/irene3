@@ -6,6 +6,7 @@
 #
 
 add_subdirectory("Decompile")
+add_subdirectory("Kleeable")
 add_subdirectory("UITool")
 set(IRENE3_DECOMP
     "${IRENE3_DECOMP}"

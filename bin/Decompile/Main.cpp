@@ -39,6 +39,10 @@ DEFINE_string(c_out, "", "C output file");
 DEFINE_string(lift_list, "", "list of entities to lift");
 DEFINE_bool(no_lift_globals, false, "Dont' lift global variables");
 DEFINE_bool(type_propagation, false, "Should propagate types to the decompiler");
+DEFINE_bool(
+    initialize_stack_symbolically,
+    false,
+    "Mantains uninitiailized references into the stack that we coudl not eliminate");
 DEFINE_bool(h, false, "help");
 
 DECLARE_bool(version);
@@ -116,7 +120,13 @@ int main(int argc, char *argv[]) {
 
         builder.target_funcs = target_funcs;
     }
+
     irene3::SpecDecompilationJob job(std::move(builder));
+
+    if (!FLAGS_initialize_stack_symbolically) {
+        job.stack_initialization_strategy
+            = anvill::StackFrameStructureInitializationProcedure::kUndef;
+    }
 
     auto decomp_res = job.Decompile();
     if (!decomp_res.Succeeded()) {
