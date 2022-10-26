@@ -1,6 +1,6 @@
 set dotenv-load
 LLVM_VERSION := "14"
-CXX_COMMON_VERSION := "0.2.10"
+CXX_COMMON_VERSION := "0.2.12"
 CXX_COMMON_ARCH := if "x86_64" == arch() { "amd64" } else { "arm64" }
 CXX_COMMON_NAME := if "macos" == os() {
       "vcpkg_macos-11_llvm-" + LLVM_VERSION + "_xcode-13.0_" + CXX_COMMON_ARCH
@@ -15,8 +15,6 @@ CMAKE_VERSION := "3.24.2"
 CMAKE_DIR := "cmake-"+CMAKE_VERSION+"-"+CMAKE_OS+"-"+CMAKE_ARCH
 
 VIRTUAL_ENV := env_var_or_default("VIRTUAL_ENV", justfile_directory() + "/venv")
-BINJA_PATH := env_var_or_default("BINJA_PATH", justfile_directory() + "/deps/binaryninja")
-BN_LICENSE := `cat "./scripts/amp-program-headless-license.json"`
 DOCKER_CMD := "docker"
 
 # Add local cmake to path
@@ -40,7 +38,7 @@ run-ghidra: install-irene3-ghidra
     ./deps/ghidra/ghidraRun
 
 build-docker:
-    {{DOCKER_CMD}} build -t irene3 {{justfile_directory()}} -f Dockerfile --build-arg BN_LICENSE="${BN_LICENSE}"
+    {{DOCKER_CMD}} build -t irene3 {{justfile_directory()}} -f Dockerfile
 
 test-irene3-ghidra:
     ./gradlew test
@@ -75,8 +73,7 @@ install-prereqs: install-cxx-common install-ghidra install-cmake install-clang i
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
           "$( [ "$(uname -m)" != "aarch64" ] && echo "g++-multilib")" \
-          "$( [ "$(uname -m)" = "aarch64" ] && echo "libstdc++-*-dev:armhf")" \
-          python3-venv
+          "$( [ "$(uname -m)" = "aarch64" ] && echo "libstdc++-*-dev:armhf")"
     fi
 
 install-clang:
@@ -129,7 +126,10 @@ format-cmake:
     find . -not -path './vendor/**' -not -path './builds/**' -name "CMakeLists.txt" -exec cmake-format --config=.cmake-format.py -i {} \;
 
 git-submodules:
-    git submodule update --init --recursive
+    #!/usr/bin/env bash
+    if [[ -d .git ]]; then
+        git submodule update --init --recursive
+    fi
 
 build-remill-cpp: git-submodules
     mkdir -p deps
@@ -139,55 +139,14 @@ install-remill: build-remill-cpp
     mkdir -p deps
     cmake --build deps/remill-build --target install
 
-setup-venv:
-    [ -f {{VIRTUAL_ENV}}/bin/python3 ] || python3 -m venv {{VIRTUAL_ENV}} && "{{VIRTUAL_ENV}}/bin/python3" -m ensurepip --upgrade
-
-install-binja-headless: setup-venv
-    #!/usr/bin/env bash
-    source "{{VIRTUAL_ENV}}/bin/activate"
-    if ! "{{VIRTUAL_ENV}}/bin/python3" -c "import binaryninja; print(binaryninja.core_version())"; then
-        if [[ "linux" == "{{os()}}" ]] && [[ "x86_64" == "{{arch()}}" ]]; then
-            if [[ ! -f "{{BINJA_PATH}}/api_REVISION.txt" ]]; then
-                if [[ ! -f "deps/binja.zip" ]]; then
-                    echo "Downloading Binary Ninja"
-                    mkdir -p ./deps
-                    "{{VIRTUAL_ENV}}/bin/pip3" install requests
-                    "{{VIRTUAL_ENV}}/bin/python3" ./scripts/download_headless.py --dev --output deps/binja.zip -i -d "{{parent_directory(BINJA_PATH)}}"
-                else
-                    echo "Extracting binary ninja"
-                    unzip ./deps/binja.zip -d "{{BINJA_PATH}}"
-                fi
-            else
-                echo "Using existing install: $(cat {{BINJA_PATH}}/api_REVISION.txt)"
-            fi
-            "{{VIRTUAL_ENV}}/bin/python3" {{BINJA_PATH}}/scripts/install_api.py
-        elif [[ "macos" == "{{os()}}" ]]; then
-            "{{VIRTUAL_ENV}}/bin/python3" "/Applications/Binary Ninja.app/Contents/Resources/scripts/install_api.py"
-        else
-            echo "Automatic install of binary ninja python not supported"
-            echo "Skipping install"
-        fi
-    fi
-
-install-anvill-python: install-binja-headless
-    #!/usr/bin/env bash
-    cd vendor/anvill
-    "{{VIRTUAL_ENV}}/bin/python3" ./setup.py install -f >/dev/null
-
 build-irene3-cpp: install-remill
     cmake -S . -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} -DVCPKG_ROOT=${VCPKG_ROOT} -DIRENE3_ENABLE_INSTALL=ON --preset ninja-multi-vcpkg  && cmake --build --preset ninja-vcpkg-deb -j $(nproc)
 
-install-irene3: build-irene3-cpp install-anvill-python
+install-irene3: build-irene3-cpp
     cmake --build --preset ninja-vcpkg-deb --target install
 
-test-irene3-cpp: install-irene3 install-anvill-python
+test-irene3-cpp: install-irene3
     cmake --build --preset ninja-vcpkg-deb --target test
-
-generate-spec binary out_json:
-    #!/usr/bin/env bash
-    "{{VIRTUAL_ENV}}/bin/python3" -m anvill --bin_in {{binary}} --spec_out {{out_json}} --entrypoint main --ignore_no_refs
-
-#temp_json := uuid() + ".json"
 
 check-irene3-decompile:
     #!/usr/bin/env bash
@@ -196,14 +155,6 @@ check-irene3-decompile:
         exit 1
     fi
     exit 0
-
-#decompile-binary binary out_c: (generate-spec binary temp_json) check-irene3-decompile
-#    "${CMAKE_INSTALL_PREFIX}/bin/irene3-decompile" -spec {{temp_json}} -c_out {{out_c}}
-#    rm -f {{temp_json}}
-
-#decompile-binary-ll binary out_ir: (generate-spec binary temp_json) check-irene3-decompile
-#    "${CMAKE_INSTALL_PREFIX}/bin/irene3-decompile" -spec {{temp_json}} -c_out /dev/null -ir_out {{out_ir}}
-#    rm -f {{temp_json}}
 
 decompile-spec spec out_c: check-irene3-decompile
     "${CMAKE_INSTALL_PREFIX}/bin/irene3-decompile" -spec {{spec}} -c_out {{out_c}}
