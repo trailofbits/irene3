@@ -5,6 +5,10 @@ deps/
 venv
 .cache/
 .env
+.github
+.gitignore
+.dockerignore
+Dockerfile
 vendor/
 !vendor/pasta
 !vendor/remill
