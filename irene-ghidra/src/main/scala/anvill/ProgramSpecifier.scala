@@ -279,10 +279,19 @@ object ProgramSpecifier {
   }
 
   def specifyDefaultReturnAddress(cspec: CompilerSpec): Option[ValueSpec] = {
-    if (cspec.getLanguage().getProcessor().toString().contains("ARM")) {
+    val procstr = cspec.getLanguage().getProcessor().toString()
+    if (procstr.contains("ARM")) {
       return Some(
         ValueSpec(
           Reg(RegSpec(getRegisterName(cspec.getLanguage().getRegister("lr"))))
+        )
+      )
+    }
+
+    if (procstr.contains("AARCH64")) {
+      return Some(
+        ValueSpec(
+          Reg(RegSpec(getRegisterName(cspec.getLanguage().getRegister("x30"))))
         )
       )
     }
@@ -617,8 +626,8 @@ object ProgramSpecifier {
       controlFlowOverridesForInstruction(
         inst,
         addr =>
-          Option(inst.getNext())
-            .map(next_insn => next_insn.getAddress() == addr)
+          Option(inst.getFallThrough())
+            .map(next_insn => next_insn == addr)
             .getOrElse(false),
         addr => Option(prog.getFunctionManager().getFunctionAt(addr)),
         specifyContextAssignments(prog, _),
