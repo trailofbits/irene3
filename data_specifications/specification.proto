@@ -163,6 +163,7 @@ message CodeBlock {
   string name = 2;
   repeated uint64 incoming_blocks = 3;
   repeated uint64 outgoing_blocks = 4;
+  uint32 size = 5;
 }
 
 message Function {
