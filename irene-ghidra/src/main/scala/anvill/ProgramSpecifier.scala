@@ -259,7 +259,7 @@ object ProgramSpecifier {
 
         val outgoing = scala.collection.mutable.ArrayBuffer[Long]()
         val outgoing_it = block.getDestinations(monitor)
-        while(outgoing_it.hasNext()) {
+        while (outgoing_it.hasNext()) {
           val ref = outgoing_it.next()
           val dest_block_addr = ref.getDestinationAddress()
           if (is_internal(dest_block_addr)) {
@@ -272,7 +272,10 @@ object ProgramSpecifier {
           addr.getOffset(),
           block.getName(),
           incoming.toSeq,
-          outgoing.toSeq))
+          outgoing.toSeq,
+          // TODO(Ian): Seems like blocks can technically allow non contigous regions, wont be correct for that
+          (block.getMaxAddress.getOffset() - addr.getOffset()).toInt
+        ))
       }
     }
     res.toMap
