@@ -53,9 +53,12 @@ import specification.specification.Arch
 import specification.specification.Arch._
 import specification.specification.CallingConvention
 import specification.specification.Callable
+import specification.specification.{CodeBlock => CodeBlockSpec}
 import ghidra.program.model.data.GenericCallingConvention
 import ghidra.program.model.lang.CompilerSpec
 import ghidra.program.model.block.SimpleBlockModel
+import ghidra.program.model.block.CodeBlock
+import ghidra.program.model.block.CodeBlockReference
 import ghidra.util.task.TimeoutTaskMonitor
 import java.util.concurrent.TimeUnit
 import ghidra.program.model.listing.Instruction
@@ -228,6 +231,51 @@ object ProgramSpecifier {
         case _ => CALLING_CONVENTION_UNSPECIFIED
       }
     }
+  }
+
+  def getCFG(func: Function): Map[Long, CodeBlockSpec] = {
+    val res = MutableMap[Long, CodeBlockSpec]()
+    val prog = func.getProgram()
+    val listing = prog.getListing()
+    val model = SimpleBlockModel(prog)
+    val queue = scala.collection.mutable.Queue[Address]()
+    val monitor = TimeoutTaskMonitor.timeoutIn(10, TimeUnit.SECONDS)
+    def is_internal(addr: Address) = func == listing.getFunctionContaining(addr)
+    queue.enqueue(func.getEntryPoint())
+    while (queue.size > 0) {
+      val addr = queue.dequeue()
+      if (!res.isDefinedAt(addr.getOffset())) {
+        val block = model.getCodeBlockAt(addr, monitor)
+        val incoming = scala.collection.mutable.ArrayBuffer[Long]()
+        val incoming_it = block.getSources(monitor)
+        while (incoming_it.hasNext()) {
+          val ref = incoming_it.next()
+          val source_block_addr = ref.getSourceAddress()
+          if (is_internal(source_block_addr)) {
+            incoming.addOne(source_block_addr.getOffset())
+            queue.enqueue(source_block_addr)
+          }
+        }
+
+        val outgoing = scala.collection.mutable.ArrayBuffer[Long]()
+        val outgoing_it = block.getDestinations(monitor)
+        while(outgoing_it.hasNext()) {
+          val ref = outgoing_it.next()
+          val dest_block_addr = ref.getDestinationAddress()
+          if (is_internal(dest_block_addr)) {
+            outgoing.addOne(dest_block_addr.getOffset())
+            queue.enqueue(dest_block_addr)
+          }
+        }
+
+        res += (addr.getOffset() -> CodeBlockSpec(
+          addr.getOffset(),
+          block.getName(),
+          incoming.toSeq,
+          outgoing.toSeq))
+      }
+    }
+    res.toMap
   }
 
   def getStackRegister(program: Program): String = {
@@ -421,7 +469,8 @@ object ProgramSpecifier {
           params,
           retValue
         )
-      )
+      ),
+      getCFG(func)
     )
   }
 
