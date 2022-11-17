@@ -66,7 +66,6 @@ class ControlFlowSpecInsnTest extends AbstractGhidraHeadlessIntegrationTest {
       _,
       curr_addr => DEFAULT_ADDR + 2 == curr_addr.getOffset(),
       _ => None,
-      _ => Map(),
       identity
     )
 
