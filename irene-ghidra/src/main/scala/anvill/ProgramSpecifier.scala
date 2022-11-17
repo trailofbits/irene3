@@ -274,7 +274,11 @@ object ProgramSpecifier {
           incoming.toSeq,
           outgoing.toSeq,
           // TODO(Ian): Seems like blocks can technically allow non contigous regions, wont be correct for that
-          (block.getMaxAddress.getOffset() - addr.getOffset()).toInt
+          (block.getMaxAddress.getOffset() - addr.getOffset()).toInt,
+          specifyContextAssignments(
+            prog,
+            addr
+          ),
         ))
       }
     }
@@ -459,10 +463,6 @@ object ProgramSpecifier {
 
     FuncSpec(
       getThunkRedirection(func.getProgram(), func.getEntryPoint()).getOffset(),
-      specifyContextAssignments(
-        func.getProgram(),
-        func.getEntryPoint()
-      ),
       linkage,
       Some(
         specifyCallableFromFunction(
@@ -564,7 +564,6 @@ object ProgramSpecifier {
       function_at_addr: Address => Option[
         ghidra.program.model.listing.Function
       ],
-      context_assignments: Address => Map[String, Long],
       get_thunk_redirection: Address => Address
   ): Option[ControlFlowOverride] = {
     val addr = inst.getAddress().getOffset()
@@ -609,8 +608,7 @@ object ProgramSpecifier {
             addr,
             flows.map(x =>
               JumpTarget(
-                x.getOffset(),
-                context_assignments(x)
+                x.getOffset()
               )
             ),
             is_terminal
@@ -682,7 +680,6 @@ object ProgramSpecifier {
             .map(next_insn => next_insn == addr)
             .getOrElse(false),
         addr => Option(prog.getFunctionManager().getFunctionAt(addr)),
-        specifyContextAssignments(prog, _),
         getThunkRedirection(prog, _)
       ).foreach(over =>
         over match {
