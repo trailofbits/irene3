@@ -278,7 +278,7 @@ object ProgramSpecifier {
           specifyContextAssignments(
             prog,
             addr
-          ),
+          )
         ))
       }
     }
@@ -473,7 +473,8 @@ object ProgramSpecifier {
           retValue
         )
       ),
-      getCFG(func)
+      if func.isExternal() then { Map.empty }
+      else { getCFG(func) }
     )
   }
 
