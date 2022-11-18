@@ -56,7 +56,7 @@ import specification.specification.Callable
 import specification.specification.{CodeBlock => CodeBlockSpec}
 import ghidra.program.model.data.GenericCallingConvention
 import ghidra.program.model.lang.CompilerSpec
-import ghidra.program.model.block.SimpleBlockModel
+import ghidra.program.model.block.BasicBlockModel
 import ghidra.program.model.block.CodeBlock
 import ghidra.program.model.block.CodeBlockReference
 import ghidra.util.task.TimeoutTaskMonitor
@@ -237,7 +237,7 @@ object ProgramSpecifier {
     val res = MutableMap[Long, CodeBlockSpec]()
     val prog = func.getProgram()
     val listing = prog.getListing()
-    val model = SimpleBlockModel(prog)
+    val model = BasicBlockModel(prog)
     val queue = scala.collection.mutable.Queue[Address]()
     val monitor = TimeoutTaskMonitor.timeoutIn(10, TimeUnit.SECONDS)
     def is_internal(addr: Address) = func == listing.getFunctionContaining(addr)
