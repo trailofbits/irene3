@@ -209,6 +209,8 @@ object ProgramSpecifier {
     )
   }
 
+  def specifyBlock(func: Function, block: Address) = {}
+
   def getCallingConvention(func: Function): CallingConvention = {
     val conv = func.getCallingConvention()
 
@@ -460,7 +462,8 @@ object ProgramSpecifier {
     val params = func.getParameters().toSeq.map(x => specifyParam(x, aliases))
     val retValue =
       Option(func.getReturn()).map(x => specifyVariable(x, aliases))
-
+    val cfg = if func.isExternal() then { Map.empty }
+    else { getCFG(func) }
     FuncSpec(
       getThunkRedirection(func.getProgram(), func.getEntryPoint()).getOffset(),
       linkage,
@@ -473,12 +476,24 @@ object ProgramSpecifier {
           retValue
         )
       ),
-      if func.isExternal() then { Map.empty }
-      else { getCFG(func) },
-      func.getLocalVariables()
-          .toSeq
-          .map(x => x.getName() -> specifyVariable(x, aliases))
-          .toMap
+      cfg,
+      func
+        .getLocalVariables()
+        .toSeq
+        .map(x => x.getName() -> specifyVariable(x, aliases))
+        .toMap,
+      cfg.map((addr, _) =>
+        (
+          addr,
+          BasicBlockContextProducer(
+            func,
+            func.getProgram
+              .getAddressFactory()
+              .getDefaultAddressSpace
+              .getAddress(addr)
+          ).getBlockContext()
+        )
+      )
     )
   }
 
