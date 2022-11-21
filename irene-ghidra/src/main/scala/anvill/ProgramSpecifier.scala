@@ -474,7 +474,11 @@ object ProgramSpecifier {
         )
       ),
       if func.isExternal() then { Map.empty }
-      else { getCFG(func) }
+      else { getCFG(func) },
+      func.getLocalVariables()
+          .toSeq
+          .map(x => x.getName() -> specifyVariable(x, aliases))
+          .toMap
     )
   }
 
