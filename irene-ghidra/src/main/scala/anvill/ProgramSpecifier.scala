@@ -54,6 +54,8 @@ import specification.specification.Arch._
 import specification.specification.CallingConvention
 import specification.specification.Callable
 import specification.specification.{CodeBlock => CodeBlockSpec}
+import specification.specification.StackEffects
+import specification.specification.Variables
 import ghidra.program.model.data.GenericCallingConvention
 import ghidra.program.model.lang.CompilerSpec
 import ghidra.program.model.block.BasicBlockModel
@@ -452,6 +454,37 @@ object ProgramSpecifier {
     )
   }
 
+  def getStackEffects(func: Function, aliases: MutableMap[Long, Structure]) = {
+    def alloc_points = LiveStackVariableLocations
+      .getAllocationPoints(func)
+
+    def free_points = LiveStackVariableLocations
+      .getFreePoints(func)
+
+    def missed_allocs = LiveStackVariableLocations
+      .getVariablesMissingFromPoints(func, alloc_points)
+
+    def missed_frees = LiveStackVariableLocations
+      .getVariablesMissingFromPoints(func, free_points)
+
+    StackEffects(
+      alloc_points.map(kv =>
+        (
+          kv._1.getOffset(),
+          Variables(kv._2.map(v => specifyVariable(v, aliases)).toSeq)
+        )
+      ),
+      free_points.map(kv =>
+        (
+          kv._1.getOffset(),
+          Variables(kv._2.map(v => specifyVariable(v, aliases)).toSeq)
+        )
+      ),
+      missed_allocs.map(x => specifyVariable(x, aliases)).toSeq,
+      missed_frees.map(x => specifyVariable(x, aliases)).toSeq
+    )
+  }
+
   def specifyFunction(
       func: Function,
       defaultRetAddr: Option[ValueSpec],
@@ -493,7 +526,8 @@ object ProgramSpecifier {
               .getAddress(addr)
           ).getBlockContext()
         )
-      )
+      ),
+      Some(getStackEffects(func, aliases))
     )
   }
 
