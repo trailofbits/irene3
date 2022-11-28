@@ -12,7 +12,7 @@ import collection.JavaConverters._
 import ghidra.app.cmd.function.CallDepthChangeInfo
 import ghidra.program.model.listing.VariableFilter
 
-class LiveStackVariableLocations {
+object LiveStackVariableLocations {
   def isValidStackDepthChange(stack_depth_change: Int): Boolean =
     stack_depth_change != Function.UNKNOWN_STACK_DEPTH_CHANGE && stack_depth_change != Function.INVALID_STACK_DEPTH_CHANGE
 
@@ -77,7 +77,7 @@ class LiveStackVariableLocations {
           })
           .flatMap(m => m.toSeq.map(_._2))
       )
-      .mapValues(sets => sets.reduce((a, b) => a ++ b))
+      .mapValues(sets => sets.reduceOption((a, b) => a ++ b).getOrElse(Set()))
       .toMap
   }
 
