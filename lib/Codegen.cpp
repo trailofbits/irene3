@@ -13,6 +13,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Value.h>
 #include <rellic/AST/DecompilationContext.h>
+#include <rellic/AST/ExprCombine.h>
 #include <rellic/AST/IRToASTVisitor.h>
 #include <unordered_map>
 #include <vector>
@@ -25,6 +26,10 @@ namespace irene3
         rellic::IRToASTVisitor ast_gen(dec_ctx);
 
         for (auto &func : function.getParent()->functions()) {
+            // Inhibits the creation of temporary variables
+            if (&func == &function) {
+                continue;
+            }
             ast_gen.VisitFunctionDecl(func);
         }
 
@@ -39,6 +44,10 @@ namespace irene3
 
         ast_gen.VisitBasicBlock(function.getEntryBlock(), stmts);
 
-        return clang::CompoundStmt::Create(dec_ctx.ast_ctx, stmts, {}, {});
+        auto stmt = clang::CompoundStmt::Create(dec_ctx.ast_ctx, stmts, {}, {});
+
+        rellic::ExprCombine ec(dec_ctx);
+        ec.VisitStmt(stmt);
+        return stmt;
     }
 } // namespace irene3
