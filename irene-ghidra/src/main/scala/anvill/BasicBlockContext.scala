@@ -18,7 +18,7 @@ class BasicBlockContextProducer(gfunc: Function, block_addr: Address) {
 
     regs
       .map(r => (r, stack_depth_info.getRegDepth(block_addr, r)))
-      .filter((_, dpth) => Function.UNKNOWN_STACK_DEPTH_CHANGE != dpth)
+      .filter((_, dpth) => Function.INVALID_STACK_DEPTH_CHANGE != dpth)
       .toMap
 
   }
