@@ -18,7 +18,6 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <iostream>
-#include <irene3/Codegen.h>
 #include <irene3/DecompileSpec.h>
 #include <irene3/Util.h>
 #include <irene3/Version.h>
@@ -35,7 +34,10 @@
 #include <unordered_map>
 #include <unordered_set>
 
-DEFINE_string(module, "", "input module");
+DEFINE_string(spec, "", "input spec");
+DEFINE_string(output, "", "output patch file");
+DEFINE_string(lift_list, "", "list of entities to lift");
+DEFINE_bool(type_propagation, false, "output patch file");
 DEFINE_bool(h, false, "help");
 
 DECLARE_bool(version);
@@ -82,17 +84,71 @@ int main(int argc, char *argv[]) {
 
     google::HandleCommandLineHelpFlags();
 
-    auto ctx = new llvm::LLVMContext();
-    ctx->enableOpaquePointers();
-    auto module   = remill::LoadModuleFromFile(ctx, FLAGS_module);
-    auto ast_unit = clang::tooling::buildASTFromCode("");
-    llvm::raw_fd_ostream os(1, false);
-    for (auto &func : module->functions()) {
-        if (!func.getName().startswith("basic_block")) {
-            continue;
+    std::filesystem::path input_spec(FLAGS_spec);
+    std::filesystem::path output_file(FLAGS_output);
+
+    std::unordered_set< uint64_t > target_funcs;
+
+    auto maybe_spec
+        = irene3::ProtobufPathToDecompilationBuilder(FLAGS_spec, FLAGS_type_propagation);
+    if (!maybe_spec.Succeeded()) {
+        std::cerr << maybe_spec.TakeError() << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    auto builder = maybe_spec.TakeValue();
+    if (!FLAGS_lift_list.empty()) {
+        std::stringstream ss(FLAGS_lift_list);
+
+        for (uint64_t addr; ss >> std::hex >> addr;) {
+            target_funcs.insert(addr);
+            LOG(INFO) << "Added target " << std::hex << addr;
+            if (ss.peek() == ',') {
+                ss.ignore();
+            }
         }
-        auto stmt = irene3::Decompile(func, *ast_unit);
-        stmt->printPretty(os, nullptr, { {} });
+
+        builder.target_funcs = target_funcs;
+    }
+
+    irene3::SpecDecompilationJob job(std::move(builder));
+    auto decomp_res = job.DecompileBlocks();
+    if (!decomp_res.Succeeded()) {
+        std::cerr << decomp_res.TakeError() << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    llvm::json::Array patches;
+
+    for (auto &[addr, compound] : decomp_res.Value()) {
+        llvm::json::Object patch;
+        patch["patch-name"] = "block_" + std::to_string(addr);
+        std::stringstream ss;
+        ss << "0x" << std::hex << addr;
+        patch["patch-addr"] = ss.str();
+
+        std::string code;
+        llvm::raw_string_ostream os(code);
+        for (auto &stmt : compound->body()) {
+            stmt->printPretty(os, nullptr, { {} });
+        }
+        patch["patch-code"] = code;
+
+        patches.push_back(std::move(patch));
+    }
+
+    llvm::json::Object result;
+    result["patches"] = std::move(patches);
+
+    if (!FLAGS_output.empty()) {
+        std::error_code ec;
+        llvm::raw_fd_ostream output(FLAGS_output, ec);
+        if (ec) {
+            std::cerr << "Could not open output file " << FLAGS_output << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        output << llvm::json::Value(std::move(result));
     }
 
     return EXIT_SUCCESS;

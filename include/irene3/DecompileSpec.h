@@ -38,6 +38,8 @@ namespace irene3
         // The rellic C decompilation options
         std::unique_ptr< rellic::DecompilationOptions > options;
 
+        inline const anvill::Specification& GetSpec() const { return spec; }
+
         SpecDecompilationJobBuilder(
             anvill::Specification spec,
             std::unordered_set< uint64_t > target_funcs,
@@ -142,6 +144,9 @@ namespace irene3
 
         // Constructs a decompilation job from a builder.
         SpecDecompilationJob(SpecDecompilationJobBuilder&&);
+
+        rellic::Result< std::unordered_map< std::uint64_t, clang::CompoundStmt* >, std::string >
+        DecompileBlocks() const;
 
         // Attempts to decompile the anvill spec to C and LLVM.
         rellic::Result< DecompilationResult, std::string > Decompile() const;
