@@ -6,6 +6,7 @@ import collection.JavaConverters._
 import ghidra.program.model.lang.Register
 import specification.specification.{BlockContext => BlockContextSpec}
 import specification.specification.OffsetDomain
+import ProgramSpecifier.getRegisterName
 
 class BasicBlockContextProducer(gfunc: Function, block_addr: Address) {
 
@@ -30,7 +31,11 @@ class BasicBlockContextProducer(gfunc: Function, block_addr: Address) {
     BlockContextSpec(
       stack_depths
         .map((reg, dpth) => {
-          OffsetDomain(reg.getName, Some(stack_reg.getName), dpth)
+          OffsetDomain(
+            getRegisterName(reg),
+            Some(getRegisterName(stack_reg)),
+            dpth
+          )
         })
         .toSeq
     )
