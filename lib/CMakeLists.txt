@@ -24,7 +24,7 @@ set(irene3_PUBLIC_HEADER_DIR "${PROJECT_SOURCE_DIR}/include/irene3")
 
 set(irene3_PUBLIC_HEADERS "${irene3_PUBLIC_HEADER_DIR}/Version.h" "${irene3_PUBLIC_HEADER_DIR}/DecompileSpec.h")
 
-set(irene3_SOURCES "${POST_CONFIGURE_FILE}" Codegen.cpp DecompileSpec.cpp Util.cpp SpecTypeProvider.cpp)
+set(irene3_SOURCES "${POST_CONFIGURE_FILE}" DecompileSpec.cpp Util.cpp SpecTypeProvider.cpp)
 
 add_library("${PROJECT_NAME}" STATIC ${irene3_PUBLIC_HEADERS} ${irene3_SOURCES})
 
