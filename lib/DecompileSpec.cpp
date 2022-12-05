@@ -1,12 +1,16 @@
 #include "SpecTypeProvider.h"
-#include "rellic/Decompiler.h"
 
 #include <anvill/Lifters.h>
 #include <anvill/Optimize.h>
 #include <anvill/Providers.h>
 #include <anvill/Specification.h>
+#include <anvill/Utils.h>
+#include <clang/AST/AST.h>
+#include <clang/AST/ASTContext.h>
 #include <clang/AST/Decl.h>
+#include <clang/AST/Stmt.h>
 #include <clang/Basic/LLVM.h>
+#include <clang/Tooling/Tooling.h>
 #include <glog/logging.h>
 #include <irene3/DecompileSpec.h>
 #include <irene3/Util.h>
@@ -16,6 +20,10 @@
 #include <llvm/Support/Casting.h>
 #include <memory>
 #include <optional>
+#include <rellic/AST/DecompilationContext.h>
+#include <rellic/AST/ExprCombine.h>
+#include <rellic/AST/IRToASTVisitor.h>
+#include <rellic/Exception.h>
 #include <remill/Arch/Arch.h>
 #include <remill/BC/Util.h>
 #include <stdint.h>
@@ -207,6 +215,77 @@ namespace irene3
         auto decomp_res = res.TakeValue();
 
         return this->PopulateDecompResFromRellic(this->context, std::move(decomp_res));
+    }
+
+    rellic::Result< std::unordered_map< std::uint64_t, clang::CompoundStmt* >, std::string >
+    SpecDecompilationJob::DecompileBlocks() const {
+        auto module = std::make_unique< llvm::Module >("lifted_code", *this->context);
+
+        anvill::SpecificationTypeProvider spec_tp(this->spec);
+        anvill::SpecificationControlFlowProvider spec_cfp(this->spec);
+        anvill::SpecificationMemoryProvider spec_mp(this->spec);
+
+        anvill::LifterOptions options(spec.Arch().get(), *module, spec_tp, spec_cfp, spec_mp);
+        options.stack_frame_recovery_options.stack_frame_struct_init_procedure
+            = this->stack_initialization_strategy;
+        options.should_remove_anvill_pc = this->should_remove_anvill_pc;
+        options.pc_metadata_name        = "pc";
+        anvill::EntityLifter lifter(options);
+
+        this->LiftOrDeclareFunctionsInto(lifter);
+        this->LiftOrDeclareVariablesInto(lifter);
+
+        anvill::OptimizeModule(lifter, *module);
+
+        std::unordered_map< llvm::Function*, std::uint64_t > bb_funcs;
+        for (auto& func : module->functions()) {
+            if (auto addr = anvill::GetBasicBlockAddr(&func)) {
+                bb_funcs[&func] = *addr;
+            }
+        }
+
+        std::unordered_map< std::uint64_t, clang::CompoundStmt* > res;
+
+        auto ast_unit = clang::tooling::buildASTFromCode("");
+        rellic::DecompilationContext dec_ctx(*ast_unit);
+
+        for (auto& provider : this->options->additional_providers) {
+            dec_ctx.type_provider->AddProvider(provider->create(dec_ctx));
+        }
+
+        auto tu_decl = dec_ctx.ast_ctx.getTranslationUnitDecl();
+        rellic::IRToASTVisitor ast_gen(dec_ctx);
+
+        try {
+            for (auto& func : module->functions()) {
+                // Inhibits the creation of temporary variables
+                if (bb_funcs.find(&func) != bb_funcs.end()) {
+                    continue;
+                }
+                ast_gen.VisitFunctionDecl(func);
+            }
+
+            for (auto& [func, addr] : bb_funcs) {
+                std::vector< clang::Stmt* > stmts;
+                for (auto& arg : func->args()) {
+                    auto ty        = dec_ctx.type_provider->GetArgumentType(arg);
+                    auto decl      = dec_ctx.ast.CreateVarDecl(tu_decl, ty, arg.getName().str());
+                    auto decl_stmt = dec_ctx.ast.CreateDeclStmt(decl);
+                    stmts.push_back(decl_stmt);
+                    dec_ctx.value_decls[&arg] = decl;
+                }
+
+                ast_gen.VisitBasicBlock(func->getEntryBlock(), stmts);
+
+                auto stmt = clang::CompoundStmt::Create(dec_ctx.ast_ctx, stmts, {}, {});
+
+                rellic::ExprCombine ec(dec_ctx);
+                ec.VisitStmt(stmt);
+                res[addr] = stmt;
+            }
+        } catch (rellic::Exception& ex) { return { ex.what() }; }
+
+        return res;
     }
 
     SpecDecompilationJob::SpecDecompilationJob(SpecDecompilationJobBuilder&& o)
