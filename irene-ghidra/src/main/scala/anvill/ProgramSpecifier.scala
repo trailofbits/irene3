@@ -456,7 +456,7 @@ object ProgramSpecifier {
   }
 
   def getStackEffects(func: Function, aliases: MutableMap[Long, Structure]) = {
-    def alloc_points = LiveStackVariableLocations
+    /*def alloc_points = LiveStackVariableLocations
       .getAllocationPoints(func)
 
     def free_points = LiveStackVariableLocations
@@ -483,7 +483,7 @@ object ProgramSpecifier {
       ),
       missed_allocs.map(x => specifyVariable(x, aliases)).toSeq,
       missed_frees.map(x => specifyVariable(x, aliases)).toSeq
-    )
+    )*/
   }
 
   def specifyFunction(
