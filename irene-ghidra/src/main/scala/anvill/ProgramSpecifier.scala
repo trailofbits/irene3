@@ -99,6 +99,7 @@ import ghidra.program.model.pcode.HighSymbol
 import specification.specification.Callsite
 import java.util.Objects
 import ghidra.program.model.data.AbstractStringDataType
+import specification.specification.StackFrame
 
 object ProgramSpecifier {
   val integerTypes = Map(
@@ -527,7 +528,8 @@ object ProgramSpecifier {
           ).getBlockContext()
         )
       ),
-      Some(getStackEffects(func, aliases))
+      Some(getStackEffects(func, aliases)),
+      Some(StackFrame(func.getStackFrame.getFrameSize))
     )
   }
 
