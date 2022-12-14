@@ -133,7 +133,7 @@ git-submodules:
 
 build-remill-cpp: git-submodules
     mkdir -p deps
-    cmake -S vendor/remill -B deps/remill-build -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} -DVCPKG_ROOT=${VCPKG_ROOT} && cmake --build deps/remill-build -j $(nproc)
+    cmake --toolchain ${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake -S vendor/remill -B deps/remill-build -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} && cmake --build deps/remill-build -j $(nproc)
 
 install-remill: build-remill-cpp
     mkdir -p deps
