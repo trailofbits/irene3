@@ -204,7 +204,7 @@ namespace irene3
         this->LiftOrDeclareFunctionsInto(lifter);
         this->LiftOrDeclareVariablesInto(lifter);
 
-        anvill::OptimizeModule(lifter, *module);
+        anvill::OptimizeModule(lifter, *module, spec.GetBlockContexts(), spec);
 
         auto res = rellic::Decompile(std::move(module), std::move(*this->options));
 
@@ -235,7 +235,7 @@ namespace irene3
         this->LiftOrDeclareFunctionsInto(lifter);
         this->LiftOrDeclareVariablesInto(lifter);
 
-        anvill::OptimizeModule(lifter, *module);
+        anvill::OptimizeModule(lifter, *module, spec.GetBlockContexts(), spec);
 
         std::unordered_map< llvm::Function*, std::uint64_t > bb_funcs;
         for (auto& func : module->functions()) {
