@@ -8,6 +8,7 @@ import specification.specification.{BlockContext => BlockContextSpec}
 import specification.specification.{Register => RegSpec}
 import specification.specification.OffsetDomain
 import ProgramSpecifier.getRegisterName
+import ghidra.util.Msg
 
 class BasicBlockContextProducer(gfunc: Function) {
 
@@ -31,13 +32,14 @@ class BasicBlockContextProducer(gfunc: Function) {
   }
 
   def liveness(block_addr: Address): BlockLiveness = {
-    liveness_info.get(block_addr).get
+    liveness_info(block_addr)
   }
 
   def getBlockContext(block_addr: Address): BlockContextSpec = {
+    assert(!liveness_info.isEmpty)
     val stack_depths = produceSymvals(block_addr)
     val stack_reg = gfunc.getProgram.getCompilerSpec().getStackPointer()
-    val live = this.liveness_info(block_addr)
+    val live = this.liveness(block_addr)
 
     BlockContextSpec(
       stack_depths

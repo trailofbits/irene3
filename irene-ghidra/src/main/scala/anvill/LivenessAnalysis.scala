@@ -94,7 +94,9 @@ class LivenessAnalysis(
   }
 
   def analyze(): mutable.Map[CodeBlock, Set[Register]] = {
-    val res: mutable.Map[CodeBlock, Set[Register]] = mutable.Map.empty
+    val res: mutable.Map[CodeBlock, Set[Register]] = mutable.Map.from(
+      this.control_flow_graph.nodes.map(nd => (nd.toOuter, Set.empty))
+    )
 
     val worklist: Stack[CodeBlock] = Stack.from(
       this.control_flow_graph.nodes
