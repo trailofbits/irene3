@@ -9,6 +9,11 @@ import ghidra.program.model.pcode.PcodeOp
 import ghidra.program.model.listing.Instruction
 import collection.JavaConverters._
 
+case class BlockLiveness(
+    val live_before: Set[Register],
+    val live_after: Set[Register]
+)
+
 /** Reverse dataflow analysis over the CFG for register liveness
   *
   * @param control_flow_graph
@@ -35,6 +40,7 @@ class LivenessAnalysis(
     read_regs.flatten.toSet
   }
 
+  // TODO(Ian): Call pcodeops should kill returns
   def kill(op: PcodeOp): Set[Register] = {
     val out = Option(op.getOutput())
     out
@@ -77,6 +83,14 @@ class LivenessAnalysis(
       .map(out => curr_liveness.get(out.toOuter).getOrElse(Set.empty))
 
     regs.fold(Set.empty)((x: Set[Register], y: Set[Register]) => x.union(y))
+  }
+
+  def getBlockLiveness(): Map[CodeBlock, BlockLiveness] = {
+    val analysisRes = this.analyze()
+
+    analysisRes.toMap.map((blk: CodeBlock, liveness_after: Set[Register]) =>
+      (blk, BlockLiveness(transfer_block(blk, liveness_after), liveness_after))
+    )
   }
 
   def analyze(): mutable.Map[CodeBlock, Set[Register]] = {
