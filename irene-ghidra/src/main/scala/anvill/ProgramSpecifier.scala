@@ -502,6 +502,8 @@ object ProgramSpecifier {
       Option(func.getReturn()).map(x => specifyVariable(x, aliases))
     val cfg = if func.isExternal() then { Map.empty }
     else { getCFG(func) }
+
+    val bb_context_prod = BasicBlockContextProducer(func)
     FuncSpec(
       getThunkRedirection(func.getProgram(), func.getEntryPoint()).getOffset(),
       linkage,
@@ -523,13 +525,12 @@ object ProgramSpecifier {
       cfg.map((addr, _) =>
         (
           addr,
-          BasicBlockContextProducer(
-            func,
+          bb_context_prod.getBlockContext(
             func.getProgram
               .getAddressFactory()
               .getDefaultAddressSpace
               .getAddress(addr)
-          ).getBlockContext()
+          )
         )
       ),
       Some(getStackEffects(func, aliases)),

@@ -5,15 +5,21 @@ import ghidra.app.cmd.function.CallDepthChangeInfo
 import collection.JavaConverters._
 import ghidra.program.model.lang.Register
 import specification.specification.{BlockContext => BlockContextSpec}
+import specification.specification.{Register => RegSpec}
 import specification.specification.OffsetDomain
 import ProgramSpecifier.getRegisterName
 
-class BasicBlockContextProducer(gfunc: Function, block_addr: Address) {
+class BasicBlockContextProducer(gfunc: Function) {
 
   val stack_depth_info =
     CallDepthChangeInfo(gfunc, ghidra.util.task.TaskMonitor.DUMMY)
 
-  def produceSymvals(): Map[Register, Int] = {
+  val liveness_info =
+    LivenessAnalysis(Util.getCfgAsGraph(gfunc), gfunc)
+      .getBlockLiveness()
+      .map((k, v) => (k.getFirstStartAddress(), v))
+
+  def produceSymvals(block_addr: Address): Map[Register, Int] = {
 
     val regs = gfunc.getProgram.getLanguage.getRegisters.asScala
 
@@ -24,9 +30,14 @@ class BasicBlockContextProducer(gfunc: Function, block_addr: Address) {
 
   }
 
-  def getBlockContext(): BlockContextSpec = {
-    val stack_depths = produceSymvals()
+  def liveness(block_addr: Address): BlockLiveness = {
+    liveness_info.get(block_addr).get
+  }
+
+  def getBlockContext(block_addr: Address): BlockContextSpec = {
+    val stack_depths = produceSymvals(block_addr)
     val stack_reg = gfunc.getProgram.getCompilerSpec().getStackPointer()
+    val live = this.liveness_info(block_addr)
 
     BlockContextSpec(
       stack_depths
@@ -37,7 +48,9 @@ class BasicBlockContextProducer(gfunc: Function, block_addr: Address) {
             dpth
           )
         })
-        .toSeq
+        .toSeq,
+      live.live_before.toSeq.map(r => RegSpec(getRegisterName(r))),
+      live.live_after.toSeq.map(r => RegSpec(getRegisterName(r)))
     )
   }
 }
