@@ -20,10 +20,7 @@
 #include <llvm/Support/Casting.h>
 #include <memory>
 #include <optional>
-#include <rellic/AST/DecompilationContext.h>
-#include <rellic/AST/ExprCombine.h>
-#include <rellic/AST/IRToASTVisitor.h>
-#include <rellic/Exception.h>
+#include <rellic/Decompiler.h>
 #include <remill/Arch/Arch.h>
 #include <remill/BC/Util.h>
 #include <stdint.h>
@@ -237,53 +234,29 @@ namespace irene3
 
         anvill::OptimizeModule(lifter, *module, spec.GetBlockContexts(), spec);
 
-        std::unordered_map< llvm::Function*, std::uint64_t > bb_funcs;
+        // Functions may share basic blocks, this map makes sure that a basic block at a specific
+        // address only has one resulting LLVM function
+        std::unordered_map< std::uint64_t, llvm::Function* > canonical_funcs;
         for (auto& func : module->functions()) {
             if (auto addr = anvill::GetBasicBlockAddr(&func)) {
-                bb_funcs[&func] = *addr;
+                canonical_funcs[*addr] = &func;
             }
         }
 
         std::unordered_map< std::uint64_t, clang::CompoundStmt* > res;
-
-        auto ast_unit = clang::tooling::buildASTFromCode("");
-        rellic::DecompilationContext dec_ctx(*ast_unit);
-
-        for (auto& provider : this->options->additional_providers) {
-            dec_ctx.type_provider->AddProvider(provider->create(dec_ctx));
+        rellic::DecompilationOptions dec_opts;
+        dec_opts.additional_providers = std::move(this->options->additional_providers);
+        auto maybe_dec_res            = rellic::Decompile(std::move(module), std::move(dec_opts));
+        if (!maybe_dec_res.Succeeded()) {
+            return maybe_dec_res.TakeError().message;
         }
+        auto dec_res = maybe_dec_res.TakeValue();
 
-        auto tu_decl = dec_ctx.ast_ctx.getTranslationUnitDecl();
-        rellic::IRToASTVisitor ast_gen(dec_ctx);
-
-        try {
-            for (auto& func : module->functions()) {
-                // Inhibits the creation of temporary variables
-                if (bb_funcs.find(&func) != bb_funcs.end()) {
-                    continue;
-                }
-                ast_gen.VisitFunctionDecl(func);
-            }
-
-            for (auto& [func, addr] : bb_funcs) {
-                std::vector< clang::Stmt* > stmts;
-                for (auto& arg : func->args()) {
-                    auto ty        = dec_ctx.type_provider->GetArgumentType(arg);
-                    auto decl      = dec_ctx.ast.CreateVarDecl(tu_decl, ty, arg.getName().str());
-                    auto decl_stmt = dec_ctx.ast.CreateDeclStmt(decl);
-                    stmts.push_back(decl_stmt);
-                    dec_ctx.value_decls[&arg] = decl;
-                }
-
-                ast_gen.VisitBasicBlock(func->getEntryBlock(), stmts);
-
-                auto stmt = clang::CompoundStmt::Create(dec_ctx.ast_ctx, stmts, {}, {});
-
-                rellic::ExprCombine ec(dec_ctx);
-                ec.VisitStmt(stmt);
-                res[addr] = stmt;
-            }
-        } catch (rellic::Exception& ex) { return { ex.what() }; }
+        for (auto& [addr, func] : canonical_funcs) {
+            auto fdecl = clang::cast< clang::FunctionDecl >(dec_res.value_to_decl_map[func]);
+            auto body  = clang::cast< clang::CompoundStmt >(fdecl->getBody());
+            res[addr]  = body;
+        }
 
         return res;
     }

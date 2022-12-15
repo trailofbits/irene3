@@ -131,6 +131,9 @@ int main(int argc, char *argv[]) {
         llvm::raw_string_ostream os(code);
         for (auto &stmt : compound->body()) {
             stmt->printPretty(os, nullptr, { {} });
+            if (clang::isa< clang::Expr >(stmt)) {
+                os << ";\n";
+            }
         }
         patch["patch-code"] = code;
 
