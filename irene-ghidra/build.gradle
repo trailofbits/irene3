@@ -71,6 +71,7 @@ dependencies {
   implementation "com.thesamet.scalapb:scalapb-runtime_3:${scalapbVersion}"
   implementation "com.thesamet.scalapb:scalapb-json4s_3:0.12.0"
   implementation "org.scalaz:scalaz-core_3:7.3.6"
+  implementation 'org.scala-graph:graph-core_2.13:1.13.5'
   testImplementation 'junit:junit:4.13.2'
   testRuntimeOnly files("lib")
 }
