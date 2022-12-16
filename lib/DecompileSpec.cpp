@@ -167,7 +167,7 @@ namespace irene3
     }
 
     DecompilationResult SpecDecompilationJob::PopulateDecompResFromRellic(
-        std::shared_ptr< llvm::LLVMContext > context, rellic::DecompilationResult res) const {
+        rellic::DecompilationResult res) const {
         std::unordered_map< uint64_t, FunctionDecompResult > function_results;
 
         auto [prov, rev_prov] = this->ExtractLLVMProvenance(res.module.get());
@@ -180,8 +180,42 @@ namespace irene3
             function_results.emplace(addr, prov_info.FuncOfAddress(addr));
         }
 
-        return { std::move(context), std::move(res.module), std::move(res.ast),
-                 std::move(prov_info), std::move(function_results) };
+        return { context, std::move(res.module), std::move(res.ast), std::move(prov_info),
+                 std::move(function_results) };
+    }
+
+    CodegenResult SpecDecompilationJob::PopulateCodegenResFromRellic(
+        rellic::DecompilationResult res) const {
+        std::unordered_map< uint64_t, FunctionDecompResult > function_results;
+
+        auto [prov, rev_prov] = this->ExtractLLVMProvenance(res.module.get());
+
+        // NOTE(frabert): we need `value_to_decl_map` later on, so don't `std::move` it
+        ProvenanceInfo prov_info(
+            prov, rev_prov, std::move(res.stmt_provenance_map), std::move(res.value_to_stmt_map),
+            std::move(res.decl_provenance_map), res.value_to_decl_map);
+
+        for (auto addr : this->target_funcs) {
+            function_results.emplace(addr, prov_info.FuncOfAddress(addr));
+        }
+
+        // Functions may share basic blocks, this map makes sure that a basic block at a specific
+        // address only has one resulting LLVM function
+        std::unordered_map< std::uint64_t, llvm::Function* > canonical_funcs;
+        for (auto& func : res.module->functions()) {
+            if (auto addr = anvill::GetBasicBlockAddr(&func)) {
+                canonical_funcs[*addr] = &func;
+            }
+        }
+
+        std::unordered_map< std::uint64_t, clang::CompoundStmt* > blocks;
+        for (auto& [addr, func] : canonical_funcs) {
+            auto fdecl   = clang::cast< clang::FunctionDecl >(res.value_to_decl_map[func]);
+            auto body    = clang::cast< clang::CompoundStmt >(fdecl->getBody());
+            blocks[addr] = body;
+        }
+
+        return { context, std::move(res.module), std::move(res.ast), std::move(prov_info), blocks };
     }
 
     rellic::Result< DecompilationResult, std::string > SpecDecompilationJob::Decompile() const {
@@ -211,11 +245,10 @@ namespace irene3
 
         auto decomp_res = res.TakeValue();
 
-        return this->PopulateDecompResFromRellic(this->context, std::move(decomp_res));
+        return this->PopulateDecompResFromRellic(std::move(decomp_res));
     }
 
-    rellic::Result< std::unordered_map< std::uint64_t, clang::CompoundStmt* >, std::string >
-    SpecDecompilationJob::DecompileBlocks() const {
+    rellic::Result< CodegenResult, std::string > SpecDecompilationJob::DecompileBlocks() const {
         auto module = std::make_unique< llvm::Module >("lifted_code", *this->context);
 
         anvill::SpecificationTypeProvider spec_tp(this->spec);
@@ -234,31 +267,14 @@ namespace irene3
 
         anvill::OptimizeModule(lifter, *module, spec.GetBlockContexts(), spec);
 
-        // Functions may share basic blocks, this map makes sure that a basic block at a specific
-        // address only has one resulting LLVM function
-        std::unordered_map< std::uint64_t, llvm::Function* > canonical_funcs;
-        for (auto& func : module->functions()) {
-            if (auto addr = anvill::GetBasicBlockAddr(&func)) {
-                canonical_funcs[*addr] = &func;
-            }
-        }
-
-        std::unordered_map< std::uint64_t, clang::CompoundStmt* > res;
         rellic::DecompilationOptions dec_opts;
         dec_opts.additional_providers = std::move(this->options->additional_providers);
         auto maybe_dec_res            = rellic::Decompile(std::move(module), std::move(dec_opts));
         if (!maybe_dec_res.Succeeded()) {
             return maybe_dec_res.TakeError().message;
         }
-        auto dec_res = maybe_dec_res.TakeValue();
 
-        for (auto& [addr, func] : canonical_funcs) {
-            auto fdecl = clang::cast< clang::FunctionDecl >(dec_res.value_to_decl_map[func]);
-            auto body  = clang::cast< clang::CompoundStmt >(fdecl->getBody());
-            res[addr]  = body;
-        }
-
-        return res;
+        return PopulateCodegenResFromRellic(maybe_dec_res.TakeValue());
     }
 
     SpecDecompilationJob::SpecDecompilationJob(SpecDecompilationJobBuilder&& o)

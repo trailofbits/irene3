@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
 
     llvm::json::Array patches;
 
-    for (auto &[addr, compound] : decomp_res.Value()) {
+    for (auto &[addr, compound] : decomp_res.Value().blocks) {
         llvm::json::Object patch;
         patch["patch-name"] = "block_" + std::to_string(addr);
         std::stringstream ss;
