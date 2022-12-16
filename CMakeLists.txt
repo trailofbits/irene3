@@ -38,8 +38,6 @@ add_subdirectory("vendor/anvill" EXCLUDE_FROM_ALL)
 set(RELLIC_ENABLE_TESTING OFF)
 add_subdirectory("vendor/rellic" EXCLUDE_FROM_ALL)
 
-set(PASTA_ENABLE_TESTING OFF)
-add_subdirectory("vendor/pasta" EXCLUDE_FROM_ALL)
 
 if(IRENE3_ENABLE_INSTALL)
   export(PACKAGE "${PROJECT_NAME}")

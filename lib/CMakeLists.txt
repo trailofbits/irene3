@@ -33,7 +33,7 @@ set_target_properties(
 )
 
 # link version information
-target_link_libraries("${PROJECT_NAME}" PUBLIC glog::glog "${llvm_libs}" gflags rellic anvill pasta)
+target_link_libraries("${PROJECT_NAME}" PUBLIC glog::glog "${llvm_libs}" gflags rellic anvill)
 
 target_include_directories(
   "${PROJECT_NAME}"
