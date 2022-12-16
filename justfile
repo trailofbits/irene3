@@ -1,5 +1,5 @@
 set dotenv-load
-LLVM_VERSION := "14"
+LLVM_VERSION := "15"
 CXX_COMMON_VERSION := "0.2.12"
 CXX_COMMON_ARCH := if "x86_64" == arch() { "amd64" } else { "arm64" }
 CXX_COMMON_NAME := if "macos" == os() {
@@ -140,7 +140,7 @@ install-remill: build-remill-cpp
     cmake --build deps/remill-build --target install
 
 build-irene3-cpp: install-remill
-    cmake -S . -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} -DVCPKG_ROOT=${VCPKG_ROOT} -DIRENE3_ENABLE_INSTALL=ON --preset ninja-multi-vcpkg  && cmake --build --preset ninja-vcpkg-deb -j $(nproc)
+    cmake --toolchain ${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake -S . -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} -DIRENE3_ENABLE_INSTALL=ON --preset ninja-multi-vcpkg  && cmake --build --preset ninja-vcpkg-deb -j $(nproc)
 
 install-irene3: build-irene3-cpp
     cmake --build --preset ninja-vcpkg-deb --target install
