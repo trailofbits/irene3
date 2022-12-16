@@ -140,7 +140,7 @@ jobs:
           cmake \
               -DCMAKE_VERBOSE_MAKEFILE=true \
               -DCMAKE_TOOLCHAIN_FILE="${{ steps.cxxcommon_installer.outputs.PATH }}/scripts/buildsystems/vcpkg.cmake" \
-              -DVCPKG_TARGET_TRIPLET="x64-osx-rel" \
+              -DVCPKG_TARGET_TRIPLET="x64-linux-rel" \
               -G Ninja \
               "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/remill"
 
@@ -176,7 +176,7 @@ jobs:
           mkdir anvill_build && cd anvill_build
           cmake \
               -DCMAKE_TOOLCHAIN_FILE="${{ steps.cxxcommon_installer.outputs.PATH }}/scripts/buildsystems/vcpkg.cmake" \
-              -DVCPKG_TARGET_TRIPLET="x64-osx-rel" \
+              -DVCPKG_TARGET_TRIPLET="x64-linux-rel" \
               -DCMAKE_VERBOSE_MAKEFILE=true \
               -Dremill_DIR:PATH=${{ steps.remill_installer.outputs.PATH }}/usr/local/lib/cmake/remill \
               -Dsleigh_DIR:PATH=${{ steps.remill_installer.outputs.PATH }}/usr/local/lib/cmake/sleigh \
@@ -217,7 +217,7 @@ jobs:
           mkdir irene3_build && cd irene3_build
           cmake \
               -DCMAKE_TOOLCHAIN_FILE="${{ steps.cxxcommon_installer.outputs.PATH }}/scripts/buildsystems/vcpkg.cmake" \
-              -DVCPKG_TARGET_TRIPLET="x64-osx-rel" \
+              -DVCPKG_TARGET_TRIPLET="x64-linux-rel" \
               -Dremill_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/remill/"\
               -Danvill_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/anvill/"\
               -Dsleigh_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/sleigh/"\
