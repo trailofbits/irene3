@@ -109,6 +109,17 @@ namespace irene3
         std::unordered_map< uint64_t, FunctionDecompResult > function_results;
     };
 
+    struct CodegenResult {
+        std::shared_ptr< llvm::LLVMContext > context;
+        std::unique_ptr< llvm::Module > mod;
+
+        std::unique_ptr< clang::ASTUnit > ast;
+
+        ProvenanceInfo prov_info;
+
+        std::unordered_map< std::uint64_t, clang::CompoundStmt* > blocks;
+    };
+
     class SpecDecompilationJob {
       public:
         anvill::StackFrameStructureInitializationProcedure stack_initialization_strategy
@@ -133,8 +144,8 @@ namespace irene3
             llvm::DenseMap< uint64_t, const llvm::Value* > >
         ExtractLLVMProvenance(const llvm::Module* anvill_mod) const;
 
-        DecompilationResult PopulateDecompResFromRellic(
-            std::shared_ptr< llvm::LLVMContext > context, rellic::DecompilationResult res) const;
+        DecompilationResult PopulateDecompResFromRellic(rellic::DecompilationResult res) const;
+        CodegenResult PopulateCodegenResFromRellic(rellic::DecompilationResult res) const;
 
       public:
         // Gets the underlying anvill spec for this decompilation job.
@@ -145,8 +156,7 @@ namespace irene3
         // Constructs a decompilation job from a builder.
         SpecDecompilationJob(SpecDecompilationJobBuilder&&);
 
-        rellic::Result< std::unordered_map< std::uint64_t, clang::CompoundStmt* >, std::string >
-        DecompileBlocks() const;
+        rellic::Result< CodegenResult, std::string > DecompileBlocks() const;
 
         // Attempts to decompile the anvill spec to C and LLVM.
         rellic::Result< DecompilationResult, std::string > Decompile() const;
