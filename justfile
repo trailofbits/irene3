@@ -22,7 +22,9 @@ export PATH := env_var("PATH") + ":" + justfile_directory() + "/deps/" + CMAKE_D
 # Use clang (apple clang) on MacOS, otherwise clang-{{LLVM_VERSION}}
 export CC := if "macos" == os() {"clang"} else { "clang-" + LLVM_VERSION }
 export CXX := if "macos" == os() {"clang++"} else { "clang++-" + LLVM_VERSION }
-export VCPKG_ROOT := env_var_or_default("VCPKG_ROOT", justfile_directory() + "/deps/" + CXX_COMMON_NAME)
+VCPKG_OS := if "macos" == os() { "osx" } else { "linux" }
+export VCPKG_TARGET_TRIPLET := env_var_or_default("VCPKG_TARGET_TRIPLET", CXX_COMMON_ARCH + "-" + VCPKG_OS + "-rel")
+export CMAKE_TOOLCHAIN_FILE := env_var_or_default("CMAKE_TOOLCHAIN_FILE", justfile_directory() + "/deps/" + CXX_COMMON_NAME + "/scripts/buildsystems/vcpkg.cmake")
 export CMAKE_INSTALL_PREFIX := env_var_or_default("CMAKE_INSTALL_PREFIX", justfile_directory() + "/install")
 
 default:
@@ -132,15 +134,15 @@ git-submodules:
     fi
 
 build-remill-cpp: git-submodules
-    mkdir -p deps
-    cmake --toolchain ${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake -S vendor/remill -B deps/remill-build -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} && cmake --build deps/remill-build -j $(nproc)
+    mkdir -p builds
+    cmake -S vendor/remill -B builds/remill-build -DCMAKE_TOOLCHAIN_FILE="${CMAKE_TOOLCHAIN_FILE}" -DVCPKG_TARGET_TRIPLET="${VCPKG_TARGET_TRIPLET}" -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} && cmake --build builds/remill-build -j $(nproc)
 
 install-remill: build-remill-cpp
-    mkdir -p deps
-    cmake --build deps/remill-build --target install
+    mkdir -p builds
+    cmake --build builds/remill-build --target install
 
 build-irene3-cpp: install-remill
-    cmake --toolchain ${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake -S . -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} -DIRENE3_ENABLE_INSTALL=ON --preset ninja-multi-vcpkg  && cmake --build --preset ninja-vcpkg-deb -j $(nproc)
+    cmake -S . -DCMAKE_TOOLCHAIN_FILE="${CMAKE_TOOLCHAIN_FILE}" -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} -DVCPKG_TARGET_TRIPLET="${VCPKG_TARGET_TRIPLET}" -DIRENE3_ENABLE_INSTALL=ON --preset ninja-multi-vcpkg  && cmake --build --preset ninja-vcpkg-deb -j $(nproc)
 
 install-irene3: build-irene3-cpp
     cmake --build --preset ninja-vcpkg-deb --target install
