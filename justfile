@@ -1,6 +1,6 @@
 set dotenv-load
 LLVM_VERSION := "15"
-CXX_COMMON_VERSION := "0.2.12"
+CXX_COMMON_VERSION := "0.2.19"
 CXX_COMMON_ARCH := if "x86_64" == arch() { "amd64" } else { "arm64" }
 CXX_COMMON_NAME := if "macos" == os() {
       "vcpkg_macos-11_llvm-" + LLVM_VERSION + "_xcode-13.0_" + CXX_COMMON_ARCH
