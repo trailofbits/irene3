@@ -35,8 +35,8 @@ jobs:
       matrix:
         image:
           - { name: 'ubuntu', tag: '20.04' }
-        llvm: ['14']
-        cxxcommon_version: ['0.2.12']
+        llvm: ['15']
+        cxxcommon_version: ['0.2.19']
 
     runs-on: gha-ubuntu-32
     container:
@@ -139,7 +139,7 @@ jobs:
 
           cmake \
               -DCMAKE_VERBOSE_MAKEFILE=true \
-              -DVCPKG_ROOT="${{ steps.cxxcommon_installer.outputs.PATH }}" \
+              --toolchain "${{ steps.cxxcommon_installer.outputs.PATH }}/scripts/buildsystems/vcpkg.cmake" \
               -G Ninja \
               "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/remill"
 
@@ -174,8 +174,8 @@ jobs:
         run: |
           mkdir anvill_build && cd anvill_build
           cmake \
+              --toolchain "${{ steps.cxxcommon_installer.outputs.PATH }}/scripts/buildsystems/vcpkg.cmake" \
               -DCMAKE_VERBOSE_MAKEFILE=true \
-              -DVCPKG_ROOT="${{ steps.cxxcommon_installer.outputs.PATH }}" \
               -Dremill_DIR:PATH=${{ steps.remill_installer.outputs.PATH }}/usr/local/lib/cmake/remill \
               -Dsleigh_DIR:PATH=${{ steps.remill_installer.outputs.PATH }}/usr/local/lib/cmake/sleigh \
               -DANVILL_ENABLE_TESTS=true \
@@ -214,11 +214,11 @@ jobs:
         run: |
           mkdir irene3_build && cd irene3_build
           cmake \
+              --toolchain "${{ steps.cxxcommon_installer.outputs.PATH }}/scripts/buildsystems/vckpg.cmake" \
               -Dremill_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/remill/"\
               -Danvill_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/anvill/"\
               -Dsleigh_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/sleigh/"\
               -DCMAKE_VERBOSE_MAKEFILE=true \
-              -DVCPKG_ROOT="${{ steps.cxxcommon_installer.outputs.PATH }}" \
               -DIRENE3_ENABLE_INSTALL=true \
               -G Ninja \
               ${{ steps.build_paths.outputs.SOURCE }}/irene3
