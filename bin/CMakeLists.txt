@@ -8,7 +8,6 @@
 add_subdirectory("Codegen")
 add_subdirectory("Decompile")
 add_subdirectory("Kleeable")
-add_subdirectory("UITool")
 set(IRENE3_DECOMP
     "${IRENE3_DECOMP}"
     PARENT_SCOPE
