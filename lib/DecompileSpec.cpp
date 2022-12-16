@@ -23,6 +23,7 @@
 #include <rellic/Decompiler.h>
 #include <remill/Arch/Arch.h>
 #include <remill/BC/Util.h>
+#include <remill/BC/Version.h>
 #include <stdint.h>
 #include <string>
 #include <unordered_map>
@@ -291,7 +292,9 @@ namespace irene3
     rellic::Result< SpecDecompilationJobBuilder, std::string > SpecDecompilationJobBuilder::
         CreateDefaultBuilder(const std::string& spec_pb, bool propagate_types) {
         std::shared_ptr< llvm::LLVMContext > context = std::make_shared< llvm::LLVMContext >();
-        context->enableOpaquePointers();
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+        context.enableOpaquePointers();
+#endif
 
         auto maybe_spec = anvill::Specification::DecodeFromPB(*context, spec_pb);
 
