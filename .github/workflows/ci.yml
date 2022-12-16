@@ -139,7 +139,8 @@ jobs:
 
           cmake \
               -DCMAKE_VERBOSE_MAKEFILE=true \
-              --toolchain "${{ steps.cxxcommon_installer.outputs.PATH }}/scripts/buildsystems/vcpkg.cmake" \
+              -DCMAKE_TOOLCHAIN_FILE="${{ steps.cxxcommon_installer.outputs.PATH }}/scripts/buildsystems/vcpkg.cmake" \
+              -DVCPKG_TARGET_TRIPLET="x64-osx-rel" \
               -G Ninja \
               "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/remill"
 
@@ -174,7 +175,8 @@ jobs:
         run: |
           mkdir anvill_build && cd anvill_build
           cmake \
-              --toolchain "${{ steps.cxxcommon_installer.outputs.PATH }}/scripts/buildsystems/vcpkg.cmake" \
+              -DCMAKE_TOOLCHAIN_FILE="${{ steps.cxxcommon_installer.outputs.PATH }}/scripts/buildsystems/vcpkg.cmake" \
+              -DVCPKG_TARGET_TRIPLET="x64-osx-rel" \
               -DCMAKE_VERBOSE_MAKEFILE=true \
               -Dremill_DIR:PATH=${{ steps.remill_installer.outputs.PATH }}/usr/local/lib/cmake/remill \
               -Dsleigh_DIR:PATH=${{ steps.remill_installer.outputs.PATH }}/usr/local/lib/cmake/sleigh \
@@ -214,7 +216,8 @@ jobs:
         run: |
           mkdir irene3_build && cd irene3_build
           cmake \
-              --toolchain "${{ steps.cxxcommon_installer.outputs.PATH }}/scripts/buildsystems/vckpg.cmake" \
+              -DCMAKE_TOOLCHAIN_FILE="${{ steps.cxxcommon_installer.outputs.PATH }}/scripts/buildsystems/vcpkg.cmake" \
+              -DVCPKG_TARGET_TRIPLET="x64-osx-rel" \
               -Dremill_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/remill/"\
               -Danvill_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/anvill/"\
               -Dsleigh_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/sleigh/"\
@@ -280,15 +283,6 @@ jobs:
       - name: Install the DEB package
         run: |
           dpkg -i ${{ steps.package_names.outputs.DEB_PACKAGE_PATH }}
-      - name: Install Binary Ninja Headless
-        shell: bash
-        env:
-          BN_LICENSE: ${{ secrets.BINJA_AMP_LICENSE }}
-
-        working-directory: ${{ steps.build_paths.outputs.SOURCE }}
-        run: |
-          ./irene3/scripts/download_headless.py --dev -i -c -d /opt
-          /usr/bin/python3 /opt/binaryninja/scripts/install_api.py
       - name: Test irene3
         shell: bash
         env:
