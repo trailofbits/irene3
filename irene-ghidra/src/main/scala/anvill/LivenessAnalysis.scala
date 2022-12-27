@@ -8,10 +8,14 @@ import scala.collection.mutable.Stack
 import ghidra.program.model.pcode.PcodeOp
 import ghidra.program.model.listing.Instruction
 import collection.JavaConverters._
+import ghidra.app.cmd.function.CallDepthChangeInfo
+import specification.specification.{Value => ValueSpec}
+import specification.specification.{Register => RegSpec}
+import specification.specification.Value.{InnerValue => ValueInner}
 
 case class BlockLiveness(
-    val live_before: Set[Register],
-    val live_after: Set[Register]
+    val live_before: Set[ValueSpec],
+    val live_after: Set[ValueSpec]
 )
 
 /** Reverse dataflow analysis over the CFG for register liveness
@@ -28,7 +32,31 @@ class LivenessAnalysis(
 
   val lang = func.getProgram().getLanguage()
 
-  def gen(op: PcodeOp): Set[Register] = {
+  // TODO(Ian) right now we gen all stack vars for any load
+  // We could be missing a var for part of the stack becuase of how ghidra does locals
+  // Need to conservatively split the stack, also need a backing alias analysis
+  def gen_stack_vars(op: PcodeOp): Set[ValueSpec] = {
+    if (op.getOpcode() == PcodeOp.LOAD) {
+      func
+        .getLocalVariables()
+        .toSeq
+        .flatMap(v =>
+          if (v.isStackVariable()) then {
+            ProgramSpecifier.specifyStorage(v.getVariableStorage())
+          } else {
+            Seq.empty
+          }
+        )
+        .toSet
+    } else { Set.empty }
+  }
+
+  // The safe assumption is we kill nothing
+  def kill_stack_vars(op: PcodeOp) = {
+    Set.empty
+  }
+
+  def gen_registers(op: PcodeOp): Set[ValueSpec] = {
     val read_regs = op
       .getInputs()
       .map(vnode =>
@@ -37,28 +65,44 @@ class LivenessAnalysis(
         )
       )
 
-    read_regs.flatten.toSet
+    read_regs.flatten
+      .map(r =>
+        ValueSpec(ValueInner.Reg(RegSpec(ProgramSpecifier.getRegisterName(r))))
+      )
+      .toSet
   }
 
   // TODO(Ian): Call pcodeops should kill returns
-  def kill(op: PcodeOp): Set[Register] = {
+  def kill_registers(op: PcodeOp): Set[ValueSpec] = {
     val out = Option(op.getOutput())
     out
       .flatMap(vnode =>
         Option(lang.getRegister(vnode.getAddress(), vnode.getSize()))
       )
-      .map(nd => Set.empty + nd)
+      .map(nd =>
+        Set.empty + ValueSpec(
+          ValueInner.Reg(RegSpec(ProgramSpecifier.getRegisterName(nd)))
+        )
+      )
       .getOrElse(Set.empty)
   }
 
-  def transfer(n: PcodeOp, live_after: Set[Register]): Set[Register] = {
+  def gen(op: PcodeOp): Set[ValueSpec] = {
+    gen_stack_vars(op) ++ gen_registers(op)
+  }
+
+  def kill(op: PcodeOp): Set[ValueSpec] = {
+    kill_registers(op) ++ kill_stack_vars(op)
+  }
+
+  def transfer(n: PcodeOp, live_after: Set[ValueSpec]): Set[ValueSpec] = {
     (live_after -- kill(n)) ++ gen(n)
   }
 
   def transfer_block(
       blk: CodeBlock,
-      live_after: Set[Register]
-  ): Set[Register] = {
+      live_after: Set[ValueSpec]
+  ): Set[ValueSpec] = {
     // get instructions in reverse then iterate over pcode in reverse
     val insns_reverse: ju.Iterator[Instruction] =
       func.getProgram().getListing().getInstructions(blk, false)
@@ -74,27 +118,27 @@ class LivenessAnalysis(
 
   def collectLiveOnExit(
       n: CodeBlock,
-      curr_liveness: scala.collection.Map[CodeBlock, Set[Register]]
-  ): Set[Register] = {
-    val regs: Seq[Set[Register]] = control_flow_graph
+      curr_liveness: scala.collection.Map[CodeBlock, Set[ValueSpec]]
+  ): Set[ValueSpec] = {
+    val regs: Seq[Set[ValueSpec]] = control_flow_graph
       .get(n)
       .outNeighbors
       .toSeq
       .map(out => curr_liveness.get(out.toOuter).getOrElse(Set.empty))
 
-    regs.fold(Set.empty)((x: Set[Register], y: Set[Register]) => x.union(y))
+    regs.fold(Set.empty)((x: Set[ValueSpec], y: Set[ValueSpec]) => x.union(y))
   }
 
   def getBlockLiveness(): Map[CodeBlock, BlockLiveness] = {
     val analysisRes = this.analyze()
 
-    analysisRes.toMap.map((blk: CodeBlock, liveness_after: Set[Register]) =>
+    analysisRes.toMap.map((blk: CodeBlock, liveness_after: Set[ValueSpec]) =>
       (blk, BlockLiveness(transfer_block(blk, liveness_after), liveness_after))
     )
   }
 
-  def analyze(): mutable.Map[CodeBlock, Set[Register]] = {
-    val res: mutable.Map[CodeBlock, Set[Register]] = mutable.Map.from(
+  def analyze(): mutable.Map[CodeBlock, Set[ValueSpec]] = {
+    val res: mutable.Map[CodeBlock, Set[ValueSpec]] = mutable.Map.from(
       this.control_flow_graph.nodes.map(nd => (nd.toOuter, Set.empty))
     )
 

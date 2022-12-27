@@ -51,8 +51,8 @@ class BasicBlockContextProducer(gfunc: Function) {
           )
         })
         .toSeq,
-      live.live_before.toSeq.map(r => RegSpec(getRegisterName(r))),
-      live.live_after.toSeq.map(r => RegSpec(getRegisterName(r)))
+      live.live_before.toSeq,
+      live.live_after.toSeq
     )
   }
 }

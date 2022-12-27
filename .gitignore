@@ -16,3 +16,4 @@ builds/
 remill-build/
 install/
 compile_commands.json
+.bsp

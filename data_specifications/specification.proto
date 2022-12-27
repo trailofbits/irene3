@@ -174,11 +174,25 @@ message OffsetDomain {
   int64 offset = 3;
 }
 
+enum HighLoc {
+  HIGH_LOC_UNSPECIFIED = 0;
+  HIGH_LOC_PARAM = 1;
+  HIGH_LOC_LOCAL = 2;
+}
+
+message HighSymbol {
+  Value val = 1;
+  string name = 2;
+  HighLoc location = 3;
+}
+
 message BlockContext {
   repeated OffsetDomain symvals = 1;
+  
+  repeated Value live_at_entries = 2;
+  repeated Value live_at_exits = 3;
 
-  repeated Register live_at_entries = 2;
-  repeated Register live_at_exits = 3;
+  repeated HighSymbol symbols = 4;
 }
 
 
