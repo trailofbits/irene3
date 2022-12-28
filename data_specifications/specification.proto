@@ -100,14 +100,6 @@ message Memory {
   int64 offset = 2;
 }
 
-message Value {
-  oneof inner_value {
-    Register reg = 1;
-    Memory mem = 2;
-  }
-}
-
-
 message Variable {
   repeated Value values = 1;
   TypeSpec type = 2;
@@ -184,6 +176,13 @@ message HighSymbol {
   Value val = 1;
   string name = 2;
   HighLoc location = 3;
+}
+
+message Value {
+  oneof inner_value {
+    Register reg = 1;
+    Memory mem = 2;
+  }
 }
 
 message BlockContext {
