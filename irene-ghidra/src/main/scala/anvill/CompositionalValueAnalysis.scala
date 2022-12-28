@@ -208,12 +208,19 @@ class CompositionalValueAnalysis(
       .getOrElse(prev_dom)
   }
 
+  // TODO(Ian): handle uniques
+  def get_vnode_value(vnode: Varnode): DomainValue {
+    find_aloc(vnode)
+  }
+
   override def execute_pcode(
       f: listing.Function,
       pc: PcodeOp,
       curr: DomType
   ): DomType = {
-    ???
+    pc.getOpcode() match {
+      case PcodeOp.COPY => assign_value(pc.getOutput(), ,curr)
+    }
   }
 
   override def step(
