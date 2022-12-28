@@ -10,11 +10,18 @@ import ghidra.program.model.listing.Instruction
 import collection.JavaConverters._
 
 trait PcodeOpTransferFunction[A]:
+  def execute_block_entrance(
+      func: ghidra.program.model.listing.Function,
+      curr_blk: CodeBlock,
+      prev: A
+  ): A
+
   def execute_pcode(
       f: ghidra.program.model.listing.Function,
       pc: PcodeOp,
       curr: A
   ): A
+
   def step(
       f: ghidra.program.model.listing.Function,
       i: Int,
@@ -33,13 +40,13 @@ class PcodeTransferToBlockTransferAdapter[A](
       dst_blk: CodeBlock,
       prev_domain_value: A
   ): A = {
+    val start_val =
+      pcode_transfer.execute_block_entrance(func, src_blk, prev_domain_value)
     val insns_reverse: ju.Iterator[Instruction] =
       func.getProgram().getListing().getInstructions(src_blk, true)
     insns_reverse.asScala
       .flatMap(insn => insn.getPcode().toSeq)
-      .foldLeft(prev_domain_value)((v, pc) =>
-        pcode_transfer.execute_pcode(func, pc, v)
-      )
+      .foldLeft(start_val)((v, pc) => pcode_transfer.execute_pcode(func, pc, v))
   }
 
   override def step(
