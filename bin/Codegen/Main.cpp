@@ -32,6 +32,7 @@
 #include <remill/BC/Error.h>
 #include <remill/BC/Util.h>
 #include <sstream>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -70,6 +71,13 @@ static void SetVersion(void) {
     version << "Using LLVM " << LLVM_VERSION_STRING << std::endl;
 
     google::SetVersionString(version.str());
+}
+
+template< typename T >
+std::string to_hex(T &&value) {
+    std::stringstream ss;
+    ss << "0x" << std::hex << std::forward< T >(value);
+    return ss.str();
 }
 
 int main(int argc, char *argv[]) {
@@ -120,14 +128,16 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    auto block_contexts = builder.GetSpec().GetBlockContexts();
     llvm::json::Array patches;
 
     for (auto &[addr, compound] : decomp_res.Value().blocks) {
+        const anvill::BasicBlockContext &block
+            = block_contexts.GetBasicBlockContextForAddr(addr).value();
+
         llvm::json::Object patch;
         patch["patch-name"] = "block_" + std::to_string(addr);
-        std::stringstream ss;
-        ss << "0x" << std::hex << addr;
-        patch["patch-addr"] = ss.str();
+        patch["patch-addr"] = to_hex(addr);
 
         std::string code;
         llvm::raw_string_ostream os(code);
@@ -139,6 +149,29 @@ int main(int argc, char *argv[]) {
         }
         patch["patch-code"] = code;
 
+        llvm::json::Array patch_vars;
+        for (auto &var_spec : block.GetAvailableVariables()) {
+            llvm::json::Object var;
+            var["name"] = var_spec.name;
+            if (var_spec.reg) {
+                var["at-entry"] = var_spec.reg->name;
+                var["at-exit"]  = var_spec.reg->name;
+            } else if (var_spec.mem_reg) {
+                llvm::json::Object memory;
+                memory["frame-pointer"] = var_spec.mem_reg->name;
+                memory["offset"]        = to_hex(var_spec.mem_offset) + ":"
+                                   + std::to_string(var_spec.type->getScalarSizeInBits());
+                var["memory"] = std::move(memory);
+            } else {
+                llvm::json::Object memory;
+                memory["address"] = to_hex(var_spec.mem_offset) + ":"
+                                    + std::to_string(var_spec.type->getScalarSizeInBits());
+                var["memory"] = std::move(memory);
+            }
+            patch_vars.push_back(std::move(var));
+        }
+
+        patch["patch-vars"] = std::move(patch_vars);
         patches.push_back(std::move(patch));
     }
 
