@@ -1,4 +1,5 @@
 #include "SpecTypeProvider.h"
+#include "SpecVarProvider.h"
 
 #include <anvill/Lifters.h>
 #include <anvill/Optimize.h>
@@ -13,11 +14,16 @@
 #include <clang/Tooling/Tooling.h>
 #include <glog/logging.h>
 #include <irene3/DecompileSpec.h>
+#include <irene3/TypeDecoder.h>
 #include <irene3/Util.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/InstIterator.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Value.h>
 #include <llvm/Support/Casting.h>
+#include <llvm/Support/raw_ostream.h>
 #include <memory>
 #include <optional>
 #include <rellic/Decompiler.h>
@@ -268,8 +274,35 @@ namespace irene3
 
         anvill::OptimizeModule(lifter, *module, spec.GetBlockContexts(), spec);
 
+        for (auto& func : module->functions()) {
+            auto block_addr = anvill::GetBasicBlockAddr(&func);
+            if (!block_addr.has_value()) {
+                func.deleteBody();
+                continue;
+            }
+
+            // Copy instructions to temporary storage so we don't invalidate iterators
+            std::vector< llvm::Instruction* > insts;
+            for (auto& inst : llvm::instructions(func)) {
+                insts.push_back(&inst);
+            }
+
+            for (auto inst : insts) {
+                if (auto call = llvm::dyn_cast< llvm::CallInst >(inst)) {
+                    auto block_addr = anvill::GetBasicBlockAddr(call->getCalledFunction());
+                    if (!block_addr.has_value()) {
+                        continue;
+                    }
+                    call->replaceAllUsesWith(call->getArgOperand(2));
+                    call->eraseFromParent();
+                }
+            }
+        }
+
         rellic::DecompilationOptions dec_opts;
-        dec_opts.additional_providers = std::move(this->options->additional_providers);
+        dec_opts.additional_type_providers = std::move(this->options->additional_type_providers);
+        dec_opts.additional_variable_providers
+            = std::move(this->options->additional_variable_providers);
         auto maybe_dec_res            = rellic::Decompile(std::move(module), std::move(dec_opts));
         if (!maybe_dec_res.Succeeded()) {
             return maybe_dec_res.TakeError().message;
@@ -290,7 +323,11 @@ namespace irene3
     }
 
     rellic::Result< SpecDecompilationJobBuilder, std::string > SpecDecompilationJobBuilder::
-        CreateDefaultBuilder(const std::string& spec_pb, bool propagate_types) {
+        CreateDefaultBuilder(
+            const std::string& spec_pb,
+            bool propagate_types,
+            bool args_as_locals,
+            TypeDecoder& type_decoder) {
         std::shared_ptr< llvm::LLVMContext > context = std::make_shared< llvm::LLVMContext >();
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
         context.enableOpaquePointers();
@@ -312,9 +349,13 @@ namespace irene3
         });
 
         auto opts = std::make_unique< rellic::DecompilationOptions >();
+        if (args_as_locals) {
+            opts->additional_variable_providers.push_back(
+                std::make_unique< SpecVarProvider::Factory >(spec, type_decoder));
+        }
         if (propagate_types) {
-            opts->additional_providers.push_back(
-                std::make_unique< SpecTypeProvider::Factory >(spec));
+            opts->additional_type_providers.push_back(
+                std::make_unique< SpecTypeProvider::Factory >(spec, type_decoder));
         }
         return SpecDecompilationJobBuilder(
             spec, target_function_list, std::move(opts), std::move(context));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-present, Trail of Bits, Inc.
+ * Copyright (c) 2023-present, Trail of Bits, Inc.
  * All rights reserved.
  *
  * This source code is licensed in accordance with the terms specified in
@@ -14,26 +14,27 @@
 
 namespace irene3
 {
-    class SpecTypeProvider final : public rellic::TypeProvider {
+    class SpecVarProvider final : public rellic::VariableProvider {
         struct Impl;
         std::unique_ptr< Impl > impl;
 
       public:
-        SpecTypeProvider(
+        SpecVarProvider(
             rellic::DecompilationContext &dec_ctx,
             anvill::Specification &spec,
             TypeDecoder &type_decoder);
-        ~SpecTypeProvider();
-        clang::QualType GetGlobalVarType(llvm::GlobalVariable &gvar) override;
+        ~SpecVarProvider();
 
-        class Factory final : public rellic::TypeProviderFactory {
+        clang::QualType ArgumentAsLocal(llvm::Argument &arg) override;
+
+        class Factory final : public rellic::VariableProviderFactory {
             anvill::Specification spec;
             TypeDecoder &type_decoder;
 
           public:
             Factory(anvill::Specification spec, TypeDecoder &type_decoder);
 
-            std::unique_ptr< rellic::TypeProvider > create(
+            std::unique_ptr< rellic::VariableProvider > create(
                 rellic::DecompilationContext &ctx) override;
         };
     };
