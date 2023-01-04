@@ -4,6 +4,7 @@
 #include <anvill/Specification.h>
 #include <clang/AST/Decl.h>
 #include <clang/AST/Stmt.h>
+#include <irene3/TypeDecoder.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/IR/Constant.h>
 #include <llvm/IR/LLVMContext.h>
@@ -48,7 +49,10 @@ namespace irene3
 
         // Attempts to build a SpecDecompilationBuilder from an anvill json specification.
         static rellic::Result< SpecDecompilationJobBuilder, std::string > CreateDefaultBuilder(
-            const std::string& spec_pb, bool propagate_types);
+            const std::string& spec_pb,
+            bool propagate_types,
+            bool args_as_locals,
+            TypeDecoder& type_decoder);
     };
 
     // A decompiled function

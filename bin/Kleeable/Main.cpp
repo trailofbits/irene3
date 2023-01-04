@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 #include <iostream>
 #include <irene3/DecompileSpec.h>
+#include <irene3/TypeDecoder.h>
 #include <irene3/Util.h>
 #include <irene3/Version.h>
 #include <llvm/ADT/Triple.h>
@@ -172,8 +173,9 @@ int main(int argc, char* argv[]) {
 
     std::unordered_set< uint64_t > target_funcs;
 
-    auto maybe_spec
-        = irene3::ProtobufPathToDecompilationBuilder(FLAGS_spec, FLAGS_type_propagation);
+    irene3::TypeDecoder type_decoder;
+    auto maybe_spec = irene3::ProtobufPathToDecompilationBuilder(
+        FLAGS_spec, FLAGS_type_propagation, /*args_as_locals=*/false, type_decoder);
     if (!maybe_spec.Succeeded()) {
         std::cerr << maybe_spec.TakeError() << std::endl;
         return EXIT_FAILURE;

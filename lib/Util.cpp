@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <iostream>
 #include <irene3/DecompileSpec.h>
+#include <irene3/TypeDecoder.h>
 #include <llvm/Support/JSON.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <rellic/Result.h>
@@ -11,7 +12,10 @@
 namespace irene3
 {
     rellic::Result< SpecDecompilationJobBuilder, std::string > ProtobufPathToDecompilationBuilder(
-        const std::filesystem::path& input_spec, bool propagate_types) {
+        const std::filesystem::path& input_spec,
+        bool propagate_types,
+        bool args_as_locals,
+        TypeDecoder& type_decoder) {
         auto maybe_buff = llvm::MemoryBuffer::getFileOrSTDIN(input_spec.c_str());
         if (remill::IsError(maybe_buff)) {
             std::stringstream ss;
@@ -22,7 +26,7 @@ namespace irene3
         const std::unique_ptr< llvm::MemoryBuffer >& buff = remill::GetReference(maybe_buff);
 
         return SpecDecompilationJobBuilder::CreateDefaultBuilder(
-            buff->getBuffer().str(), propagate_types);
+            buff->getBuffer().str(), propagate_types, args_as_locals, type_decoder);
     }
 
     std::optional< uint64_t > GetPCMetadata(const llvm::Value* value) {
