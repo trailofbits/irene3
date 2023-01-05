@@ -253,12 +253,8 @@ message BlockContext {
   // the block
   repeated ValueMapping symvals = 1;
   
-  repeated Variable live_at_entries = 2;
-  repeated Variable live_at_exits = 3;
-
-  // A low-level location representing
-  // a high level location exactly
-  repeated SymbolMapping exit_mappings = 4;
+  repeated Parameter live_at_entries = 2;
+  repeated Parameter live_at_exits = 3;
 }
 
 
