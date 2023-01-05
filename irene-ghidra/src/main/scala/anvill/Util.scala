@@ -21,13 +21,25 @@ import specification.specification.TypeSpec
 import scala.collection.mutable.ListBuffer
 import ghidra.program.model.lang.Register
 import ProgramSpecifier.getRegisterName
-
+import specification.specification.TypeSpec.Type
+import specification.specification.BaseType.BT_U8
 object Util {
 
   // This isnt right... we need a better notion of variables, we want to create variables for live locations... but what's the type?
   // Really want the type of the live assignment
-  def registerToType(reg: Register): Option[TypeSpec] = {
-    ProgramSpecifier.integerTypes.get((reg.getNumBytes(), false))
+  def registerToType(reg: Register): TypeSpec = {
+    ProgramSpecifier.integerTypes
+      .get((reg.getNumBytes(), false))
+      .getOrElse(
+        TypeSpec(
+          Type.Array(
+            TypeSpec.ArrayType(
+              Some(TypeSpec(Type.Base(BT_U8))),
+              reg.getNumBytes()
+            )
+          )
+        )
+      )
   }
 
   def registerToVariable(reg: Register): VariableSpec = {
@@ -37,13 +49,7 @@ object Util {
 
     val typespec = registerToType(reg)
 
-    if (typespec.isEmpty) {
-      throw new IllegalStateException(
-        "A register should be convertable to a sized type"
-      )
-    }
-
-    VariableSpec(Seq(valspec), typespec)
+    VariableSpec(Seq(valspec), Some(typespec))
   }
 
   type CFG = Graph[CodeBlock, DiEdge]

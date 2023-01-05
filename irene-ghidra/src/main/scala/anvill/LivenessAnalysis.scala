@@ -16,6 +16,7 @@ import specification.specification.{Parameter => ParamSpec}
 import specification.specification.Value.{InnerValue => ValueInner}
 import ghidra.program.model.data.Structure
 import Util.registerToVariable
+
 import ghidra.program.model.listing.Variable
 import ProgramSpecifier.getRegisterName
 
@@ -39,20 +40,20 @@ class LivenessAnalysis(
 
   val lang = func.getProgram().getLanguage()
 
-  val register_to_param_name: Map[Register, String] =
+  val register_to_variable: Map[Register, Variable] =
     func
       .getAllVariables()
       .filter(v => v.isRegisterVariable())
-      .map(v => (v.getRegister(), v.getName()))
+      .map(v => (v.getRegister(), v))
       .toMap
 
   def registerToParam(r: Register): ParamSpec = {
-    ParamSpec(
-      Some(
-        register_to_param_name.get(r).getOrElse(getRegisterName(r))
-      ),
-      Some(registerToVariable(r))
-    )
+    register_to_variable
+      .get(r)
+      .map(v => specifyVariable(v, aliases))
+      .getOrElse(
+        ParamSpec(Some(getRegisterName(r)), Some(registerToVariable(r)))
+      )
 
   }
 
