@@ -213,8 +213,6 @@ class CompositionalValueAnalysis(
     find_aloc(vnode).map(aloc => cur.get(aloc).get).getOrElse(DomainValue.bot)
   }
 
-  def 
-
   override def execute_pcode(
       f: listing.Function,
       pc: PcodeOp,
@@ -227,10 +225,6 @@ class CompositionalValueAnalysis(
           get_vnode_value(pc.getInput(0), curr),
           curr
         )
-
-      case PcodeOp.STORE => // now for the tricky bit
-
-
     }
   }
 

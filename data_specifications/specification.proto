@@ -169,7 +169,7 @@ message ValueDomain  {
 // This very closely matches ghidra's SymbolicPropogator: 
 // https://ghidra.re/ghidra_docs/api/ghidra/program/util/SymbolicPropogator.Value.html#getRelativeRegister()
 message ValueMapping {
-  Value target_value = 1;
+  Variable target_value = 1;
   ValueDomain curr_val = 2;
 }
 
@@ -183,7 +183,7 @@ enum HighLoc {
 
 message SymbolMapping {
   HighSymbol high_loc = 1;
-  Value low_loc = 2;
+  Variable low_loc = 2;
 }
 
 message HighSymbol {
@@ -253,8 +253,8 @@ message BlockContext {
   // the block
   repeated ValueMapping symvals = 1;
   
-  repeated Value live_at_entries = 2;
-  repeated Value live_at_exits = 3;
+  repeated Variable live_at_entries = 2;
+  repeated Variable live_at_exits = 3;
 
   // A low-level location representing
   // a high level location exactly

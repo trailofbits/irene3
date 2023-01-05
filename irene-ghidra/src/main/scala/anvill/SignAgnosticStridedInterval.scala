@@ -78,8 +78,8 @@ sealed abstract class SignAgnosticStridedInterval {
   * Unfortunatley the widening operation is presented in: "Signedness-Agnostic
   * Program Analysis: Precise Integer Bounds for Low-Level Code"
   *
-  * NOTE(Ian): this domain efines a pseudo-join operator meaning that there are
-  * infiniote ascending chains If these chains aren't flattened by a widening
+  * NOTE(Ian): this domain defines a pseudo-join operator meaning that there are
+  * infinite ascending chains, if these chains aren't flattened by a widening
   * operator when this domain is used we may not terminate
   */
 case class SASIValue(
