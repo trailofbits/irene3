@@ -50,13 +50,6 @@ class BasicBlockContextProducer(gfunc: Function) {
     liveness_info(block_addr)
   }
 
-  def variableToHighSymbol(v: Variable): HighSymbol = {
-    val loc = if (v.isInstanceOf[Parameter]) { HighLoc.HIGH_LOC_PARAM }
-    else { HighLoc.HIGH_LOC_PARAM }
-
-    HighSymbol(v.getName, loc)
-  }
-
   def getBlockContext(block_addr: Address): BlockContextSpec = {
     assert(!liveness_info.isEmpty)
     val stack_depths = produceSymvals(block_addr)
@@ -74,16 +67,7 @@ class BasicBlockContextProducer(gfunc: Function) {
         })
         .toSeq,
       live.live_before.toSeq,
-      live.live_after.toSeq,
-      gfunc
-        .getAllVariables()
-        .toSeq
-        .map(v =>
-          SymbolMapping(
-            Some(variableToHighSymbol(v)),
-            Some(ProgramSpecifier.specifyVariable(v, aliases))
-          )
-        )
+      live.live_after.toSeq
     )
   }
 }
