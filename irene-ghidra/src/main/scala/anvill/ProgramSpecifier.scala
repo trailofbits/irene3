@@ -522,17 +522,23 @@ object ProgramSpecifier {
         .toSeq
         .map(x => x.getName() -> specifyVariable(x, aliases))
         .toMap,
-      cfg.map((addr, _) =>
+      cfg.map((addr, cb) => {
+        val gaddr = func.getProgram
+          .getAddressFactory()
+          .getDefaultAddressSpace
+          .getAddress(addr)
         (
           addr,
           bb_context_prod.getBlockContext(
-            func.getProgram
-              .getAddressFactory()
-              .getDefaultAddressSpace
-              .getAddress(addr)
+            gaddr,
+            func
+              .getProgram()
+              .getListing()
+              .getInstructionBefore(gaddr.add(cb.size))
+              .getAddress()
           )
         )
-      ),
+      }),
       Some(getStackEffects(func, aliases)),
       Some(StackFrame(func.getStackFrame.getFrameSize))
     )
