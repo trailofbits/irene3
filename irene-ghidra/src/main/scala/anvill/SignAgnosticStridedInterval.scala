@@ -94,7 +94,7 @@ case class SASITop(val w: Int) extends SignAgnosticStridedInterval
 object SASIBot extends SignAgnosticStridedInterval
 
 object SignAgnosticStridedInterval
-    extends JoinSemiLatice[SignAgnosticStridedInterval] {
+    extends JoinSemiLattice[SignAgnosticStridedInterval] {
 
   override def tryCompare(
       x: SignAgnosticStridedInterval,

@@ -30,7 +30,7 @@ object DomValBot extends DomainValue
 object GlobalConst extends DomainValue
 object DomValTop extends DomainValue
 
-object DomainValue extends JoinSemiLatice[DomainValue] {
+object DomainValue extends JoinSemiLattice[DomainValue] {
 
   override def tryCompare(x: DomainValue, y: DomainValue): Option[Int] = {
     if lteq(x, y) && lteq(y, x) then Some(0)
@@ -74,8 +74,8 @@ type DomType = Map[ALoc, DomainValue]
 
 object Dom extends MappingDomain[ALoc, DomainValue](DomainValue)
 
-class MappingDomain[K, V](po: JoinSemiLatice[V])
-    extends JoinSemiLatice[Map[K, V]] {
+class MappingDomain[K, V](po: JoinSemiLattice[V])
+    extends JoinSemiLattice[Map[K, V]] {
 
   override def join(
       lhs: Map[K, V],
