@@ -8,6 +8,7 @@ import specification.specification.{BlockContext => BlockContextSpec}
 import specification.specification.{Register => RegSpec}
 import specification.specification.{Value => ValueSpec}
 import specification.specification.{Variable => VariableSpec}
+import specification.specification.{Parameter => ParamSpec}
 import specification.specification.TypeSpec
 import specification.specification.{ValueMapping => ValueMapSpec}
 import specification.specification.ValueDomain
@@ -35,13 +36,17 @@ class BasicBlockContextProducer(gfunc: Function) {
       .getBlockLiveness()
       .map((k, v) => (k.getFirstStartAddress(), v))
 
-  def produceSymvals(block_addr: Address): Map[Register, Int] = {
+  def produceSymvals(
+      block_addr: Address,
+      additional_displacement: Int
+  ): Map[Register, Int] = {
 
     val regs = gfunc.getProgram.getLanguage.getRegisters.asScala
 
     regs
       .map(r => (r, stack_depth_info.getRegDepth(block_addr, r)))
       .filter((_, dpth) => Function.INVALID_STACK_DEPTH_CHANGE != dpth)
+      .map((r, dpth) => (r, dpth + additional_displacement))
       .toMap
 
   }
@@ -50,14 +55,38 @@ class BasicBlockContextProducer(gfunc: Function) {
     liveness_info(block_addr)
   }
 
-  def getBlockContext(block_addr: Address): BlockContextSpec = {
+  def paramSpecToRegister(p: ParamSpec): Option[Register] = {
+    val vs = p.reprVar.get
+    if vs.values.length != 1 then { None }
+    else {
+      val v = vs.values(0)
+      v.innerValue.reg.flatMap(r =>
+        Option(gfunc.getProgram().getLanguage().getRegister(r.registerName))
+      )
+    }
+  }
+
+  def sdepths_to_filter(sdepths: Map[Register, Int]): ParamSpec => Boolean =
+    p => paramSpecToRegister(p).map(r => !sdepths.contains(r)).getOrElse(true)
+
+  def getBlockContext(
+      block_addr: Address,
+      last_insn_addr: Address
+  ): BlockContextSpec = {
     assert(!liveness_info.isEmpty)
-    val stack_depths = produceSymvals(block_addr)
+    val stack_depths_entry = produceSymvals(block_addr, 0)
+    val last_insn_disp = stack_depth_info.getInstructionStackDepthChange(
+      gfunc.getProgram().getListing().getInstructionAt(last_insn_addr)
+    )
+    val stack_depths_exit =
+      if last_insn_disp != Function.UNKNOWN_STACK_DEPTH_CHANGE then
+        produceSymvals(last_insn_addr, last_insn_disp)
+      else Map.empty
     val stack_reg = gfunc.getProgram.getCompilerSpec().getStackPointer()
     val live = this.liveness(block_addr)
 
     BlockContextSpec(
-      stack_depths
+      stack_depths_entry
         .map((reg, dpth) => {
           ValueMapSpec(
             Some(registerToVariable(reg)),
@@ -66,8 +95,8 @@ class BasicBlockContextProducer(gfunc: Function) {
 
         })
         .toSeq,
-      live.live_before.toSeq,
-      live.live_after.toSeq
+      live.live_before.filter(sdepths_to_filter(stack_depths_entry)).toSeq,
+      live.live_after.filter(sdepths_to_filter(stack_depths_exit)).toSeq
     )
   }
 }
