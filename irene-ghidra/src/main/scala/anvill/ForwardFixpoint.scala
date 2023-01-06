@@ -74,14 +74,14 @@ trait BlockTransferFunction[A]:
       next: A
   ): A
 
-trait JoinSemiLatice[A] extends PartialOrdering[A]:
+trait JoinSemiLattice[A] extends PartialOrdering[A]:
   def join(lhs: A, rhs: A): A
   val bot: A
 
 class ForwardIntraproceduralFixpoint[A](
     val control_flow_graph: Util.CFG,
     val transfer_function: BlockTransferFunction[A],
-    val lattice: JoinSemiLatice[A],
+    val lattice: JoinSemiLattice[A],
     val func: ghidra.program.model.listing.Function
 ) {
 
