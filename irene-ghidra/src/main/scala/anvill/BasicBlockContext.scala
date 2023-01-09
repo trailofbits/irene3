@@ -41,7 +41,9 @@ class BasicBlockContextProducer(gfunc: Function) {
       additional_displacement: Int
   ): Map[Register, Int] = {
 
-    val regs = gfunc.getProgram.getLanguage.getRegisters.asScala
+    val regs = gfunc.getProgram.getLanguage.getRegisters.asScala.filter(r =>
+      r.isBaseRegister()
+    )
 
     regs
       .map(r => (r, stack_depth_info.getRegDepth(block_addr, r)))
@@ -74,6 +76,7 @@ class BasicBlockContextProducer(gfunc: Function) {
       last_insn_addr: Address
   ): BlockContextSpec = {
     assert(!liveness_info.isEmpty)
+
     val stack_depths_entry = produceSymvals(block_addr, 0)
     val last_insn_disp = stack_depth_info.getInstructionStackDepthChange(
       gfunc.getProgram().getListing().getInstructionAt(last_insn_addr)
