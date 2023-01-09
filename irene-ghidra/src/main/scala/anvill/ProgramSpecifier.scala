@@ -298,14 +298,28 @@ object ProgramSpecifier {
     reg.getName().toUpperCase()
   }
 
-  def specifySingleValue(program: Program, vnode: Varnode): ValueSpec = {
+  def specifySingleValue(func: Function, vnode: Varnode): ValueSpec = {
+    val program = func.getProgram()
     val cspec = program.getCompilerSpec()
     val addr = vnode.getAddress()
+    val param_size = func.getStackFrame().getParameterSize()
     val innerValue: InnerValue = if (addr.isRegisterAddress()) {
       val reg = program.getRegister(addr, vnode.getSize())
       Reg(RegSpec(getRegisterName(reg)))
     } else if (addr.isStackAddress()) {
-      Mem(MemSpec(Some(getStackRegister(program)), addr.getOffset()))
+      // This offset is relative to where locals start, ie. 16[params]8[ret_addr]0[locals], the offset will be from the locals
+      // meanwhile stack affine relations are relative to the entire 0 of the frame so in this case -16. We want
+      // to normalize all stacks to include params and registers
+      Mem(
+        MemSpec(
+          Some(getStackRegister(program)),
+          addr.getOffset() - (func
+            .getStackFrame()
+            .getParameterOffset() + (if func.getStackFrame().growsNegative()
+                                     then (param_size)
+                                     else (-param_size)))
+        )
+      )
     } else {
       // TODO(frabert): Handle memory params
       throw new RuntimeException(
@@ -316,11 +330,14 @@ object ProgramSpecifier {
     ValueSpec(innerValue)
   }
 
-  def specifyStorage(var_storage: VariableStorage): Seq[ValueSpec] = {
+  def specifyStorage(
+      var_storage: VariableStorage,
+      func: Function
+  ): Seq[ValueSpec] = {
     var_storage
       .getVarnodes()
       .toSeq
-      .map(specifySingleValue(var_storage.getProgram(), _))
+      .map(specifySingleValue(func, _))
   }
 
   def specifyVariable(
@@ -328,7 +345,10 @@ object ProgramSpecifier {
       aliases: MutableMap[Long, Structure]
   ): VariableSpec = {
     val type_spec = getTypeSpec(tvar.getDataType(), aliases);
-    VariableSpec(specifyStorage(tvar.getVariableStorage()), type_spec)
+    VariableSpec(
+      specifyStorage(tvar.getVariableStorage(), tvar.getFunction()),
+      type_spec
+    )
   }
 
   def specifyParam(
@@ -884,7 +904,7 @@ object ProgramSpecifier {
     val ret =
       Some(
         VariableSpec(
-          specifyStorage(ret_storage),
+          specifyStorage(ret_storage, called_function),
           getTypeSpec(ret_type, aliases)
         )
       )
@@ -900,7 +920,7 @@ object ProgramSpecifier {
             Option(param_def.getName()),
             Some(
               VariableSpec(
-                specifyStorage(storage),
+                specifyStorage(storage, called_function),
                 getTypeSpec(param_def.getDataType(), aliases)
               )
             )
