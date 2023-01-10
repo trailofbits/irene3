@@ -128,10 +128,31 @@ class LivenessAnalysis(
     (live_after -- kill(n)) ++ gen(n)
   }
 
+  def get_initial_after_liveness(blk: CodeBlock): Set[ParamSpec] = {
+    if (blk.getFlowType().isTerminal()) {
+      func
+        .getCallingConvention()
+        .getUnaffectedList()
+        .filter(vnode => vnode.isRegister())
+        .map(r =>
+          registerToParam(
+            func
+              .getProgram()
+              .getLanguage()
+              .getRegister(r.getAddress(), r.getSize())
+          )
+        )
+        .toSet
+    } else {
+      Set.empty
+    }
+  }
+
   def transfer_block(
       blk: CodeBlock,
       live_after: Set[ParamSpec]
   ): Set[ParamSpec] = {
+
     // get instructions in reverse then iterate over pcode in reverse
     val insns_reverse: ju.Iterator[Instruction] =
       func.getProgram().getListing().getInstructions(blk, false)
@@ -151,7 +172,7 @@ class LivenessAnalysis(
   ): Set[ParamSpec] = {
     val regs: Seq[Set[ParamSpec]] = control_flow_graph
       .get(n)
-      .outNeighbors
+      .diSuccessors
       .toSeq
       .map(out => curr_liveness.get(out.toOuter).getOrElse(Set.empty))
 
@@ -160,7 +181,6 @@ class LivenessAnalysis(
 
   def getBlockLiveness(): Map[CodeBlock, BlockLiveness] = {
     val analysisRes = this.analyze()
-
     analysisRes.toMap.map((blk: CodeBlock, liveness_after: Set[ParamSpec]) =>
       (blk, BlockLiveness(transfer_block(blk, liveness_after), liveness_after))
     )
@@ -168,25 +188,28 @@ class LivenessAnalysis(
 
   def analyze(): mutable.Map[CodeBlock, Set[ParamSpec]] = {
     val res: mutable.Map[CodeBlock, Set[ParamSpec]] = mutable.Map.from(
-      this.control_flow_graph.nodes.map(nd => (nd.toOuter, Set.empty))
+      this.control_flow_graph.nodes.map(nd =>
+        (nd.toOuter, get_initial_after_liveness(nd.toOuter))
+      )
     )
 
     val worklist: Stack[CodeBlock] = Stack.from(
       this.control_flow_graph.nodes
-        .filter(nd => nd.outNeighbors.isEmpty)
+        .filter(nd => !nd.outNeighbors.isEmpty)
         .map(nd => nd.toOuter)
     )
 
     while (!worklist.isEmpty) {
       val curr_block = worklist.pop()
-      val curr_block_value = res.getOrElse(curr_block, Set.empty)
+      val curr_block_value =
+        res.getOrElse(curr_block, get_initial_after_liveness(curr_block))
 
       val input = collectLiveOnExit(curr_block, res)
       val live_before_block = transfer_block(curr_block, input)
       res.addOne((curr_block, live_before_block))
       if (live_before_block != curr_block_value) {
         for (
-          in_neighbor <- this.control_flow_graph.get(curr_block).inNeighbors
+          in_neighbor <- this.control_flow_graph.get(curr_block).diPredecessors
         ) {
           worklist.push(in_neighbor.toOuter)
         }
