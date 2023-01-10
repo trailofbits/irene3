@@ -468,7 +468,17 @@ object ProgramSpecifier {
       Some(
         ReturnStackPointer(
           Some(RegSpec(getStackRegister(func.getProgram()))),
-          Option(func.getCallingConvention()).map(x => x.getStackshift())
+          Some(
+            Option(func.getCallingConvention())
+              .getOrElse(
+                func
+                  .getProgram()
+                  .getLanguage()
+                  .getDefaultCompilerSpec()
+                  .getDefaultCallingConvention()
+              )
+              .getStackshift()
+          )
         )
       )
     )
