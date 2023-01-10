@@ -212,8 +212,6 @@ object ProgramSpecifier {
     )
   }
 
-  def specifyBlock(func: Function, block: Address) = {}
-
   def getCallingConvention(func: Function): CallingConvention = {
     val conv = func.getCallingConvention()
 
@@ -279,7 +277,8 @@ object ProgramSpecifier {
           incoming.toSeq,
           outgoing.toSeq,
           // TODO(Ian): Seems like blocks can technically allow non contigous regions, wont be correct for that
-          (block.getMaxAddress.getOffset() - addr.getOffset()).toInt,
+          // Fix fencepost error
+          (block.getMaxAddress.getOffset() - addr.getOffset()).toInt + 1,
           specifyContextAssignments(
             prog,
             addr
