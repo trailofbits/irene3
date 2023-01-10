@@ -34,4 +34,24 @@ class TestLiveness extends BaseProgramLoadTest {
         .toSet
     )
   }
+
+  @Test def testChal3SetPower(): Unit = {
+    println("working on 00401920")
+    val coll_prog =
+      loadProgram(proj, "binaries/challenge-3_amd64_program_c.elf")
+    val func = firstFunctionNamed(coll_prog, "set_power")
+    val bb_cont = BasicBlockContextProducer(func)
+    val live_info =
+      bb_cont.liveness(coll_prog.getAddressFactory().getAddress("00401920"))
+
+    assertEquals(
+      Set("RBX", "RSP", "RBP", "R12", "R13", "R14", "R15"),
+      live_info.live_after
+        .filter(p => p.reprVar.get.values(0).innerValue.isReg)
+        .map(p => p.reprVar.get.values(0).innerValue.reg.get)
+        .map(r => r.registerName)
+        .toSet
+    )
+  }
+
 }

@@ -9,6 +9,7 @@ vendor/cmake.tar.gz
 vendor/cxx-common.tar.xz
 vendor/vcpkg_*
 vendor/llvm.sh
+*.dylib
 .cache
 .venv
 build

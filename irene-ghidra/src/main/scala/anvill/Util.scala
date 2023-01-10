@@ -54,18 +54,20 @@ object Util {
 
   type CFG = Graph[CodeBlock, DiEdge]
 
-  def collectRefs(blk: CodeBlockReferenceIterator): List[CodeBlock] = {
-    val buff: ListBuffer[CodeBlock] = ListBuffer()
+  def collectRefs(blk: CodeBlockReferenceIterator): List[CodeBlockReference] = {
+    val buff: ListBuffer[CodeBlockReference] = ListBuffer()
     while (blk.hasNext()) {
-      buff += blk.next().getDestinationBlock()
+      buff += blk.next()
     }
     buff.toList
   }
 
-  def blkToEdges(blk: CodeBlock): Seq[DiEdge[CodeBlock]] = {
+  def blkToEdges(func: Function, blk: CodeBlock): Seq[DiEdge[CodeBlock]] = {
     val child_blks =
-      collectRefs(blk.getDestinations(TaskMonitor.DUMMY))
-    child_blks.map(c => DiEdge((blk, c)))
+      collectRefs(blk.getDestinations(TaskMonitor.DUMMY)).filter(ref =>
+        func.getBody().contains(ref.getDestinationAddress())
+      )
+    child_blks.map(c => DiEdge((blk, c.getDestinationBlock())))
   }
 
   def getCfgAsGraph(func: Function): CFG = {
@@ -77,7 +79,7 @@ object Util {
 
     while (blks.hasNext()) {
       val curr = blks.next()
-      edge_buff.addAll(blkToEdges(curr))
+      edge_buff.addAll(blkToEdges(func, curr))
       nodes += curr
     }
 

@@ -16,6 +16,7 @@ import specification.specification.{Parameter => ParamSpec}
 import specification.specification.Value.{InnerValue => ValueInner}
 import ghidra.program.model.data.Structure
 import Util.registerToVariable
+import scala.collection.immutable.Set
 
 import ghidra.program.model.listing.Variable
 import ProgramSpecifier.getRegisterName
