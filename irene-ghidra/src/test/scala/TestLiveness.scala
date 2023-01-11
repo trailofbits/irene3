@@ -44,6 +44,22 @@ class TestLiveness extends BaseProgramLoadTest {
     val live_info =
       bb_cont.liveness(coll_prog.getAddressFactory().getAddress("00401920"))
 
+    println(
+      live_info.live_before.toSeq
+        .groupBy(p => p.name.get)
+        .map((nm, l) => (nm, l.length))
+        .toMap
+    )
+
+    live_info.live_before.toSeq
+      .filter(p => p.name.get == "p")
+      .foreach(println);
+
+    assertEquals(
+      live_info.live_before.toSeq.map(p => p.name.get).toSet.toSeq.length,
+      live_info.live_before.toSeq.length
+    )
+
     assertEquals(
       Set("RBX", "RSP", "RBP", "R12", "R13", "R14", "R15"),
       live_info.live_after

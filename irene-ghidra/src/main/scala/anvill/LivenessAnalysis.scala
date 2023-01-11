@@ -51,7 +51,7 @@ class LivenessAnalysis(
   def registerToParam(r: Register): ParamSpec = {
     register_to_variable
       .get(r)
-      .map(v => specifyVariable(v, aliases))
+      .map(v => specifyVariable(v))
       .getOrElse(
         ParamSpec(Some(getRegisterName(r)), Some(registerToVariable(r)))
       )
@@ -59,8 +59,7 @@ class LivenessAnalysis(
   }
 
   def specifyVariable(
-      v: Variable,
-      aliases: scala.collection.mutable.Map[Long, Structure]
+      v: Variable
   ): ParamSpec = {
     ParamSpec(
       Some(v.getName()),
@@ -78,7 +77,7 @@ class LivenessAnalysis(
         .toSeq
         .flatMap(v =>
           if (v.isStackVariable()) then {
-            Seq(specifyVariable(v, aliases))
+            Seq(specifyVariable(v))
           } else {
             Seq.empty
           }
