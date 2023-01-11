@@ -12,7 +12,6 @@ import specification.specification.{Parameter => ParamSpec}
 import specification.specification.TypeSpec
 import specification.specification.{ValueMapping => ValueMapSpec}
 import specification.specification.ValueDomain
-import specification.specification.OffsetDomain
 import ghidra.util.Msg
 import ghidra.program.model.lang.Register
 import Util.registerToVariable
