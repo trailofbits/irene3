@@ -20,6 +20,8 @@ import scala.collection.immutable.Set
 
 import ghidra.program.model.listing.Variable
 import ProgramSpecifier.getRegisterName
+import ghidra.program.model.pcode.Varnode
+import ghidra.program.model.lang.Register
 
 case class BlockLiveness(
     val live_before: Set[ParamSpec],
@@ -91,6 +93,56 @@ class LivenessAnalysis(
     Set.empty
   }
 
+  def getUniqueCallee(
+      insn: Instruction
+  ): Option[ghidra.program.model.listing.Function] = {
+    val call_refs =
+      insn.getReferencesFrom().filter(p => p.getReferenceType().isCall())
+
+    if (call_refs.length != 1) {
+      return None
+    }
+
+    Option(
+      func
+        .getProgram()
+        .getFunctionManager()
+        .getFunctionAt(call_refs(0).getToAddress())
+    )
+  }
+
+  def get_called_sig(insn: Instruction): Seq[Variable] = {
+    getUniqueCallee(insn).map(f => f.getParameters().toSeq).getOrElse(Seq.empty)
+  }
+
+  def get_live_reigsters(vars: Seq[Variable]): Set[Register] = {
+    vars.flatMap(v => v.getRegisters().asScala).toSet
+  }
+
+  def kill_call_live(insn: Instruction, op: PcodeOp): Set[ParamSpec] = {
+    if (op.getOpcode() == PcodeOp.CALL) {
+      getUniqueCallee(insn)
+        .flatMap(f => Option(f.getReturn()))
+        .map(r => r.getRegisters().asScala)
+        .getOrElse(Seq.empty)
+        .map(registerToParam)
+        .toSet
+    } else {
+      Set.empty
+    }
+  }
+
+  def gen_call_live(insn: Instruction, op: PcodeOp): Set[ParamSpec] = {
+    if (op.getOpcode() == PcodeOp.CALL) {
+      // TODO(Ian): this assumes that we arent going to build up a stack parameter in a calling block
+      // this requires handling stack extensions, which we dont handle... this could come up with something like int a; if (x<0) a= b else a = c; call(a)
+      // A reasonable thing for a compile to do would be to either push b or c to the stack in each of those blocks.
+      get_live_reigsters(get_called_sig(insn)).map(registerToParam).toSet
+    } else {
+      Set.empty
+    }
+  }
+
   def gen_registers(op: PcodeOp): Set[ParamSpec] = {
     val read_regs = op
       .getInputs()
@@ -116,16 +168,20 @@ class LivenessAnalysis(
       .getOrElse(Set.empty)
   }
 
-  def gen(op: PcodeOp): Set[ParamSpec] = {
-    gen_stack_vars(op) ++ gen_registers(op)
+  def gen(op: PcodeOp, insn: Instruction): Set[ParamSpec] = {
+    gen_call_live(insn, op) ++ gen_stack_vars(op) ++ gen_registers(op)
   }
 
-  def kill(op: PcodeOp): Set[ParamSpec] = {
-    kill_registers(op) ++ kill_stack_vars(op)
+  def kill(op: PcodeOp, insn: Instruction): Set[ParamSpec] = {
+    kill_registers(op) ++ kill_stack_vars(op) ++ kill_call_live(insn, op)
   }
 
-  def transfer(n: PcodeOp, live_after: Set[ParamSpec]): Set[ParamSpec] = {
-    (live_after -- kill(n)) ++ gen(n)
+  def transfer(
+      insn: Instruction,
+      n: PcodeOp,
+      live_after: Set[ParamSpec]
+  ): Set[ParamSpec] = {
+    (live_after -- kill(n, insn)) ++ gen(n, insn)
   }
 
   def get_initial_after_liveness(blk: CodeBlock): Set[ParamSpec] = {
@@ -161,7 +217,7 @@ class LivenessAnalysis(
         curr_insn
           .getPcode()
           .foldRight(curr_liveness)((pcode, liveness) =>
-            transfer(pcode, liveness)
+            transfer(curr_insn, pcode, liveness)
           )
     )
   }
