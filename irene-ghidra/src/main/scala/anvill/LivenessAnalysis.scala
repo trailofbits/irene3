@@ -116,7 +116,11 @@ class LivenessAnalysis(
   }
 
   def get_live_reigsters(vars: Seq[Variable]): Set[Register] = {
-    vars.flatMap(v => v.getRegisters().asScala).toSet
+    vars
+      .flatMap(v =>
+        Option(v.getRegisters()).map(rs => rs.asScala).getOrElse(Seq.empty)
+      )
+      .toSet
   }
 
   def kill_call_live(insn: Instruction, op: PcodeOp): Set[ParamSpec] = {
@@ -148,7 +152,7 @@ class LivenessAnalysis(
       .getInputs()
       .map(vnode =>
         Option(lang.getRegister(vnode.getAddress(), vnode.getSize())).map(reg =>
-          reg.getBaseRegister()
+          reg
         )
       )
 
@@ -164,8 +168,14 @@ class LivenessAnalysis(
       .flatMap(vnode =>
         Option(lang.getRegister(vnode.getAddress(), vnode.getSize()))
       )
-      .map(nd => Set(registerToParam(nd)))
+      .map(r =>
+        // TODO(Ian): do this more effeciently somehow
+        (Seq(r) ++ r.getChildRegisters().asScala)
+          .map(r => registerToParam(r))
+          .toSet
+      )
       .getOrElse(Set.empty)
+
   }
 
   def gen(op: PcodeOp, insn: Instruction): Set[ParamSpec] = {
@@ -226,6 +236,10 @@ class LivenessAnalysis(
       n: CodeBlock,
       curr_liveness: scala.collection.Map[CodeBlock, Set[ParamSpec]]
   ): Set[ParamSpec] = {
+    if (control_flow_graph.get(n).diSuccessors.isEmpty) {
+      return get_initial_after_liveness(n)
+    }
+
     val regs: Seq[Set[ParamSpec]] = control_flow_graph
       .get(n)
       .diSuccessors
@@ -237,36 +251,37 @@ class LivenessAnalysis(
 
   def getBlockLiveness(): Map[CodeBlock, BlockLiveness] = {
     val analysisRes = this.analyze()
-    analysisRes.toMap.map((blk: CodeBlock, liveness_after: Set[ParamSpec]) =>
-      (blk, BlockLiveness(transfer_block(blk, liveness_after), liveness_after))
-    )
+    analysisRes.toMap.map((blk: CodeBlock, _) => {
+      val live_on_exit = collectLiveOnExit(blk, analysisRes)
+      (blk, BlockLiveness(transfer_block(blk, live_on_exit), live_on_exit))
+    })
   }
 
   def analyze(): mutable.Map[CodeBlock, Set[ParamSpec]] = {
     val res: mutable.Map[CodeBlock, Set[ParamSpec]] = mutable.Map.from(
-      this.control_flow_graph.nodes.map(nd =>
-        (nd.toOuter, get_initial_after_liveness(nd.toOuter))
-      )
+      this.control_flow_graph.nodes.map(nd => (nd.toOuter, Set.empty))
     )
 
     val worklist: Stack[CodeBlock] = Stack.from(
       this.control_flow_graph.nodes
-        .filter(nd => !nd.outNeighbors.isEmpty)
         .map(nd => nd.toOuter)
     )
 
     while (!worklist.isEmpty) {
       val curr_block = worklist.pop()
       val curr_block_value =
-        res.getOrElse(curr_block, get_initial_after_liveness(curr_block))
+        res.getOrElse(curr_block, Set.empty)
 
       val input = collectLiveOnExit(curr_block, res)
+
       val live_before_block = transfer_block(curr_block, input)
+
       res.addOne((curr_block, live_before_block))
       if (live_before_block != curr_block_value) {
         for (
           in_neighbor <- this.control_flow_graph.get(curr_block).diPredecessors
         ) {
+
           worklist.push(in_neighbor.toOuter)
         }
       }
