@@ -171,15 +171,11 @@ object ProgramSpecifier {
             )
           )
         }
-        case struct: Structure =>
+        case struct: Structure => {
           val id = struct.getUniversalID().getValue()
-          aliases
-            .get(id)
-            .map(_ => TypeSpec(Type.Alias(id)))
-            .orElse({
-              aliases += (id -> struct)
-              getStructSpec(struct, aliases)
-            })
+          aliases.put(id, struct);
+          Some(TypeSpec(Type.Alias(id)))
+        }
         case str: AbstractStringDataType => {
           Msg.debug(this, "has string");
           Some(
