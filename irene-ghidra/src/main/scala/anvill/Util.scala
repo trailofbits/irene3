@@ -70,6 +70,16 @@ object Util {
     child_blks.map(c => DiEdge((blk, c.getDestinationBlock())))
   }
 
+  def getEdgeSet(cfg: CFG): Set[(Long, Long)] = {
+    cfg.edges
+      .map(e =>
+        (
+          e.source.toOuter.getFirstStartAddress().getOffset(),
+          e.target.toOuter.getFirstStartAddress().getOffset()
+        )
+      )
+      .toSet
+  }
   def getCfgAsGraph(func: Function): CFG = {
     val model = BasicBlockModel(func.getProgram)
     val blks = model.getCodeBlocksContaining(func.getBody(), TaskMonitor.DUMMY)
@@ -85,4 +95,16 @@ object Util {
 
     Graph.from(nodes.toList, edge_buff.toList)
   }
+
+  def getLiveRegisters(
+      ps: Set[specification.specification.Parameter]
+  ): Set[specification.specification.Register] = {
+
+    ps.flatMap(p =>
+      p.reprVar
+        .map(v => v.values.flatMap(v => v.innerValue.reg))
+        .getOrElse(Seq.empty)
+    )
+  }
+
 }
