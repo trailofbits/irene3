@@ -42,7 +42,7 @@ namespace irene3
             }
 
             const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
-            auto available_vars                        = block_ctx.GetAvailableVariables();
+            auto available_vars                        = block_ctx.LiveParamsAtEntryAndExit();
             auto num_available_vars                    = available_vars.size();
 
             auto first_var_idx = func->arg_size() - num_available_vars;
@@ -50,7 +50,7 @@ namespace irene3
                 return {};
             }
 
-            auto& param_spec = available_vars[arg.getArgNo() - first_var_idx];
+            auto& param_spec = available_vars[arg.getArgNo() - first_var_idx].param;
 
             auto type = type_decoder.Decode(ctx, spec, param_spec.spec_type, arg.getType());
             return type;
