@@ -150,12 +150,18 @@ int main(int argc, char *argv[]) {
         patch["patch-code"] = code;
 
         llvm::json::Array patch_vars;
-        for (auto &var_spec : block.GetAvailableVariables()) {
+        for (auto &bb_param : block.LiveParamsAtEntryAndExit()) {
+            auto var_spec = bb_param.param;
             llvm::json::Object var;
             var["name"] = var_spec.name;
             if (var_spec.reg) {
-                var["at-entry"] = var_spec.reg->name;
-                var["at-exit"]  = var_spec.reg->name;
+                if (bb_param.live_at_entry) {
+                    var["at-entry"] = var_spec.reg->name;
+                }
+
+                if (bb_param.live_at_exit) {
+                    var["at-exit"] = var_spec.reg->name;
+                }
             } else if (var_spec.mem_reg) {
                 llvm::json::Object memory;
                 memory["frame-pointer"] = var_spec.mem_reg->name;
