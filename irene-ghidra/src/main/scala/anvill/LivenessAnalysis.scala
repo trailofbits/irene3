@@ -127,7 +127,7 @@ class LivenessAnalysis(
     if (op.getOpcode() == PcodeOp.CALL) {
       getUniqueCallee(insn)
         .flatMap(f => Option(f.getReturn()))
-        .map(r => r.getRegisters().asScala)
+        .flatMap(r => Option(r.getRegisters()).map(r => r.asScala))
         .getOrElse(Seq.empty)
         .map(registerToParam)
         .toSet
@@ -196,9 +196,12 @@ class LivenessAnalysis(
 
   def get_initial_after_liveness(blk: CodeBlock): Set[ParamSpec] = {
     if (blk.getFlowType().isTerminal()) {
-      func
-        .getCallingConvention()
-        .getUnaffectedList()
+      Option(
+        func
+          .getCallingConvention()
+      ).getOrElse(
+        func.getProgram().getCompilerSpec().getDefaultCallingConvention()
+      ).getUnaffectedList()
         .filter(vnode => vnode.isRegister())
         .map(r =>
           registerToParam(
