@@ -415,6 +415,14 @@ object ProgramSpecifier {
       )
     }
 
+    if (procstr.contains("PowerPC")) {
+      return Some(
+        ValueSpec(
+          Reg(RegSpec(getRegisterName(cspec.getLanguage().getRegister("lr"))))
+        )
+      )
+    }
+
     // TODO(frabert): All of this should be deleted / redone as soon as we hear back from
     //                https://github.com/NationalSecurityAgency/ghidra/issues/4611
     if (!cspec.isInstanceOf[BasicCompilerSpec]) {
@@ -705,6 +713,8 @@ object ProgramSpecifier {
       } else {
         ARCH_SPARC64
       }
+    } else if (procName.indexOf("powerpc") >= 0) {
+      ARCH_PPC
     } else {
       ARCH_UNSPECIFIED
     }
