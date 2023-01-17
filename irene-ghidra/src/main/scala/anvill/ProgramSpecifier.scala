@@ -307,17 +307,10 @@ object ProgramSpecifier {
       val reg = program.getRegister(addr, vnode.getSize())
       Reg(RegSpec(getRegisterName(reg)))
     } else if (addr.isStackAddress()) {
-      // This offset is relative to where locals start, ie. 16[params]8[ret_addr]0[locals], the offset will be from the locals
-      // meanwhile stack affine relations are relative to the entire 0 of the frame so in this case -16. We want
-      // to normalize all stacks to include params and registers
       Mem(
         MemSpec(
           Some(getStackRegister(program)),
-          addr.getOffset() - (func
-            .getStackFrame()
-            .getParameterOffset() + (if func.getStackFrame().growsNegative()
-                                     then (param_size)
-                                     else (-param_size)))
+          addr.getOffset()
         )
       )
     } else {
@@ -340,10 +333,14 @@ object ProgramSpecifier {
       .map(specifySingleValue(func, _))
   }
 
+  def isVariableComposedOfHashVarnodes(tvar: Variable): Boolean =
+    tvar.getVariableStorage().getVarnodes().forall(v => v.isHash())
+
   def specifyVariable(
       tvar: Variable,
       aliases: MutableMap[Long, TypeSpec]
   ): VariableSpec = {
+
     val type_spec = getTypeSpec(tvar.getDataType(), aliases);
     VariableSpec(
       specifyStorage(tvar.getVariableStorage(), tvar.getFunction()),
@@ -550,6 +547,9 @@ object ProgramSpecifier {
       func
         .getLocalVariables()
         .toSeq
+        // We assume that hashed varnodes are either covered by live register analysis
+        // Or live stack location analysis
+        .filter(isVariableComposedOfHashVarnodes)
         .map(x => x.getName() -> specifyVariable(x, aliases))
         .toMap,
       cfg.map((addr, cb) => {
@@ -570,7 +570,13 @@ object ProgramSpecifier {
         )
       }),
       Some(getStackEffects(func, aliases)),
-      Some(StackFrame(func.getStackFrame.getFrameSize))
+      Some(
+        StackFrame(
+          func.getStackFrame.getFrameSize,
+          func.getStackFrame.getReturnAddressOffset,
+          func.getStackFrame.getParameterSize
+        )
+      )
     )
   }
 
