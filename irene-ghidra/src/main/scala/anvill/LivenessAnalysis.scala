@@ -25,6 +25,7 @@ import ghidra.program.model.pcode.Varnode
 import ghidra.program.model.lang.Register
 import specification.specification.TypeSpec
 import ghidra.util.task.TaskMonitor
+import ghidra.util.Msg
 
 case class BlockLiveness(
     val live_before: Set[ParamSpec],
@@ -265,9 +266,17 @@ class LivenessAnalysis(
     }
   }
 
+  def validDepth(dpth: Int): Boolean =
+    dpth != ghidra.program.model.listing.Function.UNKNOWN_STACK_DEPTH_CHANGE
+      && dpth != ghidra.program.model.listing.Function.INVALID_STACK_DEPTH_CHANGE
+
   def getDepthBeyondLocals(cb: CodeBlock): Int = {
 
     val curr_depth = cdi.getDepth(cb.getFirstStartAddress())
+    if (!validDepth(curr_depth)) {
+      return 0;
+    }
+
     val stack = func.getStackFrame()
     val max_depth = getNextLocalDepth()
     if (
@@ -283,6 +292,7 @@ class LivenessAnalysis(
   // Determines based on stack info, a single variable representing the space beyond
   // the local variables in the stack that may currently have values
   def injectLiveLocationsAtEntry(cb: CodeBlock): Option[ParamSpec] = {
+    Msg.info(this, getNextLocalDepth());
     val overflow_size = getDepthBeyondLocals(cb)
     if (overflow_size > 0) {
       Some(
@@ -297,7 +307,9 @@ class LivenessAnalysis(
                       Some(
                         ProgramSpecifier.getStackRegister(func.getProgram())
                       ),
-                      getNextLocalDepth()
+                      if (func.getStackFrame().growsNegative()) {
+                        getNextLocalDepth() - overflow_size
+                      } else { getNextLocalDepth() }
                     )
                   )
                 )
@@ -312,10 +324,11 @@ class LivenessAnalysis(
     }
   }
 
-  def collectInjectLiveOnExit(blk: CodeBlock): Option[ParamSpec] = {
-    control_flow_graph
+  def collectInjectLiveOnEntryExit(blk: CodeBlock): Option[ParamSpec] = {
+    (control_flow_graph
       .get(blk)
       .diSuccessors
+      .map(nd => nd.toOuter) + blk)
       .maxByOption(blk => cdi.getDepth(blk.getFirstStartAddress()))(
         if (func.getStackFrame().growsNegative()) then Ordering[Int].reverse
         else Ordering[Int]
@@ -323,16 +336,30 @@ class LivenessAnalysis(
       .flatMap(nd => injectLiveLocationsAtEntry(nd))
   }
 
+  def hasStackBeyondLocalsAtEntry(blk: CodeBlock): Boolean = {
+    getDepthBeyondLocals(blk) > 0
+  }
+
+  def hasStackBeyondLocalsAtExit(blk: CodeBlock): Boolean = control_flow_graph
+    .get(blk)
+    .diSuccessors
+    .exists(nd => getDepthBeyondLocals(nd.toOuter) > 0)
+
   def getBlockLiveness(): Map[CodeBlock, BlockLiveness] = {
     val analysisRes = this.analyze()
     analysisRes.toMap.map((blk: CodeBlock, _) => {
+      val live_past_stack = collectInjectLiveOnEntryExit(blk)
       val live_on_exit = collectLiveOnExit(blk, analysisRes)
       val live_on_entry = transfer_block(blk, live_on_exit)
       (
         blk,
         BlockLiveness(
-          live_on_entry ++ injectLiveLocationsAtEntry(blk),
-          live_on_exit ++ collectInjectLiveOnExit(blk)
+          live_on_entry ++ (if (hasStackBeyondLocalsAtEntry(blk)) then
+                              live_past_stack
+                            else Set()),
+          live_on_exit ++ (if (hasStackBeyondLocalsAtExit(blk)) then
+                             live_past_stack
+                           else Set())
         )
       )
     })
