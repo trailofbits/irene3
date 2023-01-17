@@ -10,6 +10,7 @@ import ghidra.program.model.listing.Instruction
 import collection.JavaConverters._
 import ghidra.app.cmd.function.CallDepthChangeInfo
 import specification.specification.{Value => ValueSpec}
+import specification.specification.{Memory => MemSpec}
 import specification.specification.{Register => RegSpec}
 import specification.specification.{Variable => VarSpec}
 import specification.specification.{Parameter => ParamSpec}
@@ -23,6 +24,7 @@ import ProgramSpecifier.getRegisterName
 import ghidra.program.model.pcode.Varnode
 import ghidra.program.model.lang.Register
 import specification.specification.TypeSpec
+import ghidra.util.task.TaskMonitor
 
 case class BlockLiveness(
     val live_before: Set[ParamSpec],
@@ -43,7 +45,7 @@ class LivenessAnalysis(
 ) {
 
   val lang = func.getProgram().getLanguage()
-
+  val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
   val register_to_variable: Map[Register, Variable] =
     func
       .getAllVariables()
@@ -253,11 +255,86 @@ class LivenessAnalysis(
     regs.fold(Set.empty)((x: Set[ParamSpec], y: Set[ParamSpec]) => x.union(y))
   }
 
+  def getNextLocalDepth(): Int = {
+    val stack = func.getStackFrame()
+    if (stack.growsNegative()) {
+      // shift by the return address location so we only include the negative portion
+      return (-stack.getLocalSize()) + stack.getParameterOffset()
+    } else {
+      return stack.getLocalSize()
+    }
+  }
+
+  def getDepthBeyondLocals(cb: CodeBlock): Int = {
+
+    val curr_depth = cdi.getDepth(cb.getFirstStartAddress())
+    val stack = func.getStackFrame()
+    val max_depth = getNextLocalDepth()
+    if (
+      (stack.growsNegative() && curr_depth < max_depth) || (!stack
+        .growsNegative() && curr_depth > max_depth)
+    ) {
+      (curr_depth - max_depth).abs
+    } else {
+      0
+    }
+  }
+
+  // Determines based on stack info, a single variable representing the space beyond
+  // the local variables in the stack that may currently have values
+  def injectLiveLocationsAtEntry(cb: CodeBlock): Option[ParamSpec] = {
+    val overflow_size = getDepthBeyondLocals(cb)
+    if (overflow_size > 0) {
+      Some(
+        ParamSpec(
+          Some("overflow_stack"),
+          Some(
+            VarSpec(
+              Seq(
+                ValueSpec(
+                  ValueInner.Mem(
+                    MemSpec(
+                      Some(
+                        ProgramSpecifier.getStackRegister(func.getProgram())
+                      ),
+                      getNextLocalDepth()
+                    )
+                  )
+                )
+              ),
+              Some(Util.sizeToType(overflow_size))
+            )
+          )
+        )
+      )
+    } else {
+      None
+    }
+  }
+
+  def collectInjectLiveOnExit(blk: CodeBlock): Option[ParamSpec] = {
+    control_flow_graph
+      .get(blk)
+      .diSuccessors
+      .maxByOption(blk => cdi.getDepth(blk.getFirstStartAddress()))(
+        if (func.getStackFrame().growsNegative()) then Ordering[Int].reverse
+        else Ordering[Int]
+      )
+      .flatMap(nd => injectLiveLocationsAtEntry(nd))
+  }
+
   def getBlockLiveness(): Map[CodeBlock, BlockLiveness] = {
     val analysisRes = this.analyze()
     analysisRes.toMap.map((blk: CodeBlock, _) => {
       val live_on_exit = collectLiveOnExit(blk, analysisRes)
-      (blk, BlockLiveness(transfer_block(blk, live_on_exit), live_on_exit))
+      val live_on_entry = transfer_block(blk, live_on_exit)
+      (
+        blk,
+        BlockLiveness(
+          live_on_entry ++ injectLiveLocationsAtEntry(blk),
+          live_on_exit ++ collectInjectLiveOnExit(blk)
+        )
+      )
     })
   }
 
