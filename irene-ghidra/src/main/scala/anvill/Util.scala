@@ -25,19 +25,21 @@ import specification.specification.TypeSpec.Type
 import specification.specification.BaseType.BT_U8
 object Util {
 
+  def sizeToArray(sz: Int): TypeSpec = {
+    TypeSpec(
+      Type.Array(
+        TypeSpec.ArrayType(
+          Some(TypeSpec(Type.Base(BT_U8))),
+          sz
+        )
+      )
+    )
+  }
+
   def sizeToType(sz: Int): TypeSpec = {
     ProgramSpecifier.integerTypes
       .get((sz, false))
-      .getOrElse(
-        TypeSpec(
-          Type.Array(
-            TypeSpec.ArrayType(
-              Some(TypeSpec(Type.Base(BT_U8))),
-              sz
-            )
-          )
-        )
-      )
+      .getOrElse(sizeToArray(sz))
   }
 
   // This isnt right... we need a better notion of variables, we want to create variables for live locations... but what's the type?

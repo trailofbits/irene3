@@ -314,7 +314,7 @@ class LivenessAnalysis(
                   )
                 )
               ),
-              Some(Util.sizeToType(overflow_size))
+              Some(Util.sizeToArray(overflow_size))
             )
           )
         )
