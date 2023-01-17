@@ -549,7 +549,7 @@ object ProgramSpecifier {
         .toSeq
         // We assume that hashed varnodes are either covered by live register analysis
         // Or live stack location analysis
-        .filter(isVariableComposedOfHashVarnodes)
+        .filter(x => !isVariableComposedOfHashVarnodes(x))
         .map(x => x.getName() -> specifyVariable(x, aliases))
         .toMap,
       cfg.map((addr, cb) => {
