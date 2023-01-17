@@ -101,6 +101,9 @@ import java.util.Objects
 import ghidra.program.model.data.AbstractStringDataType
 import specification.specification.StackFrame
 
+def pair[A, B](ma: Option[A], mb: Option[B]): Option[(A, B)] =
+  ma.flatMap(a => mb.map(b => (a, b)))
+
 object ProgramSpecifier {
   val integerTypes = Map(
     (1, false) -> TypeSpec(Type.Base(BT_U8)),
@@ -127,7 +130,7 @@ object ProgramSpecifier {
 
   def getStructSpec(
       struct: Structure,
-      aliases: MutableMap[Long, Structure]
+      aliases: MutableMap[Long, TypeSpec]
   ): Option[TypeSpec] = struct
     .getComponents()
     .toList
@@ -138,59 +141,72 @@ object ProgramSpecifier {
 
   def getTypeSpec(
       maybe_t: DataType,
-      aliases: MutableMap[Long, Structure]
+      aliases: MutableMap[Long, TypeSpec]
   ): Option[TypeSpec] = {
-    Option(maybe_t).flatMap(t =>
-      t match
-        case _: VoidDataType => Some(TypeSpec(Type.Base(BT_VOID)))
-        case _: Undefined    => Some(TypeSpec(Type.Unknown(t.getLength())))
-        case _: DefaultDataType =>
-          Some(TypeSpec(Type.Unknown(t.getLength())))
-        case itype: AbstractIntegerDataType =>
-          integerTypes
-            .get((t.getLength(), itype.isSigned()))
-            .orElse(Some(TypeSpec(Type.Unknown(t.getLength()))))
-        case _: AbstractFloatDataType =>
-          floatTypes
-            .get(t.getLength())
-            .orElse(Some(TypeSpec(Type.Unknown(t.getLength()))))
-        case ptr: Pointer => {
-          val pointee = getTypeSpec(ptr.getDataType(), aliases);
-          Some(
-            TypeSpec(
-              Type.Pointer(TypeSpec.PointerType(pointee, /*const=*/ false))
-            )
-          )
-        }
-        case tdef: TypeDef => getTypeSpec(tdef.getBaseDataType(), aliases)
-        case arr: ghidra.program.model.data.Array => {
-          val base = getTypeSpec(arr.getDataType(), aliases);
-          Some(
-            TypeSpec(
-              Type.Array(TypeSpec.ArrayType(base, arr.getNumElements()))
-            )
-          )
-        }
-        case struct: Structure => {
-          val id = struct.getUniversalID().getValue()
-          aliases.put(id, struct);
-          Some(TypeSpec(Type.Alias(id)))
-        }
-        case str: AbstractStringDataType => {
-          Msg.debug(this, "has string");
-          Some(
-            TypeSpec(
-              Type.Array(
-                TypeSpec.ArrayType(
-                  Some(TypeSpec(Type.Base(BT_CHAR))),
-                  str.getLength + 1
+    Option(maybe_t)
+      .flatMap(t =>
+        val t_id = Option(t.getUniversalID()).map(id => id.getValue())
+        val spec = t_id
+          .flatMap(id => aliases.get(id))
+          .orElse(
+            t match
+              case _: VoidDataType => Some(TypeSpec(Type.Base(BT_VOID)))
+              case _: Undefined => Some(TypeSpec(Type.Unknown(t.getLength())))
+              case _: DefaultDataType =>
+                Some(TypeSpec(Type.Unknown(t.getLength())))
+              case itype: AbstractIntegerDataType =>
+                integerTypes
+                  .get((t.getLength(), itype.isSigned()))
+                  .orElse(Some(TypeSpec(Type.Unknown(t.getLength()))))
+              case _: AbstractFloatDataType =>
+                floatTypes
+                  .get(t.getLength())
+                  .orElse(Some(TypeSpec(Type.Unknown(t.getLength()))))
+              case ptr: Pointer => {
+                val pointee = getTypeSpec(ptr.getDataType(), aliases)
+                Some(
+                  TypeSpec(
+                    Type
+                      .Pointer(TypeSpec.PointerType(pointee, /*const=*/ false))
+                  )
                 )
-              )
-            )
+              }
+              case tdef: TypeDef => getTypeSpec(tdef.getBaseDataType(), aliases)
+              case arr: ghidra.program.model.data.Array => {
+                val base = getTypeSpec(arr.getDataType(), aliases)
+                Some(
+                  TypeSpec(
+                    Type.Array(TypeSpec.ArrayType(base, arr.getNumElements()))
+                  )
+                )
+              }
+              case struct: Structure => {
+                struct
+                  .getComponents()
+                  .toList
+                  .map(x => x.getDataType)
+                  .map(x => getTypeSpec(x, aliases))
+                  .sequence
+                  .map(x => TypeSpec(Type.Struct(TypeSpec.StructType(x))))
+              }
+              case str: AbstractStringDataType => {
+                Msg.debug(this, "has string");
+                Some(
+                  TypeSpec(
+                    Type.Array(
+                      TypeSpec.ArrayType(
+                        Some(TypeSpec(Type.Base(BT_CHAR))),
+                        str.getLength + 1
+                      )
+                    )
+                  )
+                )
+              }
+              case _ => Some(TypeSpec(Type.Unknown(t.getLength())))
           )
-        }
-        case _ => Some(TypeSpec(Type.Unknown(t.getLength())))
-    )
+        pair(t_id, spec).foreach((id, s) => aliases.put(id, s))
+        spec
+      )
   }
 
   def specifyMemoryBlock(block: MemoryBlock): MemoryRange = {
@@ -337,7 +353,7 @@ object ProgramSpecifier {
 
   def specifyVariable(
       tvar: Variable,
-      aliases: MutableMap[Long, Structure]
+      aliases: MutableMap[Long, TypeSpec]
   ): VariableSpec = {
     val type_spec = getTypeSpec(tvar.getDataType(), aliases);
     VariableSpec(
@@ -348,7 +364,7 @@ object ProgramSpecifier {
 
   def specifyParam(
       param: Parameter,
-      aliases: MutableMap[Long, Structure]
+      aliases: MutableMap[Long, TypeSpec]
   ): ParamSpec = {
     ParamSpec(Some(param.getName()), Some(specifyVariable(param, aliases)))
   }
@@ -444,7 +460,7 @@ object ProgramSpecifier {
   def specifyCallableFromFunction(
       func: Function,
       defaultRetAddr: Option[ValueSpec],
-      aliases: MutableMap[Long, Structure],
+      aliases: MutableMap[Long, TypeSpec],
       params: Seq[ParamSpec],
       retValue: Option[VariableSpec]
   ): Callable = {
@@ -482,7 +498,7 @@ object ProgramSpecifier {
 
   def getStackEffects(
       func: Function,
-      aliases: MutableMap[Long, Structure]
+      aliases: MutableMap[Long, TypeSpec]
   ): StackEffects = {
     /*def alloc_points = LiveStackVariableLocations
       .getAllocationPoints(func)
@@ -518,7 +534,7 @@ object ProgramSpecifier {
   def specifyFunction(
       func: Function,
       defaultRetAddr: Option[ValueSpec],
-      aliases: MutableMap[Long, Structure],
+      aliases: MutableMap[Long, TypeSpec],
       linkage: FunctionLinkage
   ): FuncSpec = {
 
@@ -789,7 +805,7 @@ object ProgramSpecifier {
 
   def gvOverrideType(
       dt: DataType,
-      aliases: MutableMap[Long, Structure]
+      aliases: MutableMap[Long, TypeSpec]
   ): Option[TypeSpec] = {
     if (dt.isInstanceOf[Pointer]) {
       getTypeSpec(
@@ -806,7 +822,7 @@ object ProgramSpecifier {
 
   def specifyGlobalVariable(
       symbol: Symbol,
-      aliases: MutableMap[Long, Structure]
+      aliases: MutableMap[Long, TypeSpec]
   ): Option[GlobalVariable] = {
     val program = symbol.getProgram()
     val listing = program.getListing()
@@ -824,7 +840,7 @@ object ProgramSpecifier {
   def specifyFunctionOrDecl(
       func: Function,
       defaultRetAddr: Option[ValueSpec],
-      aliases: MutableMap[Long, Structure],
+      aliases: MutableMap[Long, TypeSpec],
       as_decl: Boolean
   ): FuncSpec = {
     val linkage = (as_decl, func.isExternal()) match {
@@ -877,7 +893,7 @@ object ProgramSpecifier {
       called_function: Function,
       dsm: DataTypeSymbol,
       default_return_addr: Option[ValueSpec],
-      aliases: MutableMap[Long, Structure]
+      aliases: MutableMap[Long, TypeSpec]
   ): Callable = {
     val sig = dsm.getDataType.asInstanceOf[FunctionSignature]
     Objects.requireNonNull(called_function)
@@ -959,7 +975,7 @@ object ProgramSpecifier {
       insn: Instruction,
       dsm: DataTypeSymbol,
       default_return_addr: Option[ValueSpec],
-      aliases: MutableMap[Long, Structure]
+      aliases: MutableMap[Long, TypeSpec]
   ): Option[Callsite] = {
     val prog = insn.getProgram()
 
@@ -997,7 +1013,7 @@ object ProgramSpecifier {
       function_def_list: Seq[Function],
       function_decl_list: Seq[Function]
   ): Specification = {
-    val aliases = MutableMap[Long, Structure]()
+    val aliases = MutableMap[Long, TypeSpec]()
     val arch = getProgramArch(prog)
     val os = getProgramOS(prog)
     val listing = prog.getListing()
@@ -1054,10 +1070,7 @@ object ProgramSpecifier {
       symbol_specs.toArray.toSeq,
       mem_specs.toArray.toSeq,
       Some(specifyControlFlow(prog)),
-      aliases.view
-        .mapValues(x => getStructSpec(x, aliases))
-        .mapValues(x => x.get)
-        .toMap
+      aliases.view.toMap
     )
   }
 

@@ -22,6 +22,7 @@ import ghidra.program.model.listing.Variable
 import ProgramSpecifier.getRegisterName
 import ghidra.program.model.pcode.Varnode
 import ghidra.program.model.lang.Register
+import specification.specification.TypeSpec
 
 case class BlockLiveness(
     val live_before: Set[ParamSpec],
@@ -38,7 +39,7 @@ case class BlockLiveness(
 class LivenessAnalysis(
     val control_flow_graph: Util.CFG,
     val func: ghidra.program.model.listing.Function,
-    val aliases: scala.collection.mutable.Map[Long, Structure]
+    val aliases: scala.collection.mutable.Map[Long, TypeSpec]
 ) {
 
   val lang = func.getProgram().getLanguage()
