@@ -24,7 +24,7 @@ import ghidra.program.model.data.Structure
 
 class BasicBlockContextProducer(gfunc: Function) {
 
-  val aliases: scala.collection.mutable.Map[Long, Structure] =
+  val aliases: scala.collection.mutable.Map[Long, TypeSpec] =
     scala.collection.mutable.Map.empty
 
   val stack_depth_info =
