@@ -128,17 +128,6 @@ object ProgramSpecifier {
     16 -> TypeSpec(Type.Base(BT_FL128))
   )
 
-  def getStructSpec(
-      struct: Structure,
-      aliases: MutableMap[Long, TypeSpec]
-  ): Option[TypeSpec] = struct
-    .getComponents()
-    .toList
-    .map(x => x.getDataType)
-    .map(x => getTypeSpec(x, aliases))
-    .sequence
-    .map(x => TypeSpec(Type.Struct(TypeSpec.StructType(x))))
-
   def getTypeSpec(
       maybe_t: DataType,
       aliases: MutableMap[Long, TypeSpec]
