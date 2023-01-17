@@ -25,21 +25,25 @@ import specification.specification.TypeSpec.Type
 import specification.specification.BaseType.BT_U8
 object Util {
 
-  // This isnt right... we need a better notion of variables, we want to create variables for live locations... but what's the type?
-  // Really want the type of the live assignment
-  def registerToType(reg: Register): TypeSpec = {
+  def sizeToType(sz: Int): TypeSpec = {
     ProgramSpecifier.integerTypes
-      .get((reg.getNumBytes(), false))
+      .get((sz, false))
       .getOrElse(
         TypeSpec(
           Type.Array(
             TypeSpec.ArrayType(
               Some(TypeSpec(Type.Base(BT_U8))),
-              reg.getNumBytes()
+              sz
             )
           )
         )
       )
+  }
+
+  // This isnt right... we need a better notion of variables, we want to create variables for live locations... but what's the type?
+  // Really want the type of the live assignment
+  def registerToType(reg: Register): TypeSpec = {
+    sizeToType(reg.getNumBytes())
   }
 
   def registerToVariable(reg: Register): VariableSpec = {
