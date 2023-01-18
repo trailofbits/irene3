@@ -151,7 +151,6 @@ object ProgramSpecifier {
           .getOrElse(
             // otherwise we have to make the recursive call in a thunk
             default = {
-              Msg.info(this, d)
               getTypeSpec(d, aliases).get
             }
           )
