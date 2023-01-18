@@ -35,6 +35,21 @@ class BasicBlockContextProducer(gfunc: Function) {
       .getBlockLiveness()
       .map((k, v) => (k.getFirstStartAddress(), v))
 
+  // The conditions under which getRegDepth can succeed...
+  def hasPredecessorInsn(block_addr: Address): Boolean = {
+    val curr_insn = Option(
+      this.gfunc.getProgram().getListing().getInstructionAt(block_addr)
+    )
+    curr_insn
+      .flatMap(insn => Option(insn.getFallFrom()))
+      .flatMap(addr =>
+        Option(
+          addr
+        )
+      )
+      .isDefined
+  }
+
   def produceSymvals(
       block_addr: Address,
       additional_displacement: Int
@@ -43,6 +58,18 @@ class BasicBlockContextProducer(gfunc: Function) {
     val regs = gfunc.getProgram.getLanguage.getRegisters.asScala.filter(r =>
       r.isBaseRegister()
     )
+
+    if (!hasPredecessorInsn(block_addr)) {
+      // This handles a bug in Ghidra. The function getRegDepth is ill defined if there is not a fallfrom
+      // predecessor. We should probably replace these wholesale when value analysis is done. This case mostly happens
+      // at function entries tho in which case we wont have a symval for a register besides the stack pointer anyways so we are mostly ok.
+
+      return Option(gfunc.getProgram().getCompilerSpec().getStackPointer())
+        .map(sp =>
+          (sp, stack_depth_info.getDepth(block_addr) + additional_displacement)
+        )
+        .toMap
+    }
 
     regs
       .map(r => (r, stack_depth_info.getRegDepth(block_addr, r)))
