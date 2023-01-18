@@ -130,6 +130,29 @@ object ProgramSpecifier {
     16 -> TypeSpec(Type.Base(BT_FL128))
   )
 
+  def getTypeSpecRecCall(
+      repr_type: DataType,
+      builder: Seq[TypeSpec] => TypeSpec,
+      components: Seq[DataType],
+      aliases: MutableMap[Long, TypeSpec]
+  ): TypeSpec = {
+    val parent_spec = builder(
+      components.map(d =>
+        TypeSpec(TypeSpec.Type.Alias(d.getUniversalID().getValue()))
+      )
+    )
+    aliases.put(
+      repr_type.getUniversalID().getValue(),
+      parent_spec
+    )
+
+    for (comp <- components) {
+      getTypeSpec(comp, aliases)
+    }
+
+    parent_spec
+  }
+
   def getTypeSpec(
       maybe_t: DataType,
       aliases: MutableMap[Long, TypeSpec]
@@ -172,13 +195,15 @@ object ProgramSpecifier {
                 )
               }
               case struct: Structure => {
-                struct
-                  .getComponents()
-                  .toList
-                  .map(x => x.getDataType)
-                  .map(x => getTypeSpec(x, aliases))
-                  .sequence
-                  .map(x => TypeSpec(Type.Struct(TypeSpec.StructType(x))))
+                Some(
+                  getTypeSpecRecCall(
+                    struct,
+                    comp_specs =>
+                      TypeSpec(Type.Struct(TypeSpec.StructType(comp_specs))),
+                    struct.getComponents().toList.map(_.getDataType),
+                    aliases
+                  )
+                )
               }
               case str: AbstractStringDataType => {
                 Msg.debug(this, "has string");
