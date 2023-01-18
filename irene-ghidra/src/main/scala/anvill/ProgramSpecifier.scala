@@ -138,7 +138,15 @@ object ProgramSpecifier {
   ): TypeSpec = {
     val parent_spec = builder(
       components.map(d =>
-        TypeSpec(TypeSpec.Type.Alias(d.getUniversalID().getValue()))
+        Option(d.getUniversalID())
+          .map(id => TypeSpec(TypeSpec.Type.Alias(id.getValue())))
+          .getOrElse(
+            // otherwise we have to make the recursive call in a thunk
+            default = {
+              Msg.info(this, d)
+              getTypeSpec(d, aliases).get
+            }
+          )
       )
     )
     aliases.put(
