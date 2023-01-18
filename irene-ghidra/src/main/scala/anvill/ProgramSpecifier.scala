@@ -136,6 +136,12 @@ object ProgramSpecifier {
       components: Seq[DataType],
       aliases: MutableMap[Long, TypeSpec]
   ): TypeSpec = {
+
+    aliases.put(
+      repr_type.getUniversalID().getValue(),
+      TypeSpec(TypeSpec.Type.Alias(repr_type.getUniversalID().getValue()))
+    )
+
     val parent_spec = builder(
       components.map(d =>
         Option(d.getUniversalID())
