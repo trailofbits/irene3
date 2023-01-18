@@ -137,6 +137,8 @@ object ProgramSpecifier {
       aliases: MutableMap[Long, TypeSpec]
   ): TypeSpec = {
 
+    // TODO(Ian): this is hacky and we should just have a seen set or something that gets passed down and
+    // checked if seen -> then return an alias spec, expecting that it will be built.
     aliases.put(
       repr_type.getUniversalID().getValue(),
       TypeSpec(TypeSpec.Type.Alias(repr_type.getUniversalID().getValue()))
