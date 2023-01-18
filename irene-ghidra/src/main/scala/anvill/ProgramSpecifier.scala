@@ -100,6 +100,8 @@ import specification.specification.Callsite
 import java.util.Objects
 import ghidra.program.model.data.AbstractStringDataType
 import specification.specification.StackFrame
+import ghidra.app.cmd.function.CallDepthChangeInfo
+import ghidra.util.task.TaskMonitor
 
 def pair[A, B](ma: Option[A], mb: Option[B]): Option[(A, B)] =
   ma.flatMap(a => mb.map(b => (a, b)))
@@ -517,6 +519,19 @@ object ProgramSpecifier {
     StackEffects()
   }
 
+  def maxDepth(func: Function): Int = {
+    val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
+    val func_insns: ju.Iterator[Instruction] = func.getProgram
+      .getListing()
+      .getInstructions(func.getBody(), true)
+
+    func_insns.asScala
+      .map(insn => cdi.getDepth(insn.getAddress()))
+      .filter(BasicBlockContextProducer.validDepth)
+      .maxOption
+      .getOrElse(0)
+  }
+
   def specifyFunction(
       func: Function,
       defaultRetAddr: Option[ValueSpec],
@@ -574,7 +589,8 @@ object ProgramSpecifier {
         StackFrame(
           func.getStackFrame.getFrameSize,
           func.getStackFrame.getReturnAddressOffset,
-          func.getStackFrame.getParameterSize
+          func.getStackFrame.getParameterSize,
+          maxDepth(func)
         )
       )
     )
