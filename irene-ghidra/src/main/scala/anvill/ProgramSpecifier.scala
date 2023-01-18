@@ -566,8 +566,40 @@ object ProgramSpecifier {
       .getInstructions(func.getBody(), true)
 
     func_insns.asScala
-      .map(insn => cdi.getDepth(insn.getAddress()))
-      .filter(BasicBlockContextProducer.validDepth)
+      .filter(insn =>
+        BasicBlockContextProducer.validDepth(cdi.getDepth(insn.getAddress()))
+      )
+      .map(insn => {
+        var init_depth = cdi.getDepth(insn.getAddress())
+
+        val disp =
+          (if (insn.getFlowType().isCall()) {
+
+             val cc = insn
+               .getReferencesFrom()
+               .find(_.getReferenceType().isCall())
+               .flatMap(r =>
+                 Option(
+                   func
+                     .getProgram()
+                     .getFunctionManager()
+                     .getFunctionAt(r.getToAddress())
+                 )
+               )
+               .flatMap(f => Option(f.getCallingConvention()))
+               .getOrElse(
+                 func
+                   .getProgram()
+                   .getCompilerSpec()
+                   .getDefaultCallingConvention()
+               )
+             -cc.getStackshift()
+           } else {
+             0
+           })
+        init_depth + disp
+      })
+      .map(_.abs)
       .maxOption
       .getOrElse(0)
   }
