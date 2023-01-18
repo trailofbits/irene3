@@ -22,6 +22,11 @@ import specification.specification.HighLoc
 import specification.specification.SymbolMapping
 import ghidra.program.model.data.Structure
 
+object BasicBlockContextProducer {
+  def validDepth(maybe_dpth: Int): Boolean =
+    maybe_dpth != Function.INVALID_STACK_DEPTH_CHANGE && maybe_dpth != Function.UNKNOWN_STACK_DEPTH_CHANGE
+}
+
 class BasicBlockContextProducer(gfunc: Function) {
 
   val aliases: scala.collection.mutable.Map[Long, TypeSpec] =
@@ -63,17 +68,20 @@ class BasicBlockContextProducer(gfunc: Function) {
       // This handles a bug in Ghidra. The function getRegDepth is ill defined if there is not a fallfrom
       // predecessor. We should probably replace these wholesale when value analysis is done. This case mostly happens
       // at function entries tho in which case we wont have a symval for a register besides the stack pointer anyways so we are mostly ok.
-
-      return Option(gfunc.getProgram().getCompilerSpec().getStackPointer())
-        .map(sp =>
-          (sp, stack_depth_info.getDepth(block_addr) + additional_displacement)
-        )
-        .toMap
+      (for {
+        sp <- Option(gfunc.getProgram().getCompilerSpec().getStackPointer())
+        dpth <- {
+          val maybe_dpth = stack_depth_info.getDepth(block_addr)
+          if (BasicBlockContextProducer.validDepth(maybe_dpth))
+          then Some(maybe_dpth)
+          else None
+        }
+      } yield (sp, dpth)).toMap
     }
 
     regs
       .map(r => (r, stack_depth_info.getRegDepth(block_addr, r)))
-      .filter((_, dpth) => Function.INVALID_STACK_DEPTH_CHANGE != dpth)
+      .filter((_, dpth) => BasicBlockContextProducer.validDepth(dpth))
       .map((r, dpth) => (r, dpth + additional_displacement))
       .toMap
 
