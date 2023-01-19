@@ -616,8 +616,8 @@ object ProgramSpecifier {
       Option(func.getReturn()).map(x => specifyVariable(x, aliases))
     val cfg = if func.isExternal() then { Map.empty }
     else { getCFG(func) }
-
-    val bb_context_prod = BasicBlockContextProducer(func)
+    val max_depth = maxDepth(func)
+    val bb_context_prod = BasicBlockContextProducer(func, max_depth)
     FuncSpec(
       getThunkRedirection(func.getProgram(), func.getEntryPoint()).getOffset(),
       linkage,
@@ -662,7 +662,7 @@ object ProgramSpecifier {
           func.getStackFrame.getFrameSize,
           func.getStackFrame.getReturnAddressOffset,
           func.getStackFrame.getParameterSize,
-          maxDepth(func)
+          max_depth
         )
       )
     )

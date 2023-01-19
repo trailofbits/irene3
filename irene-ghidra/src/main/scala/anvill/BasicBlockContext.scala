@@ -27,7 +27,7 @@ object BasicBlockContextProducer {
     maybe_dpth != Function.INVALID_STACK_DEPTH_CHANGE && maybe_dpth != Function.UNKNOWN_STACK_DEPTH_CHANGE
 }
 
-class BasicBlockContextProducer(gfunc: Function) {
+class BasicBlockContextProducer(gfunc: Function, val max_depth: Long) {
 
   val aliases: scala.collection.mutable.Map[Long, TypeSpec] =
     scala.collection.mutable.Map.empty
@@ -105,6 +105,32 @@ class BasicBlockContextProducer(gfunc: Function) {
   def sdepths_to_filter(sdepths: Map[Register, Int]): ParamSpec => Boolean =
     p => paramSpecToRegister(p).map(r => !sdepths.contains(r)).getOrElse(true)
 
+  def getStackOffset(p: ParamSpec): Option[Long] = {
+    for {
+      vr <- p.reprVar
+      value <- if vr.values.length == 1 then Some(vr.values(0)) else None
+      mem_depth <- value.innerValue.mem.map(_.offset)
+    } yield mem_depth
+  }
+
+  def isOffsetInsStack(curr_dpth: Long, off: Long): Boolean = {
+    val frame = this.gfunc.getStackFrame()
+    val grows_neg = frame.growsNegative()
+    (grows_neg && off >= curr_dpth && off <= frame.getParameterOffset() + frame
+      .getParameterSize()) ||
+    (!grows_neg && off <= curr_dpth && off >= frame
+      .getParameterOffset() - frame.getParameterSize())
+  }
+
+  def filterStackLocationsByStackDepth(
+      dpth: Long,
+      locs: Seq[ParamSpec]
+  ): Seq[ParamSpec] = {
+    locs.filter(p =>
+      getStackOffset(p).map(isOffsetInsStack(dpth, _)).getOrElse(true)
+    )
+  }
+
   def getBlockContext(
       block_addr: Address,
       last_insn_addr: Address
@@ -132,8 +158,14 @@ class BasicBlockContextProducer(gfunc: Function) {
 
         })
         .toSeq,
-      live.live_before.filter(sdepths_to_filter(stack_depths_entry)).toSeq,
-      live.live_after.filter(sdepths_to_filter(stack_depths_exit)).toSeq
+      filterStackLocationsByStackDepth(
+        max_depth,
+        live.live_before.filter(sdepths_to_filter(stack_depths_entry)).toSeq
+      ),
+      filterStackLocationsByStackDepth(
+        max_depth,
+        live.live_after.filter(sdepths_to_filter(stack_depths_exit)).toSeq
+      )
     )
   }
 }
