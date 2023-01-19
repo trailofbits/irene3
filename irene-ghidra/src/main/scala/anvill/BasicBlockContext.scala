@@ -69,7 +69,7 @@ class BasicBlockContextProducer(gfunc: Function, val max_depth: Long) {
       // This handles a bug in Ghidra. The function getRegDepth is ill defined if there is not a fallfrom
       // predecessor. We should probably replace these wholesale when value analysis is done. This case mostly happens
       // at function entries tho in which case we wont have a symval for a register besides the stack pointer anyways so we are mostly ok.
-      (for {
+      return (for {
         sp <- Option(gfunc.getProgram().getCompilerSpec().getStackPointer())
         dpth <- {
           val maybe_dpth = stack_depth_info.getDepth(block_addr)

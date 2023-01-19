@@ -121,6 +121,30 @@ class TestLiveness extends BaseProgramLoadTest {
     )
   }
 
+  @Test def testSetDutyAffineEqs(): Unit = {
+    val prog =
+      loadProgram(proj, "binaries/challenge-3_amd64_program_c.elf")
+    val func = firstFunctionNamed(prog, "set_duty")
+    val bb_prod =
+      BasicBlockContextProducer(func, ProgramSpecifier.maxDepth(func))
+    val stack_vals = bb_prod.getBlockContext(
+      func.getEntryPoint(),
+      prog.getAddressFactory().getAddress("00401b14")
+    )
+
+    val rsp_mapping = stack_vals.symvals.toSeq
+      .find(vm => {
+        val vals = vm.targetValue.get.values
+        vals.length == 1 && vals(0).innerValue.isReg && vals(
+          0
+        ).innerValue.reg.get.registerName.equals("RSP")
+      })
+      .get
+
+    assertTrue(rsp_mapping.currVal.get.inner.isStackDisp)
+    assertEquals(0, rsp_mapping.currVal.get.inner.stackDisp.get)
+  }
+
   @Test def mainStackVars(): Unit = {
     val prog =
       loadProgram(proj, "binaries/challenge-3_amd64_program_c.elf")
