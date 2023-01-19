@@ -158,6 +158,7 @@ class BasicBlockContextProducer(gfunc: Function, val max_depth: Long) {
 
         })
         .toSeq,
+      // TODO(Ian): filter by curr depth
       filterStackLocationsByStackDepth(
         max_depth,
         live.live_before.filter(sdepths_to_filter(stack_depths_entry)).toSeq
