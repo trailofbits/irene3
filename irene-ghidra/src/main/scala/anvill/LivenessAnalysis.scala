@@ -73,22 +73,26 @@ class LivenessAnalysis(
     )
   }
 
+  def local_paramspecs(): Set[ParamSpec] = {
+    func
+      .getLocalVariables()
+      .toSeq
+      .flatMap(v =>
+        if (v.isStackVariable()) then {
+          Seq(specifyVariable(v))
+        } else {
+          Seq.empty
+        }
+      )
+      .toSet
+  }
+
   // TODO(Ian) right now we gen all stack vars for any load
   // We could be missing a var for part of the stack becuase of how ghidra does locals
   // Need to conservatively split the stack, also need a backing alias analysis
   def gen_stack_vars(op: PcodeOp): Set[ParamSpec] = {
     if (op.getOpcode() == PcodeOp.LOAD) {
-      func
-        .getLocalVariables()
-        .toSeq
-        .flatMap(v =>
-          if (v.isStackVariable()) then {
-            Seq(specifyVariable(v))
-          } else {
-            Seq.empty
-          }
-        )
-        .toSet
+      local_paramspecs()
     } else { Set.empty }
   }
 

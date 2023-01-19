@@ -35,10 +35,11 @@ class BasicBlockContextProducer(gfunc: Function, val max_depth: Long) {
   val stack_depth_info =
     CallDepthChangeInfo(gfunc, ghidra.util.task.TaskMonitor.DUMMY)
 
-  val liveness_info =
+  val live_analysis =
     LivenessAnalysis(Util.getCfgAsGraph(gfunc), gfunc, aliases)
-      .getBlockLiveness()
-      .map((k, v) => (k.getFirstStartAddress(), v))
+  val liveness_info = live_analysis
+    .getBlockLiveness()
+    .map((k, v) => (k.getFirstStartAddress(), v))
 
   // The conditions under which getRegDepth can succeed...
   def hasPredecessorInsn(block_addr: Address): Boolean = {
@@ -114,11 +115,22 @@ class BasicBlockContextProducer(gfunc: Function, val max_depth: Long) {
   }
 
   def isOffsetInsStack(curr_dpth: Long, off: Long): Boolean = {
+
     val frame = this.gfunc.getStackFrame()
+    // TODO(Ian): we probably shouldnt have longs anyways
+    val targetVar = frame.getVariableContaining(off.toInt)
+    if (targetVar == null) {
+      return false
+    }
+
+    val sz = targetVar.getLength()
+
     val grows_neg = frame.growsNegative()
-    (grows_neg && off >= curr_dpth && off <= frame.getParameterOffset() + frame
+    val dpth = (if grows_neg then -(curr_dpth.abs) else curr_dpth)
+
+    (grows_neg && off >= dpth && off + sz < frame.getParameterOffset() + frame
       .getParameterSize()) ||
-    (!grows_neg && off <= curr_dpth && off >= frame
+    (!grows_neg && off <= dpth && off - sz > frame
       .getParameterOffset() - frame.getParameterSize())
   }
 
@@ -127,7 +139,11 @@ class BasicBlockContextProducer(gfunc: Function, val max_depth: Long) {
       locs: Seq[ParamSpec]
   ): Seq[ParamSpec] = {
     locs.filter(p =>
-      getStackOffset(p).map(isOffsetInsStack(dpth, _)).getOrElse(true)
+      getStackOffset(p)
+        .map(
+          isOffsetInsStack(dpth, _)
+        )
+        .getOrElse(true)
     )
   }
 
