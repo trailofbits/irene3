@@ -2,13 +2,16 @@ import org.junit.Test
 import ghidra.program.model.listing.Program
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 import anvill.BasicBlockContextProducer
-
+import anvill.LivenessAnalysis
+import anvill.Util
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import specification.specification.Parameter
 import ghidra.program.model.lang.Register
 import scala.collection.mutable
 import anvill.Util.getLiveRegisters
+import anvill.ProgramSpecifier
 
 class TestLiveness extends BaseProgramLoadTest {
 
@@ -26,7 +29,9 @@ class TestLiveness extends BaseProgramLoadTest {
   @Test def testLivenessCollatz(): Unit = {
     val coll_prog = loadProgram(proj, "binaries/collatz-x86")
     val func = firstFunctionNamed(coll_prog, "_leaf_function")
-    val bb_cont = BasicBlockContextProducer(func)
+
+    val bb_cont =
+      BasicBlockContextProducer(func, ProgramSpecifier.maxDepth(func))
     val live_info =
       bb_cont.liveness(coll_prog.getAddressFactory().getAddress("100003f94"))
 
@@ -89,7 +94,8 @@ class TestLiveness extends BaseProgramLoadTest {
     val prog = loadProgram(proj, "binaries/challenge-3_amd64_program_c.elf")
     val func = firstFunctionNamed(prog, "set_duty")
 
-    val bb_cont = BasicBlockContextProducer(func)
+    val bb_cont =
+      BasicBlockContextProducer(func, ProgramSpecifier.maxDepth(func))
 
     val liveness_entry_block =
       bb_cont.liveness(prog.getAddressFactory().getAddress("401af0"))
@@ -115,12 +121,34 @@ class TestLiveness extends BaseProgramLoadTest {
     )
   }
 
+  @Test def mainStackVars(): Unit = {
+    val prog =
+      loadProgram(proj, "binaries/challenge-3_amd64_program_c.elf")
+    val func = firstFunctionNamed(prog, "main")
+
+    val bb_prod =
+      BasicBlockContextProducer(func, ProgramSpecifier.maxDepth(func))
+
+    val orig_stack_locs = bb_prod.live_analysis.local_paramspecs().toSeq
+    println(orig_stack_locs.flatMap(_.name).toSet)
+    val legit_stack_locations = bb_prod.filterStackLocationsByStackDepth(
+      bb_prod.max_depth,
+      orig_stack_locs
+    )
+    val stack_var_names = legit_stack_locations.flatMap(_.name).toSet
+    println(stack_var_names)
+    assertFalse(stack_var_names.contains("cf"))
+    assertTrue(stack_var_names.contains("local_b0"))
+    assertTrue(stack_var_names.contains("local_128"))
+  }
+
   @Test def testChal3SetPower(): Unit = {
     println("working on 00401920")
     val coll_prog =
       loadProgram(proj, "binaries/challenge-3_amd64_program_c.elf")
     val func = firstFunctionNamed(coll_prog, "set_power")
-    val bb_cont = BasicBlockContextProducer(func)
+    val bb_cont =
+      BasicBlockContextProducer(func, ProgramSpecifier.maxDepth(func))
     val live_info =
       bb_cont.liveness(coll_prog.getAddressFactory().getAddress("00401920"))
 
