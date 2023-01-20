@@ -48,11 +48,7 @@ class BasicBlockContextProducer(gfunc: Function, val max_depth: Long) {
     )
     curr_insn
       .flatMap(insn => Option(insn.getFallFrom()))
-      .flatMap(addr =>
-        Option(
-          addr
-        )
-      )
+      .flatMap(addr => Option(addr))
       .isDefined
   }
 
