@@ -14,7 +14,7 @@
 
 namespace irene3
 {
-    class SpecVarProvider final : public rellic::VariableProvider {
+    class SpecVarProvider final : public rellic::FunctionLayoutOverride {
         struct Impl;
         std::unique_ptr< Impl > impl;
 
@@ -25,17 +25,22 @@ namespace irene3
             TypeDecoder &type_decoder);
         ~SpecVarProvider();
 
-        clang::QualType ArgumentAsLocal(llvm::Argument &arg) override;
+        bool HasOverride(llvm::Function& func) final;
 
-        class Factory final : public rellic::VariableProviderFactory {
+        std::vector< clang::QualType > GetArguments(llvm::Function& func) final;
+        void BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) final;
+        bool VisitInstruction(
+            llvm::Instruction& insn, clang::FunctionDecl* fdecl, clang::ValueDecl*& vdecl) final;
+
+        class Factory final : public rellic::FunctionLayoutOverrideFactory {
             anvill::Specification spec;
-            TypeDecoder &type_decoder;
+            TypeDecoder& type_decoder;
 
           public:
-            Factory(anvill::Specification spec, TypeDecoder &type_decoder);
+            Factory(anvill::Specification spec, TypeDecoder& type_decoder);
 
-            std::unique_ptr< rellic::VariableProvider > create(
-                rellic::DecompilationContext &ctx) override;
+            std::unique_ptr< rellic::FunctionLayoutOverride > create(
+                rellic::DecompilationContext& ctx) override;
         };
     };
 } // namespace irene3
