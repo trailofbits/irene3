@@ -733,7 +733,7 @@ object ProgramSpecifier {
       .getOrElse(addr)
   }
 
-  val required_context_regs = Map("TMode" -> "TMReg")
+  val required_context_regs = Map("TMode" -> "TMReg", "vle" -> "VLEReg")
 
   def specifyContextAssignments(
       prog: Program,
