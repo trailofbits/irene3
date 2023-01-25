@@ -8,10 +8,9 @@
 
 #include "SpecVarProvider.h"
 
-#include "anvill/Declarations.h"
-#include "anvill/Utils.h"
-
+#include <anvill/Declarations.h>
 #include <anvill/Specification.h>
+#include <anvill/Utils.h>
 #include <clang/AST/Type.h>
 #include <functional>
 #include <irene3/Util.h>
@@ -21,6 +20,7 @@
 #include <optional>
 #include <rellic/AST/DecompilationContext.h>
 #include <rellic/AST/FunctionLayoutOverride.h>
+#include <remill/BC/ABI.h>
 #include <string>
 
 namespace irene3
@@ -71,10 +71,14 @@ namespace irene3
 
             std::vector< clang::QualType > arg_types;
             for (auto& arg : func.args()) {
-                if (arg.getArgNo() < first_var_idx) {
-                    // Keep arguments before the first local as real arguments
-                    arg_types.push_back(ctx.type_provider->GetArgumentType(arg));
+                if (arg.getArgNo() >= first_var_idx) {
+                    continue;
                 }
+                if (arg.getArgNo() == remill::kStatePointerArgNum) {
+                    continue;
+                }
+                // Keep arguments before the first local as real arguments
+                arg_types.push_back(ctx.type_provider->GetArgumentType(arg));
             }
 
             return arg_types;
@@ -90,6 +94,9 @@ namespace irene3
             auto fspec                                 = spec.FunctionAt(*block_addr);
             auto available_vars                        = block_ctx.LiveParamsAtEntryAndExit();
             auto num_available_vars                    = available_vars.size();
+            auto stack_pointer_reg
+                = spec.Arch()->RegisterByName(spec.Arch()->StackPointerRegisterName());
+            auto stack_arg = func.getArg(remill::kStatePointerArgNum);
 
             auto first_var_idx = func.arg_size() - num_available_vars;
 
@@ -98,16 +105,20 @@ namespace irene3
                 if (arg.getArgNo() >= first_var_idx) {
                     continue;
                 }
-                auto& parm{ ctx.value_decls[&arg] };
+                if (arg.getArgNo() == remill::kStatePointerArgNum) {
+                    // The state pointer is actually the stack, and is treated separately
+                    continue;
+                }
+                auto& parm = ctx.value_decls[&arg];
                 if (parm) {
                     continue;
                 }
                 // Create a name
-                auto name{ arg.hasName() ? arg.getName().str()
-                                         : "arg" + std::to_string(arg.getArgNo()) };
+                auto name
+                    = arg.hasName() ? arg.getName().str() : "arg" + std::to_string(arg.getArgNo());
                 // Get parent function declaration
-                auto func{ arg.getParent() };
-                auto fdecl{ clang::cast< clang::FunctionDecl >(ctx.value_decls[func]) };
+                auto func    = arg.getParent();
+                auto fdecl   = clang::cast< clang::FunctionDecl >(ctx.value_decls[func]);
                 auto argtype = ctx.type_provider->GetArgumentType(arg);
                 // Create a declaration
                 parm = ctx.ast.CreateParamDecl(fdecl, argtype, name);
@@ -115,33 +126,83 @@ namespace irene3
             }
             fdecl->setParams(params);
 
-            if (fspec->stack_depth == 0) {
-                return;
-            }
-
-            auto locals_struct = ctx.ast.CreateStructDecl(fdecl, "locals");
-            locals_struct->completeDefinition();
+            auto locals_struct = ctx.ast.CreateStructDecl(fdecl, "locals_struct");
 
             fdecl->addDecl(locals_struct);
 
-            auto stack_union = ctx.ast.CreateUnionDecl(fdecl, "stack");
-            auto raw_stack   = ctx.ast.CreateFieldDecl(
-                  stack_union,
-                  ctx.ast_ctx.getConstantArrayType(
-                      ctx.ast_ctx.CharTy, llvm::APInt(64, fspec->stack_depth), nullptr,
-                      clang::ArrayType::ArraySizeModifier::Normal, 0),
-                  "raw");
-            stack_union->addDecl(raw_stack);
+            auto stack_union     = ctx.ast.CreateUnionDecl(fdecl, "stack_union");
+            auto raw_stack_field = ctx.ast.CreateFieldDecl(
+                stack_union,
+                ctx.ast_ctx.getConstantArrayType(
+                    ctx.ast_ctx.CharTy, llvm::APInt(64, fspec->stack_depth), nullptr,
+                    clang::ArrayType::ArraySizeModifier::Normal, 0),
+                "raw");
+            stack_union->addDecl(raw_stack_field);
 
-            stack_union->addDecl(ctx.ast.CreateFieldDecl(
-                stack_union, ctx.ast_ctx.getRecordType(locals_struct), "locals"));
-            stack_union->completeDefinition();
+            auto locals_field = ctx.ast.CreateFieldDecl(
+                stack_union, ctx.ast_ctx.getRecordType(locals_struct), "locals");
+            stack_union->addDecl(locals_field);
             fdecl->addDecl(stack_union);
-            fdecl->addDecl(
-                ctx.ast.CreateVarDecl(fdecl, ctx.ast_ctx.getRecordType(stack_union), "stack"));
+            auto stack_var
+                = ctx.ast.CreateVarDecl(fdecl, ctx.ast_ctx.getRecordType(stack_union), "stack");
+            fdecl->addDecl(stack_var);
 
-            // TODO(frabert): put stack variables into `locals_struct`, convert argument refs into
-            // field refs
+            auto raw_stack_var = ctx.ast.CreateVarDecl(fdecl, ctx.ast_ctx.VoidPtrTy, "raw_stack");
+            raw_stack_var->setInit(
+                ctx.ast.CreateFieldAcc(ctx.ast.CreateDeclRef(stack_var), raw_stack_field, false));
+            fdecl->addDecl(raw_stack_var);
+
+            ctx.value_decls[func.getArg(remill::kStatePointerArgNum)] = raw_stack_var;
+            // FIXME(frabert): we need to provide stack_grows_down from somewhere else
+            anvill::AbstractStack stk(
+                func.getContext(),
+                {
+                    {block_ctx.GetStackSize(), stack_arg}
+            },
+                /*stack_grows_down=*/true, block_ctx.GetPointerDisplacement());
+
+            unsigned current_offset = 0;
+            unsigned num_paddings   = 0;
+
+            // FIXME(frabert): this code ignores the fact that types have a natural alignment
+            for (size_t i = 0; i < num_available_vars; ++i) {
+                auto arg   = func.getArg(i + first_var_idx);
+                auto& var  = available_vars[i];
+                auto type  = type_decoder.Decode(ctx, spec, var.param.spec_type, arg->getType());
+                auto& decl = ctx.value_decls[arg];
+                auto name  = arg->getName().str();
+                if (var.param.mem_reg == stack_pointer_reg) {
+                    auto var_offset = stk.StackOffsetFromStackPointer(var.param.mem_offset);
+                    if (var_offset > current_offset) {
+                        auto padding_ty = ctx.ast_ctx.getConstantArrayType(
+                            ctx.ast_ctx.CharTy, llvm::APInt(64, var_offset - current_offset),
+                            nullptr, clang::ArrayType::ArraySizeModifier::Normal, 0);
+                        auto padding_field = ctx.ast.CreateFieldDecl(
+                            locals_struct, padding_ty, "padding_" + std::to_string(num_paddings++));
+                        locals_struct->addDecl(padding_field);
+                        current_offset = var_offset;
+                    }
+
+                    auto field_decl = ctx.ast.CreateFieldDecl(locals_struct, type, name);
+                    locals_struct->addDecl(field_decl);
+
+                    auto base_stack  = ctx.ast.CreateDeclRef(stack_var);
+                    auto base_locals = ctx.ast.CreateFieldAcc(base_stack, locals_field, false);
+                    auto local_var
+                        = ctx.ast.CreateVarDecl(fdecl, ctx.ast_ctx.getPointerType(type), name);
+                    local_var->setInit(ctx.ast.CreateAddrOf(
+                        ctx.ast.CreateFieldAcc(base_locals, field_decl, false)));
+                    decl = local_var;
+                    fdecl->addDecl(local_var);
+                    current_offset += ctx.ast_ctx.getTypeSize(type) / 8;
+                } else {
+                    decl = ctx.ast.CreateVarDecl(fdecl, type, name);
+                    fdecl->addDecl(decl);
+                }
+            }
+
+            locals_struct->completeDefinition();
+            stack_union->completeDefinition();
         }
 
         bool VisitInstruction(
