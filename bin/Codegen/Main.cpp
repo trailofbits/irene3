@@ -123,17 +123,21 @@ int main(int argc, char *argv[]) {
     }
 
     irene3::SpecDecompilationJob job(std::move(builder));
-    auto decomp_res = job.DecompileBlocks();
-    if (!decomp_res.Succeeded()) {
-        std::cerr << decomp_res.TakeError() << std::endl;
+    auto maybe_decomp_res = job.DecompileBlocks();
+    if (!maybe_decomp_res.Succeeded()) {
+        std::cerr << maybe_decomp_res.TakeError() << std::endl;
         return EXIT_FAILURE;
     }
+    auto decomp_res = maybe_decomp_res.TakeValue();
 
     auto spec           = builder.GetSpec();
     auto block_contexts = spec.GetBlockContexts();
     llvm::json::Array patches;
 
-    for (auto &[addr, compound] : decomp_res.Value().blocks) {
+    auto &spec             = builder.GetSpec();
+    auto stack_pointer_reg = spec.Arch()->RegisterByName(spec.Arch()->StackPointerRegisterName());
+
+    for (auto &[addr, compound] : decomp_res.blocks) {
         const anvill::BasicBlockContext &block
             = block_contexts.GetBasicBlockContextForAddr(addr).value();
 
@@ -164,6 +168,11 @@ int main(int argc, char *argv[]) {
         patch["patch-code"] = code;
 
         llvm::json::Array patch_vars;
+        patch_vars.push_back(llvm::json::Object{
+            {  "name",                                                      "stack"},
+            {"memory", llvm::json::Object{ { "frame-pointer", stack_pointer_reg->name },
+ { "offset", 0 } }                                           }
+        });
         for (auto &bb_param : block.LiveParamsAtEntryAndExit()) {
             auto var_spec = bb_param.param;
             llvm::json::Object var;
@@ -176,7 +185,7 @@ int main(int argc, char *argv[]) {
                 if (bb_param.live_at_exit) {
                     var["at-exit"] = var_spec.reg->name;
                 }
-            } else if (var_spec.mem_reg) {
+            } else if (var_spec.mem_reg && var_spec.mem_reg != stack_pointer_reg) {
                 llvm::json::Object memory;
                 memory["frame-pointer"] = var_spec.mem_reg->name;
                 memory["offset"]        = to_hex(var_spec.mem_offset) + ":"
