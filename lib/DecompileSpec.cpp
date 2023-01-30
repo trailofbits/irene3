@@ -1,5 +1,5 @@
+#include "SpecLayoutOverride.h"
 #include "SpecTypeProvider.h"
-#include "SpecVarProvider.h"
 
 #include <anvill/Lifters.h>
 #include <anvill/Optimize.h>
@@ -351,7 +351,7 @@ namespace irene3
         auto opts = std::make_unique< rellic::DecompilationOptions >();
         if (args_as_locals) {
             opts->additional_variable_providers.push_back(
-                std::make_unique< SpecVarProvider::Factory >(spec, type_decoder));
+                std::make_unique< SpecLayoutOverride::Factory >(spec, type_decoder));
         }
         if (propagate_types) {
             opts->additional_type_providers.push_back(
