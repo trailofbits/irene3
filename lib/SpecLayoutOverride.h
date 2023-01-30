@@ -14,16 +14,16 @@
 
 namespace irene3
 {
-    class SpecVarProvider final : public rellic::FunctionLayoutOverride {
+    class SpecLayoutOverride final : public rellic::FunctionLayoutOverride {
         struct Impl;
         std::unique_ptr< Impl > impl;
 
       public:
-        SpecVarProvider(
-            rellic::DecompilationContext &dec_ctx,
-            anvill::Specification &spec,
-            TypeDecoder &type_decoder);
-        ~SpecVarProvider();
+        SpecLayoutOverride(
+            rellic::DecompilationContext& dec_ctx,
+            anvill::Specification& spec,
+            TypeDecoder& type_decoder);
+        ~SpecLayoutOverride();
 
         bool HasOverride(llvm::Function& func) final;
 

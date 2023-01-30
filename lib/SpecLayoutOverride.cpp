@@ -6,7 +6,7 @@
  * the LICENSE file found in the root directory of this source tree.
  */
 
-#include "SpecVarProvider.h"
+#include "SpecLayoutOverride.h"
 
 #include <anvill/Declarations.h>
 #include <anvill/Specification.h>
@@ -26,7 +26,7 @@
 namespace irene3
 {
     using namespace rellic;
-    struct SpecVarProvider::Impl {
+    struct SpecLayoutOverride::Impl {
         DecompilationContext& ctx;
         anvill::Specification spec;
         TypeDecoder& type_decoder;
@@ -211,33 +211,33 @@ namespace irene3
         }
     };
 
-    SpecVarProvider::SpecVarProvider(
+    SpecLayoutOverride::SpecLayoutOverride(
         DecompilationContext& dec_ctx, anvill::Specification& spec, TypeDecoder& type_decoder)
         : FunctionLayoutOverride(dec_ctx)
         , impl(std::make_unique< Impl >(dec_ctx, spec, type_decoder)) {}
-    SpecVarProvider::~SpecVarProvider() = default;
+    SpecLayoutOverride::~SpecLayoutOverride() = default;
 
-    bool SpecVarProvider::HasOverride(llvm::Function& func) { return impl->HasOverride(func); }
+    bool SpecLayoutOverride::HasOverride(llvm::Function& func) { return impl->HasOverride(func); }
 
-    std::vector< clang::QualType > SpecVarProvider::GetArguments(llvm::Function& func) {
+    std::vector< clang::QualType > SpecLayoutOverride::GetArguments(llvm::Function& func) {
         return impl->GetArguments(func);
     }
 
-    void SpecVarProvider::BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) {
+    void SpecLayoutOverride::BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) {
         impl->BeginFunctionVisit(func, fdecl);
     }
 
-    bool SpecVarProvider::VisitInstruction(
+    bool SpecLayoutOverride::VisitInstruction(
         llvm::Instruction& insn, clang::FunctionDecl* fdecl, clang::ValueDecl*& vdecl) {
         return impl->VisitInstruction(insn, fdecl, vdecl);
     }
 
-    SpecVarProvider::Factory::Factory(anvill::Specification spec, TypeDecoder& type_decoder)
+    SpecLayoutOverride::Factory::Factory(anvill::Specification spec, TypeDecoder& type_decoder)
         : spec(spec)
         , type_decoder(type_decoder) {}
 
-    std::unique_ptr< FunctionLayoutOverride > SpecVarProvider::Factory::create(
+    std::unique_ptr< FunctionLayoutOverride > SpecLayoutOverride::Factory::create(
         rellic::DecompilationContext& dec_ctx) {
-        return std::make_unique< SpecVarProvider >(dec_ctx, spec, type_decoder);
+        return std::make_unique< SpecLayoutOverride >(dec_ctx, spec, type_decoder);
     }
 } // namespace irene3

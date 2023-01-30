@@ -29,7 +29,7 @@ set(irene3_SOURCES
   DecompileSpec.cpp
   Util.cpp
   SpecTypeProvider.cpp
-  SpecVarProvider.cpp
+  SpecLayoutOverride.cpp
   TypeDecoder.cpp
 )
 
