@@ -397,30 +397,21 @@ object ProgramSpecifier {
     ParamSpec(Some(param.getName()), Some(specifyVariable(param, aliases)))
   }
 
+  val returnAddressRegisterOverrides =
+    Map(("ARM", "lr"), ("AARCH64", "x30"), ("PowerPC", "lr"))
+
   def specifyDefaultReturnAddress(cspec: CompilerSpec): Option[ValueSpec] = {
     val procstr = cspec.getLanguage().getProcessor().toString()
-    if (procstr.contains("ARM")) {
-      return Some(
-        ValueSpec(
-          Reg(RegSpec(getRegisterName(cspec.getLanguage().getRegister("lr"))))
-        )
-      )
-    }
 
-    if (procstr.contains("AARCH64")) {
-      return Some(
-        ValueSpec(
-          Reg(RegSpec(getRegisterName(cspec.getLanguage().getRegister("x30"))))
+    // TODO(Ian): use a trie
+    for ((k, v) <- returnAddressRegisterOverrides) {
+      if (procstr.contains(k)) {
+        return Some(
+          ValueSpec(
+            Reg(RegSpec(getRegisterName(cspec.getLanguage().getRegister(v))))
+          )
         )
-      )
-    }
-
-    if (procstr.contains("PowerPC")) {
-      return Some(
-        ValueSpec(
-          Reg(RegSpec(getRegisterName(cspec.getLanguage().getRegister("lr"))))
-        )
-      )
+      }
     }
 
     // TODO(frabert): All of this should be deleted / redone as soon as we hear back from
