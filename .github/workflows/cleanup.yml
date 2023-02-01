@@ -1,0 +1,29 @@
+name: Cleanup Cache
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    permissions:
+      actions: write
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      NUM_KEEP: 10
+
+    steps:
+      - name: cleanup
+        run: |
+          set -x
+          # Returns the list of cache ids to delete if there are more than ${NUM_KEEP} items in the cache
+          # Sort them by last access time and remove the oldest ones until there are ${NUM_KEEP} left
+          for cache_id in $(gh api /repos/${{ github.repository }}/actions/caches | jq '.actions_caches | select(. | length > ${{ env.NUM_KEEP }}) | sort_by(.last_accessed_at)[0:(. | length)-${{ env.NUM_KEEP }}][].id');
+          do
+            echo "Deleting cache ${cache_id}"
+            gh api --method DELETE /repos/${{ github.repository }}/actions/caches/${cache_id}
+          done
