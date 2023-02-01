@@ -120,7 +120,7 @@ install-ghidra:
          echo "Extracting Ghidra"
          cd deps && unzip -qq ghidra.zip && mv ghidra_10.1.5_PUBLIC ghidra && cd ..
     fi
-    echo "GHIDRA_INSTALL_DIR={{justfile_directory()}}/deps/ghidra" >./gradle.properties
+    echo "GHIDRA_INSTALL_DIR={{justfile_directory()}}/deps/ghidra" >{{justfile_directory()}}/gradle.properties
 
 format-cpp:
     find bin/ lib/ include/ -name "*.cpp" -exec clang-format -i {} \;
