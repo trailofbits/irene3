@@ -173,14 +173,16 @@ namespace irene3
                 auto name  = arg->getName().str();
                 if (var.param.mem_reg == stack_pointer_reg) {
                     auto var_offset = stk.StackOffsetFromStackPointer(var.param.mem_offset);
+                    // A declared local *must* be contained in the stack
+                    CHECK(var_offset.has_value());
                     if (var_offset > current_offset) {
                         auto padding_ty = ctx.ast_ctx.getConstantArrayType(
-                            ctx.ast_ctx.CharTy, llvm::APInt(64, var_offset - current_offset),
+                            ctx.ast_ctx.CharTy, llvm::APInt(64, *var_offset - current_offset),
                             nullptr, clang::ArrayType::ArraySizeModifier::Normal, 0);
                         auto padding_field = ctx.ast.CreateFieldDecl(
                             locals_struct, padding_ty, "padding_" + std::to_string(num_paddings++));
                         locals_struct->addDecl(padding_field);
-                        current_offset = var_offset;
+                        current_offset = *var_offset;
                     }
 
                     auto field_decl = ctx.ast.CreateFieldDecl(locals_struct, type, name);
