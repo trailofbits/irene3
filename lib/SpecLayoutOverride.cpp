@@ -91,9 +91,9 @@ namespace irene3
             auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
             CHECK(maybe_block_ctx.has_value());
             const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
-            auto fspec                                 = spec.FunctionAt(*block_addr);
-            auto available_vars                        = block_ctx.LiveParamsAtEntryAndExit();
-            auto num_available_vars                    = available_vars.size();
+            auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
+            auto available_vars     = block_ctx.LiveParamsAtEntryAndExit();
+            auto num_available_vars = available_vars.size();
             auto stack_pointer_reg
                 = spec.Arch()->RegisterByName(spec.Arch()->StackPointerRegisterName());
             auto stack_arg = func.getArg(remill::kStatePointerArgNum);
