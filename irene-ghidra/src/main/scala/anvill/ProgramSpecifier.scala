@@ -287,9 +287,9 @@ object ProgramSpecifier {
       .getInstructions(blk, true)
     val blkinsnsseq = blkinsns.asScala.toSeq
 
-    !blkinsnsseq.isEmpty && blkinsnsseq.map(_.getLength()).sum.toLong == (blk
+    !blkinsnsseq.isEmpty && blkinsnsseq.map(_.getLength()).sum.toLong == ((blk
       .getMaxAddress()
-      .getOffset() - blk.getFirstStartAddress().getOffset())
+      .getOffset() - blk.getFirstStartAddress().getOffset()) + 1)
   }
 
   def getCFG(func: Function): Map[Long, CodeBlockSpec] = {
