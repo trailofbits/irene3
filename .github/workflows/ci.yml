@@ -36,9 +36,10 @@ jobs:
         image:
           - { name: 'ubuntu', tag: '20.04' }
         llvm: ['15']
-        cxxcommon_version: ['0.2.19']
+        cxxcommon_version: ['0.2.22']
 
-    runs-on: gha-ubuntu-32
+    runs-on:
+      labels: gha-ubuntu-32
     container:
       image: ghcr.io/lifting-bits/cxx-common/vcpkg-builder-${{ matrix.image.name }}:${{ matrix.image.tag }}
       credentials:
@@ -292,23 +293,27 @@ jobs:
           env CTEST_OUTPUT_ON_FAILURE=1 cmake --build irene3_build --target test
       - name: Store the DEB package
         uses: actions/upload-artifact@v3
+        if: github.event.release
         with:
           name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_deb_package
           path: ${{ steps.package_names.outputs.DEB_PACKAGE_PATH }}
 
       - name: Store the RPM package
         uses: actions/upload-artifact@v3
+        if: github.event.release
         with:
           name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_rpm_package
           path: ${{ steps.package_names.outputs.RPM_PACKAGE_PATH }}
 
       - name: Store the TGZ package
         uses: actions/upload-artifact@v3
+        if: github.event.release
         with:
           name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_tgz_package
           path: ${{ steps.package_names.outputs.TGZ_PACKAGE_PATH }}
   build_docker:
-    runs-on: gha-ubuntu-32
+    runs-on:
+      labels: gha-ubuntu-32
     strategy:
       matrix:
         ubuntu: ["20.04"]
