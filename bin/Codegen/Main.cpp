@@ -81,6 +81,47 @@ std::string to_hex(T &&value) {
     return ss.str();
 }
 
+std::string PrintBodyToString(clang::CompoundStmt *compound) {
+    std::string code;
+    llvm::raw_string_ostream os(code);
+    for (auto &stmt : compound->body()) {
+        stmt->printPretty(os, nullptr, { {} });
+        if (clang::isa< clang::Expr >(stmt)) {
+            os << ";\n";
+        }
+    }
+    return code;
+}
+
+llvm::json::Object ParamToSpec(
+    const anvill::BasicBlockVariable &bb_param, const remill::Register *stack_pointer_reg) {
+    auto var_spec = bb_param.param;
+    llvm::json::Object var;
+    var["name"] = var_spec.name;
+    if (var_spec.reg) {
+        if (bb_param.live_at_entry) {
+            var["at-entry"] = var_spec.reg->name;
+        }
+
+        if (bb_param.live_at_exit) {
+            var["at-exit"] = var_spec.reg->name;
+        }
+    } else if (var_spec.mem_reg && var_spec.mem_reg != stack_pointer_reg) {
+        llvm::json::Object memory;
+        memory["frame-pointer"] = var_spec.mem_reg->name;
+        memory["offset"]        = to_hex(var_spec.mem_offset) + ":"
+                           + std::to_string(var_spec.type->getScalarSizeInBits());
+        var["memory"] = std::move(memory);
+    } else {
+        llvm::json::Object memory;
+        memory["address"] = to_hex(var_spec.mem_offset) + ":"
+                            + std::to_string(var_spec.type->getScalarSizeInBits());
+
+        var["memory"] = std::move(memory);
+    }
+    return var;
+}
+
 int main(int argc, char *argv[]) {
     SetVersion();
     google::SetUsageMessage("IRENE3 codegen");
@@ -130,11 +171,10 @@ int main(int argc, char *argv[]) {
     }
     auto decomp_res = maybe_decomp_res.TakeValue();
 
-    auto spec           = builder.GetSpec();
+    auto &spec          = builder.GetSpec();
     auto block_contexts = spec.GetBlockContexts();
     llvm::json::Array patches;
 
-    auto &spec             = builder.GetSpec();
     auto stack_pointer_reg = spec.Arch()->RegisterByName(spec.Arch()->StackPointerRegisterName());
 
     for (auto &[addr, compound] : decomp_res.blocks) {
@@ -157,15 +197,7 @@ int main(int argc, char *argv[]) {
             patch["edges"] = std::move(edges);
         }
 
-        std::string code;
-        llvm::raw_string_ostream os(code);
-        for (auto &stmt : compound->body()) {
-            stmt->printPretty(os, nullptr, { {} });
-            if (clang::isa< clang::Expr >(stmt)) {
-                os << ";\n";
-            }
-        }
-        patch["patch-code"] = code;
+        patch["patch-code"] = PrintBodyToString(compound);
 
         llvm::json::Array patch_vars;
         patch_vars.push_back(llvm::json::Object{
@@ -174,30 +206,7 @@ int main(int argc, char *argv[]) {
  { "offset", 0 } }                                           }
         });
         for (auto &bb_param : block.LiveParamsAtEntryAndExit()) {
-            auto var_spec = bb_param.param;
-            llvm::json::Object var;
-            var["name"] = var_spec.name;
-            if (var_spec.reg) {
-                if (bb_param.live_at_entry) {
-                    var["at-entry"] = var_spec.reg->name;
-                }
-
-                if (bb_param.live_at_exit) {
-                    var["at-exit"] = var_spec.reg->name;
-                }
-            } else if (var_spec.mem_reg && var_spec.mem_reg != stack_pointer_reg) {
-                llvm::json::Object memory;
-                memory["frame-pointer"] = var_spec.mem_reg->name;
-                memory["offset"]        = to_hex(var_spec.mem_offset) + ":"
-                                   + std::to_string(var_spec.type->getScalarSizeInBits());
-                var["memory"] = std::move(memory);
-            } else {
-                llvm::json::Object memory;
-                memory["address"] = to_hex(var_spec.mem_offset) + ":"
-                                    + std::to_string(var_spec.type->getScalarSizeInBits());
-                var["memory"] = std::move(memory);
-            }
-            patch_vars.push_back(std::move(var));
+            patch_vars.push_back(ParamToSpec(bb_param, stack_pointer_reg));
         }
 
         patch["patch-vars"] = std::move(patch_vars);
