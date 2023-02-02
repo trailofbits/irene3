@@ -147,6 +147,7 @@ class BasicBlockContextProducer(gfunc: Function, val max_depth: Long) {
       block_addr: Address,
       last_insn_addr: Address
   ): BlockContextSpec = {
+    Msg.info(this, s"Working on context for $block_addr")
     assert(!liveness_info.isEmpty)
 
     val stack_depths_entry = produceSymvals(block_addr, 0)

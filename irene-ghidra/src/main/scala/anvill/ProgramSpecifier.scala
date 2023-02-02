@@ -279,54 +279,84 @@ object ProgramSpecifier {
     }
   }
 
+  // We depend on some assumptions about basic blocks
+  // for now we rely on blocks being contigous non empty sequences of instructions
+  def isValidBlock(program: Program, blk: CodeBlock): Boolean = {
+    val blkinsns: ju.Iterator[Instruction] = program
+      .getListing()
+      .getInstructions(blk, true)
+    val blkinsnsseq = blkinsns.asScala.toSeq
+
+    !blkinsnsseq.isEmpty && blkinsnsseq.map(_.getLength()).sum.toLong == (blk
+      .getMaxAddress()
+      .getOffset() - blk.getFirstStartAddress().getOffset())
+  }
+
   def getCFG(func: Function): Map[Long, CodeBlockSpec] = {
     val res = MutableMap[Long, CodeBlockSpec]()
     val prog = func.getProgram()
     val listing = prog.getListing()
     val model = BasicBlockModel(prog)
     val queue = scala.collection.mutable.Queue[Address]()
-    val monitor = TimeoutTaskMonitor.timeoutIn(10, TimeUnit.SECONDS)
+    val monitor = () => TimeoutTaskMonitor.timeoutIn(5, TimeUnit.SECONDS)
     def is_internal(addr: Address) = func == listing.getFunctionContaining(addr)
     queue.enqueue(func.getEntryPoint())
     while (queue.size > 0) {
       val addr = queue.dequeue()
-      val block = model.getCodeBlockAt(addr, monitor)
-      if (!res.isDefinedAt(addr.getOffset()) && Objects.nonNull(block)) {
-        val incoming = scala.collection.mutable.ArrayBuffer[Long]()
-        val incoming_it = block.getSources(monitor)
-        while (incoming_it.hasNext()) {
-          val ref = incoming_it.next()
-          val source_block_addr = ref.getSourceAddress()
-          if (is_internal(source_block_addr)) {
-            incoming.addOne(source_block_addr.getOffset())
-            queue.enqueue(source_block_addr)
-          }
-        }
+      try {
+        val block = model.getCodeBlockAt(addr, monitor())
+        if (
+          !res.isDefinedAt(addr.getOffset()) && Objects.nonNull(
+            block
+          ) && isValidBlock(func.getProgram(), block)
+        ) {
+          // If we arent going to consider this block then we may as well not consider its successors unless we encounter them somehow
+          // on a different path
 
-        val outgoing = scala.collection.mutable.ArrayBuffer[Long]()
-        val outgoing_it = block.getDestinations(monitor)
-        while (outgoing_it.hasNext()) {
-          val ref = outgoing_it.next()
-          val dest_block_addr = ref.getDestinationAddress()
-          if (is_internal(dest_block_addr)) {
-            outgoing.addOne(dest_block_addr.getOffset())
-            queue.enqueue(dest_block_addr)
+          val incoming = scala.collection.mutable.ArrayBuffer[Long]()
+          val incoming_it = block.getSources(monitor())
+          while (incoming_it.hasNext()) {
+            val ref = incoming_it.next()
+            val source_block_addr = ref.getSourceAddress()
+            if (is_internal(source_block_addr)) {
+              incoming.addOne(source_block_addr.getOffset())
+              queue.enqueue(source_block_addr)
+            }
           }
-        }
 
-        res += (addr.getOffset() -> CodeBlockSpec(
-          addr.getOffset(),
-          block.getName(),
-          incoming.toSeq,
-          outgoing.toSeq,
-          // TODO(Ian): Seems like blocks can technically allow non contigous regions, wont be correct for that
-          // Fix fencepost error
-          (block.getMaxAddress.getOffset() - addr.getOffset()).toInt + 1,
-          specifyContextAssignments(
-            prog,
-            addr
-          )
-        ))
+          val outgoing = scala.collection.mutable.ArrayBuffer[Long]()
+          val outgoing_it = block.getDestinations(monitor())
+          while (outgoing_it.hasNext()) {
+            val ref = outgoing_it.next()
+            val dest_block_addr = ref.getDestinationAddress()
+            if (is_internal(dest_block_addr)) {
+              outgoing.addOne(dest_block_addr.getOffset())
+              queue.enqueue(dest_block_addr)
+            }
+          }
+
+          res += (addr.getOffset() -> CodeBlockSpec(
+            addr.getOffset(),
+            block.getName(),
+            incoming.toSeq,
+            outgoing.toSeq,
+            // TODO(Ian): Seems like blocks can technically allow non contigous regions, wont be correct for that
+            // Fix fencepost error
+            (block.getMaxAddress.getOffset() - addr.getOffset()).toInt + 1,
+            specifyContextAssignments(
+              prog,
+              addr
+            )
+          ))
+
+        }
+      } catch {
+        case e: ghidra.util.exception.TimeoutException => {
+          Msg.warn(this, s"Timed out getting block $addr")
+        }
+        case e: ghidra.util.exception.CancelledException => {
+          Msg.warn(this, s"Time out lead to sources cancel on block $addr")
+        }
       }
     }
     res.toMap
@@ -613,12 +643,17 @@ object ProgramSpecifier {
     val params = func.getParameters().toSeq.map(x => specifyParam(x, aliases))
     val retValue =
       Option(func.getReturn()).map(x => specifyVariable(x, aliases))
-    val cfg = if func.isExternal() then { Map.empty }
+    var cfg = if func.isExternal() then { Map.empty }
     else { getCFG(func) }
+
+    if (!(cfg contains func.getEntryPoint().getOffset())) {
+      cfg = Map.empty
+    }
     val max_depth = maxDepth(func)
     val bb_context_prod = BasicBlockContextProducer(func, max_depth)
     FuncSpec(
-      getThunkRedirection(func.getProgram(), func.getEntryPoint()).getOffset(),
+      getThunkRedirection(func.getProgram(), func.getEntryPoint())
+        .getOffset(),
       linkage,
       Some(
         specifyCallableFromFunction(
