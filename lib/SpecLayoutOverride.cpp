@@ -11,6 +11,7 @@
 #include <anvill/Declarations.h>
 #include <anvill/Specification.h>
 #include <anvill/Utils.h>
+#include <clang/AST/Decl.h>
 #include <clang/AST/Type.h>
 #include <functional>
 #include <irene3/Util.h>
@@ -57,6 +58,35 @@ namespace irene3
             return block_contexts.GetBasicBlockContextForAddr(*block_addr).has_value();
         }
 
+        std::vector< clang::ParmVarDecl* > CreateFunctionParams(
+            llvm::Function& func, unsigned first_var_idx) {
+            std::vector< clang::ParmVarDecl* > params;
+            for (auto& arg : func.args()) {
+                if (arg.getArgNo() >= first_var_idx) {
+                    continue;
+                }
+                if (arg.getArgNo() == remill::kStatePointerArgNum) {
+                    // The state pointer is actually the stack, and is treated separately
+                    continue;
+                }
+                auto& parm = ctx.value_decls[&arg];
+                if (parm) {
+                    continue;
+                }
+                // Create a name
+                auto name
+                    = arg.hasName() ? arg.getName().str() : "arg" + std::to_string(arg.getArgNo());
+                // Get parent function declaration
+                auto func    = arg.getParent();
+                auto fdecl   = clang::cast< clang::FunctionDecl >(ctx.value_decls[func]);
+                auto argtype = ctx.type_provider->GetArgumentType(arg);
+                // Create a declaration
+                parm = ctx.ast.CreateParamDecl(fdecl, argtype, name);
+                params.push_back(clang::dyn_cast< clang::ParmVarDecl >(ctx.value_decls[&arg]));
+            }
+            return params;
+        }
+
         std::vector< clang::QualType > GetArguments(llvm::Function& func) {
             auto block_addr = anvill::GetBasicBlockAddr(&func);
             CHECK(block_addr.has_value());
@@ -100,31 +130,7 @@ namespace irene3
 
             auto first_var_idx = func.arg_size() - num_available_vars;
 
-            std::vector< clang::ParmVarDecl* > params;
-            for (auto& arg : func.args()) {
-                if (arg.getArgNo() >= first_var_idx) {
-                    continue;
-                }
-                if (arg.getArgNo() == remill::kStatePointerArgNum) {
-                    // The state pointer is actually the stack, and is treated separately
-                    continue;
-                }
-                auto& parm = ctx.value_decls[&arg];
-                if (parm) {
-                    continue;
-                }
-                // Create a name
-                auto name
-                    = arg.hasName() ? arg.getName().str() : "arg" + std::to_string(arg.getArgNo());
-                // Get parent function declaration
-                auto func    = arg.getParent();
-                auto fdecl   = clang::cast< clang::FunctionDecl >(ctx.value_decls[func]);
-                auto argtype = ctx.type_provider->GetArgumentType(arg);
-                // Create a declaration
-                parm = ctx.ast.CreateParamDecl(fdecl, argtype, name);
-                params.push_back(clang::dyn_cast< clang::ParmVarDecl >(ctx.value_decls[&arg]));
-            }
-            fdecl->setParams(params);
+            fdecl->setParams(CreateFunctionParams(func, first_var_idx));
 
             auto locals_struct = ctx.ast.CreateStructDecl(fdecl, "locals_struct");
 
