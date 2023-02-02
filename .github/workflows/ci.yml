@@ -374,6 +374,7 @@ jobs:
       # Push with proper tag once test ran
       - name: Build and push
         uses: docker/build-push-action@v3
+        if: github.event.release
         with:
           context: .
           platforms: linux/amd64
