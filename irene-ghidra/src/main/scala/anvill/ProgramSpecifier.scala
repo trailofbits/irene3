@@ -290,8 +290,8 @@ object ProgramSpecifier {
     queue.enqueue(func.getEntryPoint())
     while (queue.size > 0) {
       val addr = queue.dequeue()
-      if (!res.isDefinedAt(addr.getOffset())) {
-        val block = model.getCodeBlockAt(addr, monitor)
+      val block = model.getCodeBlockAt(addr, monitor)
+      if (!res.isDefinedAt(addr.getOffset()) && Objects.nonNull(block)) {
         val incoming = scala.collection.mutable.ArrayBuffer[Long]()
         val incoming_it = block.getSources(monitor)
         while (incoming_it.hasNext()) {
