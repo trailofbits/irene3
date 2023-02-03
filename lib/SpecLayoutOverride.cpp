@@ -114,6 +114,12 @@ namespace irene3
             return arg_types;
         }
 
+        clang::QualType CreateCharArray(unsigned size) {
+            return ctx.ast_ctx.getConstantArrayType(
+                ctx.ast_ctx.CharTy, llvm::APInt(64, size), nullptr,
+                clang::ArrayType::ArraySizeModifier::Normal, 0);
+        }
+
         void BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) {
             auto block_addr = anvill::GetBasicBlockAddr(&func);
             CHECK(block_addr.has_value());
@@ -137,12 +143,8 @@ namespace irene3
             fdecl->addDecl(locals_struct);
 
             auto stack_union     = ctx.ast.CreateUnionDecl(fdecl, "stack_union");
-            auto raw_stack_field = ctx.ast.CreateFieldDecl(
-                stack_union,
-                ctx.ast_ctx.getConstantArrayType(
-                    ctx.ast_ctx.CharTy, llvm::APInt(64, fspec->stack_depth), nullptr,
-                    clang::ArrayType::ArraySizeModifier::Normal, 0),
-                "raw");
+            auto raw_stack_field
+                = ctx.ast.CreateFieldDecl(stack_union, CreateCharArray(fspec->stack_depth), "raw");
             stack_union->addDecl(raw_stack_field);
 
             auto locals_field = ctx.ast.CreateFieldDecl(
@@ -158,7 +160,7 @@ namespace irene3
                 ctx.ast.CreateFieldAcc(ctx.ast.CreateDeclRef(stack_var), raw_stack_field, false));
             fdecl->addDecl(raw_stack_var);
 
-            ctx.value_decls[func.getArg(remill::kStatePointerArgNum)] = raw_stack_var;
+            ctx.value_decls[stack_arg] = raw_stack_var;
             // FIXME(frabert): we need to provide stack_grows_down from somewhere else
             anvill::AbstractStack stk(
                 func.getContext(),
@@ -171,6 +173,7 @@ namespace irene3
             unsigned num_paddings   = 0;
 
             // FIXME(frabert): this code ignores the fact that types have a natural alignment
+            // This is assuming that variables are declared in order of increasing offset
             for (size_t i = 0; i < num_available_vars; ++i) {
                 auto arg   = func.getArg(i + first_var_idx);
                 auto& var  = available_vars[i];
@@ -182,9 +185,7 @@ namespace irene3
                     // A declared local *must* be contained in the stack
                     CHECK(var_offset.has_value());
                     if (var_offset > current_offset) {
-                        auto padding_ty = ctx.ast_ctx.getConstantArrayType(
-                            ctx.ast_ctx.CharTy, llvm::APInt(64, *var_offset - current_offset),
-                            nullptr, clang::ArrayType::ArraySizeModifier::Normal, 0);
+                        auto padding_ty    = CreateCharArray(*var_offset - current_offset);
                         auto padding_field = ctx.ast.CreateFieldDecl(
                             locals_struct, padding_ty, "padding_" + std::to_string(num_paddings++));
                         locals_struct->addDecl(padding_field);
