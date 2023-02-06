@@ -32,6 +32,7 @@ namespace irene3
         void BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) final;
         bool VisitInstruction(
             llvm::Instruction& insn, clang::FunctionDecl* fdecl, clang::ValueDecl*& vdecl) final;
+        bool NeedsDereference(llvm::Function& func, llvm::Value& val) final;
 
         class Factory final : public rellic::FunctionLayoutOverrideFactory {
             anvill::Specification spec;
