@@ -305,49 +305,53 @@ object ProgramSpecifier {
       val addr = queue.dequeue()
       try {
         val block = model.getCodeBlockAt(addr, monitor())
-        if (
-          !res.isDefinedAt(addr.getOffset()) && Objects.nonNull(
-            block
-          ) && isValidBlock(func.getProgram(), block)
-        ) {
+        if (!res.isDefinedAt(addr.getOffset())) {
+          if (
+            Objects.nonNull(
+              block
+            ) && isValidBlock(func.getProgram(), block)
+          ) {
 
-          // If we arent going to consider this block then we may as well not consider its successors unless we encounter them somehow
-          // on a different path
-          val incoming = scala.collection.mutable.ArrayBuffer[Long]()
-          val incoming_it = block.getSources(monitor())
-          while (incoming_it.hasNext()) {
-            val ref = incoming_it.next()
-            val source_block_addr = ref.getSourceAddress()
-            if (is_internal(source_block_addr)) {
-              incoming.addOne(source_block_addr.getOffset())
-              queue.enqueue(source_block_addr)
+            // If we arent going to consider this block then we may as well not consider its successors unless we encounter them somehow
+            // on a different path
+            val incoming = scala.collection.mutable.ArrayBuffer[Long]()
+            val incoming_it = block.getSources(monitor())
+            while (incoming_it.hasNext()) {
+              val ref = incoming_it.next()
+              val source_block_addr = ref.getSourceAddress()
+              if (is_internal(source_block_addr)) {
+                incoming.addOne(source_block_addr.getOffset())
+                queue.enqueue(source_block_addr)
+              }
             }
-          }
 
-          val outgoing = scala.collection.mutable.ArrayBuffer[Long]()
-          val outgoing_it = block.getDestinations(monitor())
-          while (outgoing_it.hasNext()) {
-            val ref = outgoing_it.next()
-            val dest_block_addr = ref.getDestinationAddress()
-            if (is_internal(dest_block_addr)) {
-              outgoing.addOne(dest_block_addr.getOffset())
-              queue.enqueue(dest_block_addr)
+            val outgoing = scala.collection.mutable.ArrayBuffer[Long]()
+            val outgoing_it = block.getDestinations(monitor())
+            while (outgoing_it.hasNext()) {
+              val ref = outgoing_it.next()
+              val dest_block_addr = ref.getDestinationAddress()
+              if (is_internal(dest_block_addr)) {
+                outgoing.addOne(dest_block_addr.getOffset())
+                queue.enqueue(dest_block_addr)
+              }
             }
+
+            res += (addr.getOffset() -> CodeBlockSpec(
+              addr.getOffset(),
+              block.getName(),
+              incoming.toSeq,
+              outgoing.toSeq,
+              // Blocks can technically allow non contigous regions, we filter out blocks we cant handle through isValidBlock
+              (block.getMaxAddress.getOffset() - addr.getOffset()).toInt + 1,
+              specifyContextAssignments(
+                prog,
+                addr
+              )
+            ))
+
+          } else {
+            Msg.warn(this, s"Skipping invalid block: $addr")
           }
-
-          res += (addr.getOffset() -> CodeBlockSpec(
-            addr.getOffset(),
-            block.getName(),
-            incoming.toSeq,
-            outgoing.toSeq,
-            // Blocks can technically allow non contigous regions, we filter out blocks we cant handle through isValidBlock
-            (block.getMaxAddress.getOffset() - addr.getOffset()).toInt + 1,
-            specifyContextAssignments(
-              prog,
-              addr
-            )
-          ))
-
         }
       } catch {
         case e: ghidra.util.exception.TimeoutException => {
