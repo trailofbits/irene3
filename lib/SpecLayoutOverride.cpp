@@ -258,6 +258,26 @@ namespace irene3
             llvm::Instruction& insn, clang::FunctionDecl* fdecl, clang::ValueDecl*& vdecl) {
             return false;
         }
+
+        bool NeedsDereference(llvm::Function& func, llvm::Value& value) {
+            if (llvm::isa< llvm::AllocaInst >(value)) {
+                return true;
+            }
+            auto block_addr = anvill::GetBasicBlockAddr(&func);
+            if (!block_addr.has_value()) {
+                return false;
+            }
+            auto block_contexts  = spec.GetBlockContexts();
+            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
+            CHECK(maybe_block_ctx.has_value());
+            const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
+            auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
+            auto available_vars     = block_ctx.LiveParamsAtEntryAndExit();
+            auto num_available_vars = available_vars.size();
+            auto first_var_idx      = func.arg_size() - num_available_vars;
+            auto arg                = llvm::dyn_cast< llvm::Argument >(&value);
+            return arg && arg->getArgNo() >= first_var_idx;
+        }
     };
 
     SpecLayoutOverride::SpecLayoutOverride(
@@ -282,6 +302,10 @@ namespace irene3
     bool SpecLayoutOverride::VisitInstruction(
         llvm::Instruction& insn, clang::FunctionDecl* fdecl, clang::ValueDecl*& vdecl) {
         return impl->VisitInstruction(insn, fdecl, vdecl);
+    }
+
+    bool SpecLayoutOverride::NeedsDereference(llvm::Function& func, llvm::Value& val) {
+        return impl->NeedsDereference(func, val);
     }
 
     SpecLayoutOverride::Factory::Factory(
