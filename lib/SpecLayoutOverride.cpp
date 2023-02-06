@@ -32,11 +32,17 @@ namespace irene3
         DecompilationContext& ctx;
         anvill::Specification spec;
         TypeDecoder& type_decoder;
+        bool stack_grows_down;
 
-        Impl(DecompilationContext& ctx, anvill::Specification& spec, TypeDecoder& type_decoder)
+        Impl(
+            DecompilationContext& ctx,
+            anvill::Specification& spec,
+            TypeDecoder& type_decoder,
+            bool stack_grows_down)
             : ctx(ctx)
             , spec(spec)
-            , type_decoder(type_decoder) {}
+            , type_decoder(type_decoder)
+            , stack_grows_down(stack_grows_down) {}
 
         std::optional< std::reference_wrapper< const anvill::BasicBlockContext > > GetContext(
             llvm::Function& func) {
@@ -234,13 +240,12 @@ namespace irene3
 
             ctx.value_decls[stack_arg] = raw_stack_var;
 
-            // FIXME(frabert): we need to provide stack_grows_down from somewhere else
             anvill::AbstractStack stk(
                 func.getContext(),
                 {
                     {block_ctx.GetStackSize(), stack_arg}
             },
-                /*stack_grows_down=*/true, block_ctx.GetPointerDisplacement());
+                stack_grows_down, block_ctx.GetPointerDisplacement());
 
             PopulateStackStruct(
                 func, fdecl, available_vars, first_var_idx, stack_pointer_reg, stk, locals_struct,
@@ -256,9 +261,12 @@ namespace irene3
     };
 
     SpecLayoutOverride::SpecLayoutOverride(
-        DecompilationContext& dec_ctx, anvill::Specification& spec, TypeDecoder& type_decoder)
+        DecompilationContext& dec_ctx,
+        anvill::Specification& spec,
+        TypeDecoder& type_decoder,
+        bool stack_grows_down)
         : FunctionLayoutOverride(dec_ctx)
-        , impl(std::make_unique< Impl >(dec_ctx, spec, type_decoder)) {}
+        , impl(std::make_unique< Impl >(dec_ctx, spec, type_decoder, stack_grows_down)) {}
     SpecLayoutOverride::~SpecLayoutOverride() = default;
 
     bool SpecLayoutOverride::HasOverride(llvm::Function& func) { return impl->HasOverride(func); }
@@ -276,12 +284,15 @@ namespace irene3
         return impl->VisitInstruction(insn, fdecl, vdecl);
     }
 
-    SpecLayoutOverride::Factory::Factory(anvill::Specification spec, TypeDecoder& type_decoder)
+    SpecLayoutOverride::Factory::Factory(
+        anvill::Specification spec, TypeDecoder& type_decoder, bool stack_grows_down)
         : spec(spec)
-        , type_decoder(type_decoder) {}
+        , type_decoder(type_decoder)
+        , stack_grows_down(stack_grows_down) {}
 
     std::unique_ptr< FunctionLayoutOverride > SpecLayoutOverride::Factory::create(
         rellic::DecompilationContext& dec_ctx) {
-        return std::make_unique< SpecLayoutOverride >(dec_ctx, spec, type_decoder);
+        return std::make_unique< SpecLayoutOverride >(
+            dec_ctx, spec, type_decoder, stack_grows_down);
     }
 } // namespace irene3

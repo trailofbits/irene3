@@ -173,6 +173,14 @@ namespace irene3
         return { res, rev };
     }
 
+    void SpecDecompilationJob::CreateSpecLayoutOverride(bool stack_grows_down) const {
+        if (args_as_locals) {
+            options->additional_variable_providers.push_back(
+                std::make_unique< SpecLayoutOverride::Factory >(
+                    spec, type_decoder, stack_grows_down));
+        }
+    }
+
     DecompilationResult SpecDecompilationJob::PopulateDecompResFromRellic(
         rellic::DecompilationResult res) const {
         std::unordered_map< uint64_t, FunctionDecompResult > function_results;
@@ -237,6 +245,7 @@ namespace irene3
             = this->stack_initialization_strategy;
         options.should_remove_anvill_pc = this->should_remove_anvill_pc;
         options.pc_metadata_name        = "pc";
+        CreateSpecLayoutOverride(options.stack_frame_recovery_options.stack_grows_down);
         anvill::EntityLifter lifter(options);
 
         this->LiftOrDeclareFunctionsInto(lifter);
@@ -267,6 +276,7 @@ namespace irene3
             = this->stack_initialization_strategy;
         options.should_remove_anvill_pc = this->should_remove_anvill_pc;
         options.pc_metadata_name        = "pc";
+        CreateSpecLayoutOverride(options.stack_frame_recovery_options.stack_grows_down);
         anvill::EntityLifter lifter(options);
 
         this->LiftOrDeclareFunctionsInto(lifter);
@@ -315,7 +325,9 @@ namespace irene3
         : context(std::move(o.context))
         , target_funcs(std::move(o.target_funcs))
         , options(std::move(o.options))
-        , spec(std::move(o.spec)) {
+        , spec(std::move(o.spec))
+        , args_as_locals(o.args_as_locals)
+        , type_decoder(o.type_decoder) {
         this->spec.ForEachSymbol([this](uint64_t addr, const std::string& name) {
             this->symbol_map.emplace(addr, name);
             return true;
@@ -349,26 +361,27 @@ namespace irene3
         });
 
         auto opts = std::make_unique< rellic::DecompilationOptions >();
-        if (args_as_locals) {
-            opts->additional_variable_providers.push_back(
-                std::make_unique< SpecLayoutOverride::Factory >(spec, type_decoder));
-        }
         if (propagate_types) {
             opts->additional_type_providers.push_back(
                 std::make_unique< SpecTypeProvider::Factory >(spec, type_decoder));
         }
         return SpecDecompilationJobBuilder(
-            spec, target_function_list, std::move(opts), std::move(context));
+            spec, target_function_list, std::move(opts), args_as_locals, type_decoder,
+            std::move(context));
     }
 
     SpecDecompilationJobBuilder::SpecDecompilationJobBuilder(
         anvill::Specification spec,
         std::unordered_set< uint64_t > target_funcs,
         std::unique_ptr< rellic::DecompilationOptions > options,
+        bool args_as_locals,
+        TypeDecoder& type_decoder,
         std::shared_ptr< llvm::LLVMContext > context)
         : context(std::move(context))
         , spec(std::move(spec))
         , target_funcs(std::move(target_funcs))
-        , options(std::move(options)) {}
+        , options(std::move(options))
+        , args_as_locals(args_as_locals)
+        , type_decoder(type_decoder) {}
 
 } // namespace irene3

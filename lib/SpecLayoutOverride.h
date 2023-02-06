@@ -22,7 +22,8 @@ namespace irene3
         SpecLayoutOverride(
             rellic::DecompilationContext& dec_ctx,
             anvill::Specification& spec,
-            TypeDecoder& type_decoder);
+            TypeDecoder& type_decoder,
+            bool stack_grows_down);
         ~SpecLayoutOverride();
 
         bool HasOverride(llvm::Function& func) final;
@@ -35,9 +36,10 @@ namespace irene3
         class Factory final : public rellic::FunctionLayoutOverrideFactory {
             anvill::Specification spec;
             TypeDecoder& type_decoder;
+            bool stack_grows_down;
 
           public:
-            Factory(anvill::Specification spec, TypeDecoder& type_decoder);
+            Factory(anvill::Specification spec, TypeDecoder& type_decoder, bool stack_grows_down);
 
             std::unique_ptr< rellic::FunctionLayoutOverride > create(
                 rellic::DecompilationContext& ctx) override;
