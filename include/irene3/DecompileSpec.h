@@ -39,12 +39,20 @@ namespace irene3
         // The rellic C decompilation options
         std::unique_ptr< rellic::DecompilationOptions > options;
 
+        // Whether arguments that represent stack locations should be treated as locals by Rellic
+        bool args_as_locals;
+
+        // Type decoder to be used by Rellic when generating locals
+        TypeDecoder& type_decoder;
+
         inline const anvill::Specification& GetSpec() const { return spec; }
 
         SpecDecompilationJobBuilder(
             anvill::Specification spec,
             std::unordered_set< uint64_t > target_funcs,
             std::unique_ptr< rellic::DecompilationOptions > options,
+            bool args_as_locals,
+            TypeDecoder& type_decoder,
             std::shared_ptr< llvm::LLVMContext > context);
 
         // Attempts to build a SpecDecompilationBuilder from an anvill json specification.
@@ -135,6 +143,8 @@ namespace irene3
         std::unordered_set< uint64_t > target_funcs;
         std::unique_ptr< rellic::DecompilationOptions > options;
         anvill::Specification spec;
+        bool args_as_locals;
+        TypeDecoder& type_decoder;
 
         std::unordered_map< uint64_t, std::string > symbol_map;
 
@@ -150,6 +160,7 @@ namespace irene3
 
         DecompilationResult PopulateDecompResFromRellic(rellic::DecompilationResult res) const;
         CodegenResult PopulateCodegenResFromRellic(rellic::DecompilationResult res) const;
+        void CreateSpecLayoutOverride(bool stack_grows_down) const;
 
       public:
         // Gets the underlying anvill spec for this decompilation job.
