@@ -310,9 +310,9 @@ object ProgramSpecifier {
             block
           ) && isValidBlock(func.getProgram(), block)
         ) {
+
           // If we arent going to consider this block then we may as well not consider its successors unless we encounter them somehow
           // on a different path
-
           val incoming = scala.collection.mutable.ArrayBuffer[Long]()
           val incoming_it = block.getSources(monitor())
           while (incoming_it.hasNext()) {
@@ -340,8 +340,7 @@ object ProgramSpecifier {
             block.getName(),
             incoming.toSeq,
             outgoing.toSeq,
-            // TODO(Ian): Seems like blocks can technically allow non contigous regions, wont be correct for that
-            // Fix fencepost error
+            // Blocks can technically allow non contigous regions, we filter out blocks we cant handle through isValidBlock
             (block.getMaxAddress.getOffset() - addr.getOffset()).toInt + 1,
             specifyContextAssignments(
               prog,
