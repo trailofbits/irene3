@@ -23,6 +23,7 @@
 #include <rellic/AST/FunctionLayoutOverride.h>
 #include <remill/BC/ABI.h>
 #include <string>
+#include <tuple>
 
 namespace irene3
 {
@@ -120,57 +121,25 @@ namespace irene3
                 clang::ArrayType::ArraySizeModifier::Normal, 0);
         }
 
-        void BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) {
-            auto block_addr = anvill::GetBasicBlockAddr(&func);
-            CHECK(block_addr.has_value());
-            auto block_contexts  = spec.GetBlockContexts();
-            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
-            CHECK(maybe_block_ctx.has_value());
-            const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
-            auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
-            auto available_vars     = block_ctx.LiveParamsAtEntryAndExit();
-            auto num_available_vars = available_vars.size();
-            auto stack_pointer_reg
-                = spec.Arch()->RegisterByName(spec.Arch()->StackPointerRegisterName());
-            auto stack_arg = func.getArg(remill::kStatePointerArgNum);
+        void CreatePadding(clang::RecordDecl* strct, unsigned amount, std::string name) {
+            auto padding_ty    = CreateCharArray(amount);
+            auto padding_field = ctx.ast.CreateFieldDecl(strct, padding_ty, name);
+            strct->addDecl(padding_field);
+        }
 
-            auto first_var_idx = func.arg_size() - num_available_vars;
-
-            fdecl->setParams(CreateFunctionParams(func, first_var_idx));
-
-            auto locals_struct = ctx.ast.CreateStructDecl(fdecl, "locals_struct");
-
-            fdecl->addDecl(locals_struct);
-
-            auto stack_union     = ctx.ast.CreateUnionDecl(fdecl, "stack_union");
-            auto raw_stack_field
-                = ctx.ast.CreateFieldDecl(stack_union, CreateCharArray(fspec->stack_depth), "raw");
-            stack_union->addDecl(raw_stack_field);
-
-            auto locals_field = ctx.ast.CreateFieldDecl(
-                stack_union, ctx.ast_ctx.getRecordType(locals_struct), "locals");
-            stack_union->addDecl(locals_field);
-            fdecl->addDecl(stack_union);
-            auto stack_var
-                = ctx.ast.CreateVarDecl(fdecl, ctx.ast_ctx.getRecordType(stack_union), "stack");
-            fdecl->addDecl(stack_var);
-
-            auto raw_stack_var = ctx.ast.CreateVarDecl(fdecl, ctx.ast_ctx.VoidPtrTy, "raw_stack");
-            raw_stack_var->setInit(
-                ctx.ast.CreateFieldAcc(ctx.ast.CreateDeclRef(stack_var), raw_stack_field, false));
-            fdecl->addDecl(raw_stack_var);
-
-            ctx.value_decls[stack_arg] = raw_stack_var;
-            // FIXME(frabert): we need to provide stack_grows_down from somewhere else
-            anvill::AbstractStack stk(
-                func.getContext(),
-                {
-                    {block_ctx.GetStackSize(), stack_arg}
-            },
-                /*stack_grows_down=*/true, block_ctx.GetPointerDisplacement());
-
-            unsigned current_offset = 0;
-            unsigned num_paddings   = 0;
+        void PopulateStackStruct(
+            llvm::Function& func,
+            clang::FunctionDecl* fdecl,
+            const std::vector< anvill::BasicBlockVariable >& available_vars,
+            unsigned first_var_idx,
+            const remill::Register* stack_pointer_reg,
+            anvill::AbstractStack& stk,
+            clang::RecordDecl* locals_struct,
+            clang::VarDecl* stack_var,
+            clang::FieldDecl* locals_field) {
+            unsigned current_offset     = 0;
+            unsigned num_paddings       = 0;
+            unsigned num_available_vars = available_vars.size();
 
             // FIXME(frabert): this code ignores the fact that types have a natural alignment
             // This is assuming that variables are declared in order of increasing offset
@@ -185,10 +154,9 @@ namespace irene3
                     // A declared local *must* be contained in the stack
                     CHECK(var_offset.has_value());
                     if (var_offset > current_offset) {
-                        auto padding_ty    = CreateCharArray(*var_offset - current_offset);
-                        auto padding_field = ctx.ast.CreateFieldDecl(
-                            locals_struct, padding_ty, "padding_" + std::to_string(num_paddings++));
-                        locals_struct->addDecl(padding_field);
+                        CreatePadding(
+                            locals_struct, *var_offset - current_offset,
+                            "padding_" + std::to_string(num_paddings++));
                         current_offset = *var_offset;
                     }
 
@@ -209,7 +177,74 @@ namespace irene3
                     fdecl->addDecl(decl);
                 }
             }
+        }
 
+        std::tuple<
+            clang::RecordDecl*,
+            clang::RecordDecl*,
+            clang::FieldDecl*,
+            clang::VarDecl*,
+            clang::VarDecl* >
+        CreateStackLayout(clang::FunctionDecl* fdecl, const anvill::FunctionDecl& fspec) {
+            auto locals_struct = ctx.ast.CreateStructDecl(fdecl, "locals_struct");
+
+            fdecl->addDecl(locals_struct);
+
+            auto stack_union = ctx.ast.CreateUnionDecl(fdecl, "stack_union");
+            auto raw_stack_field
+                = ctx.ast.CreateFieldDecl(stack_union, CreateCharArray(fspec.stack_depth), "raw");
+            stack_union->addDecl(raw_stack_field);
+
+            auto locals_field = ctx.ast.CreateFieldDecl(
+                stack_union, ctx.ast_ctx.getRecordType(locals_struct), "locals");
+            stack_union->addDecl(locals_field);
+            fdecl->addDecl(stack_union);
+            auto stack_var
+                = ctx.ast.CreateVarDecl(fdecl, ctx.ast_ctx.getRecordType(stack_union), "stack");
+            fdecl->addDecl(stack_var);
+
+            auto raw_stack_var = ctx.ast.CreateVarDecl(fdecl, ctx.ast_ctx.VoidPtrTy, "raw_stack");
+            raw_stack_var->setInit(
+                ctx.ast.CreateFieldAcc(ctx.ast.CreateDeclRef(stack_var), raw_stack_field, false));
+            fdecl->addDecl(raw_stack_var);
+
+            return { locals_struct, stack_union, locals_field, stack_var, raw_stack_var };
+        }
+
+        void BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) {
+            auto block_addr = anvill::GetBasicBlockAddr(&func);
+            CHECK(block_addr.has_value());
+            auto block_contexts  = spec.GetBlockContexts();
+            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
+            CHECK(maybe_block_ctx.has_value());
+            const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
+            auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
+            auto available_vars     = block_ctx.LiveParamsAtEntryAndExit();
+            auto num_available_vars = available_vars.size();
+            auto stack_pointer_reg
+                = spec.Arch()->RegisterByName(spec.Arch()->StackPointerRegisterName());
+            auto stack_arg = func.getArg(remill::kStatePointerArgNum);
+
+            auto first_var_idx = func.arg_size() - num_available_vars;
+
+            fdecl->setParams(CreateFunctionParams(func, first_var_idx));
+
+            auto [locals_struct, stack_union, locals_field, stack_var, raw_stack_var]
+                = CreateStackLayout(fdecl, *fspec);
+
+            ctx.value_decls[stack_arg] = raw_stack_var;
+
+            // FIXME(frabert): we need to provide stack_grows_down from somewhere else
+            anvill::AbstractStack stk(
+                func.getContext(),
+                {
+                    {block_ctx.GetStackSize(), stack_arg}
+            },
+                /*stack_grows_down=*/true, block_ctx.GetPointerDisplacement());
+
+            PopulateStackStruct(
+                func, fdecl, available_vars, first_var_idx, stack_pointer_reg, stk, locals_struct,
+                stack_var, locals_field);
             locals_struct->completeDefinition();
             stack_union->completeDefinition();
         }
