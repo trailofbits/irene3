@@ -181,6 +181,7 @@ sourceSets {
   main {
     scala {
         srcDirs "${protobuf.generatedFilesBaseDir}/main/scalapb"
+        srcDirs 'ghidra_scripts'
     }
 
     proto {
