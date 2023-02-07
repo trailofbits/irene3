@@ -93,8 +93,10 @@ std::string PrintBodyToString(clang::CompoundStmt *compound) {
     return code;
 }
 
-llvm::json::Object ParamToSpec(
-    const anvill::BasicBlockVariable &bb_param, const remill::Register *stack_pointer_reg) {
+void ParamToSpec(
+    const anvill::BasicBlockVariable &bb_param,
+    const remill::Register *stack_pointer_reg,
+    llvm::json::Array &patch_vars) {
     auto var_spec = bb_param.param;
     llvm::json::Object var;
     var["name"] = var_spec.name;
@@ -106,7 +108,11 @@ llvm::json::Object ParamToSpec(
         if (bb_param.live_at_exit) {
             var["at-exit"] = var_spec.reg->name;
         }
-    } else if (var_spec.mem_reg && var_spec.mem_reg != stack_pointer_reg) {
+    } else if (var_spec.mem_reg) {
+        if (var_spec.mem_reg == stack_pointer_reg) {
+            return;
+        }
+
         llvm::json::Object memory;
         memory["frame-pointer"] = var_spec.mem_reg->name;
         memory["offset"]        = to_hex(var_spec.mem_offset) + ":"
@@ -119,7 +125,7 @@ llvm::json::Object ParamToSpec(
 
         var["memory"] = std::move(memory);
     }
-    return var;
+    patch_vars.push_back(std::move(var));
 }
 
 int main(int argc, char *argv[]) {
@@ -206,7 +212,7 @@ int main(int argc, char *argv[]) {
  { "offset", 0 } }                                           }
         });
         for (auto &bb_param : block.LiveParamsAtEntryAndExit()) {
-            patch_vars.push_back(ParamToSpec(bb_param, stack_pointer_reg));
+            ParamToSpec(bb_param, stack_pointer_reg, patch_vars);
         }
 
         patch["patch-vars"] = std::move(patch_vars);
