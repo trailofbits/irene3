@@ -1170,7 +1170,7 @@ object ProgramSpecifier {
       // Ignore blocks that are both empty and not writeable, since they would be useless anyway
       .filter(block => block.isWrite() || block.getSize() > 0)
       // Ignore overlay blocks to avoid overlapping memory
-      .filter(block => block.isOverlay())
+      .filter(block => !block.isOverlay())
       .map(specifyMemoryBlock)
     val global_specs = {
       func_defs_redirected
