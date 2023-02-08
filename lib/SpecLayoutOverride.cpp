@@ -134,7 +134,14 @@ namespace irene3
             strct->addDecl(padding_field);
         }
 
-        void PopulateStackStruct(
+        struct StackVar {
+            std::string name;
+            clang::QualType type;
+            clang::FieldDecl* field_decl;
+            llvm::Argument* arg;
+        };
+
+        std::vector< StackVar > PopulateStackStruct(
             llvm::Function& func,
             clang::FunctionDecl* fdecl,
             const std::vector< anvill::BasicBlockVariable >& available_vars,
@@ -169,6 +176,7 @@ namespace irene3
                 return a.second < b.second;
             });
 
+            std::vector< StackVar > stack_var_decls;
             unsigned current_offset = 0;
             unsigned num_paddings   = 0;
             // FIXME(frabert): this code ignores the fact that types have a natural alignment
@@ -176,8 +184,7 @@ namespace irene3
                 auto& var_spec = available_vars[var->getArgNo() - first_var_idx];
                 auto type
                     = type_decoder.Decode(ctx, spec, var_spec.param.spec_type, var->getType());
-                auto& decl = ctx.value_decls[var];
-                auto name  = stack_var->getName().str();
+                auto name = var->getName().str();
 
                 if (var_offset > current_offset) {
                     CreatePadding(
@@ -189,16 +196,11 @@ namespace irene3
                 auto field_decl = ctx.ast.CreateFieldDecl(locals_struct, type, name);
                 locals_struct->addDecl(field_decl);
 
-                auto base_stack  = ctx.ast.CreateDeclRef(stack_var);
-                auto base_locals = ctx.ast.CreateFieldAcc(base_stack, locals_field, false);
-                auto local_var
-                    = ctx.ast.CreateVarDecl(fdecl, ctx.ast_ctx.getPointerType(type), name);
-                local_var->setInit(
-                    ctx.ast.CreateAddrOf(ctx.ast.CreateFieldAcc(base_locals, field_decl, false)));
-                decl = local_var;
-                fdecl->addDecl(local_var);
+                stack_var_decls.push_back({ name, type, field_decl, var });
                 current_offset += ctx.ast_ctx.getTypeSize(type) / 8;
             }
+
+            return stack_var_decls;
         }
 
         std::tuple<
@@ -263,11 +265,23 @@ namespace irene3
             },
                 stack_grows_down, block_ctx.GetPointerDisplacement());
 
-            PopulateStackStruct(
+            auto stack_var_decls = PopulateStackStruct(
                 func, fdecl, available_vars, first_var_idx, stack_pointer_reg, stk, locals_struct,
                 stack_var, locals_field);
             locals_struct->completeDefinition();
             stack_union->completeDefinition();
+
+            for (auto& svar : stack_var_decls) {
+                auto& decl       = ctx.value_decls[svar.arg];
+                auto base_stack  = ctx.ast.CreateDeclRef(stack_var);
+                auto base_locals = ctx.ast.CreateFieldAcc(base_stack, locals_field, false);
+                auto local_var   = ctx.ast.CreateVarDecl(
+                      fdecl, ctx.ast_ctx.getPointerType(svar.type), svar.name);
+                local_var->setInit(ctx.ast.CreateAddrOf(
+                    ctx.ast.CreateFieldAcc(base_locals, svar.field_decl, false)));
+                decl = local_var;
+                fdecl->addDecl(local_var);
+            }
         }
 
         bool VisitInstruction(
