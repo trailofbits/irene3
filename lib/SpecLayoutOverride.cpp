@@ -143,45 +143,68 @@ namespace irene3
             clang::RecordDecl* locals_struct,
             clang::VarDecl* stack_var,
             clang::FieldDecl* locals_field) {
-            unsigned current_offset     = 0;
-            unsigned num_paddings       = 0;
             unsigned num_available_vars = available_vars.size();
+            std::vector< llvm::Argument* > stack_vars;
 
-            // FIXME(frabert): this code ignores the fact that types have a natural alignment
-            // This is assuming that variables are declared in order of increasing offset
             for (size_t i = 0; i < num_available_vars; ++i) {
                 auto arg   = func.getArg(i + first_var_idx);
                 auto& var  = available_vars[i];
-                auto type  = type_decoder.Decode(ctx, spec, var.param.spec_type, arg->getType());
-                auto& decl = ctx.value_decls[arg];
-                auto name  = arg->getName().str();
                 if (var.param.mem_reg == stack_pointer_reg) {
-                    auto var_offset = stk.StackOffsetFromStackPointer(var.param.mem_offset);
-                    // A declared local *must* be contained in the stack
-                    CHECK(var_offset.has_value());
-                    if (var_offset > current_offset) {
-                        CreatePadding(
-                            locals_struct, *var_offset - current_offset,
-                            "padding_" + std::to_string(num_paddings++));
-                        current_offset = *var_offset;
-                    }
-
-                    auto field_decl = ctx.ast.CreateFieldDecl(locals_struct, type, name);
-                    locals_struct->addDecl(field_decl);
-
-                    auto base_stack  = ctx.ast.CreateDeclRef(stack_var);
-                    auto base_locals = ctx.ast.CreateFieldAcc(base_stack, locals_field, false);
-                    auto local_var
-                        = ctx.ast.CreateVarDecl(fdecl, ctx.ast_ctx.getPointerType(type), name);
-                    local_var->setInit(ctx.ast.CreateAddrOf(
-                        ctx.ast.CreateFieldAcc(base_locals, field_decl, false)));
-                    decl = local_var;
-                    fdecl->addDecl(local_var);
-                    current_offset += ctx.ast_ctx.getTypeSize(type) / 8;
+                    stack_vars.push_back(arg);
                 } else {
-                    decl = ctx.ast.CreateVarDecl(fdecl, type, name);
+                    auto type = type_decoder.Decode(ctx, spec, var.param.spec_type, arg->getType());
+                    auto& decl = ctx.value_decls[arg];
+                    auto name  = arg->getName().str();
+                    decl       = ctx.ast.CreateVarDecl(fdecl, type, name);
                     fdecl->addDecl(decl);
                 }
+            }
+
+            // Sort stack variables in order of increasing offset
+            std::sort(stack_vars.begin(), stack_vars.end(), [&](auto a, auto b) {
+                auto& a_spec  = available_vars[a->getArgNo() - first_var_idx];
+                auto a_offset = stk.StackOffsetFromStackPointer(a_spec.param.mem_offset);
+
+                auto& b_spec  = available_vars[b->getArgNo() - first_var_idx];
+                auto b_offset = stk.StackOffsetFromStackPointer(b_spec.param.mem_offset);
+
+                // A declared local *must* be contained in the stack
+                CHECK(a_offset.has_value());
+                CHECK(b_offset.has_value());
+
+                return *a_offset < *b_offset;
+            });
+
+            unsigned current_offset = 0;
+            unsigned num_paddings   = 0;
+            // FIXME(frabert): this code ignores the fact that types have a natural alignment
+            for (auto var : stack_vars) {
+                auto& var_spec = available_vars[var->getArgNo() - first_var_idx];
+                auto type
+                    = type_decoder.Decode(ctx, spec, var_spec.param.spec_type, var->getType());
+                auto& decl = ctx.value_decls[var];
+                auto name  = stack_var->getName().str();
+
+                auto var_offset = stk.StackOffsetFromStackPointer(var_spec.param.mem_offset);
+                if (var_offset > current_offset) {
+                    CreatePadding(
+                        locals_struct, *var_offset - current_offset,
+                        "padding_" + std::to_string(num_paddings++));
+                    current_offset = *var_offset;
+                }
+
+                auto field_decl = ctx.ast.CreateFieldDecl(locals_struct, type, name);
+                locals_struct->addDecl(field_decl);
+
+                auto base_stack  = ctx.ast.CreateDeclRef(stack_var);
+                auto base_locals = ctx.ast.CreateFieldAcc(base_stack, locals_field, false);
+                auto local_var
+                    = ctx.ast.CreateVarDecl(fdecl, ctx.ast_ctx.getPointerType(type), name);
+                local_var->setInit(
+                    ctx.ast.CreateAddrOf(ctx.ast.CreateFieldAcc(base_locals, field_decl, false)));
+                decl = local_var;
+                fdecl->addDecl(local_var);
+                current_offset += ctx.ast_ctx.getTypeSize(type) / 8;
             }
         }
 
