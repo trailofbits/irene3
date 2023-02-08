@@ -24,6 +24,7 @@
 #include <remill/BC/ABI.h>
 #include <string>
 #include <tuple>
+#include <utility>
 
 namespace irene3
 {
@@ -144,13 +145,16 @@ namespace irene3
             clang::VarDecl* stack_var,
             clang::FieldDecl* locals_field) {
             unsigned num_available_vars = available_vars.size();
-            std::vector< llvm::Argument* > stack_vars;
+            std::vector< std::pair< llvm::Argument*, unsigned > > stack_vars;
 
             for (size_t i = 0; i < num_available_vars; ++i) {
                 auto arg   = func.getArg(i + first_var_idx);
                 auto& var  = available_vars[i];
                 if (var.param.mem_reg == stack_pointer_reg) {
-                    stack_vars.push_back(arg);
+                    auto offset = stk.StackOffsetFromStackPointer(var.param.mem_offset);
+                    // A declared local *must* be contained in the stack
+                    CHECK(offset.has_value());
+                    stack_vars.push_back({ arg, *offset });
                 } else {
                     auto type = type_decoder.Decode(ctx, spec, var.param.spec_type, arg->getType());
                     auto& decl = ctx.value_decls[arg];
@@ -162,35 +166,24 @@ namespace irene3
 
             // Sort stack variables in order of increasing offset
             std::sort(stack_vars.begin(), stack_vars.end(), [&](auto a, auto b) {
-                auto& a_spec  = available_vars[a->getArgNo() - first_var_idx];
-                auto a_offset = stk.StackOffsetFromStackPointer(a_spec.param.mem_offset);
-
-                auto& b_spec  = available_vars[b->getArgNo() - first_var_idx];
-                auto b_offset = stk.StackOffsetFromStackPointer(b_spec.param.mem_offset);
-
-                // A declared local *must* be contained in the stack
-                CHECK(a_offset.has_value());
-                CHECK(b_offset.has_value());
-
-                return *a_offset < *b_offset;
+                return a.second < b.second;
             });
 
             unsigned current_offset = 0;
             unsigned num_paddings   = 0;
             // FIXME(frabert): this code ignores the fact that types have a natural alignment
-            for (auto var : stack_vars) {
+            for (auto [var, var_offset] : stack_vars) {
                 auto& var_spec = available_vars[var->getArgNo() - first_var_idx];
                 auto type
                     = type_decoder.Decode(ctx, spec, var_spec.param.spec_type, var->getType());
                 auto& decl = ctx.value_decls[var];
                 auto name  = stack_var->getName().str();
 
-                auto var_offset = stk.StackOffsetFromStackPointer(var_spec.param.mem_offset);
                 if (var_offset > current_offset) {
                     CreatePadding(
-                        locals_struct, *var_offset - current_offset,
+                        locals_struct, var_offset - current_offset,
                         "padding_" + std::to_string(num_paddings++));
-                    current_offset = *var_offset;
+                    current_offset = var_offset;
                 }
 
                 auto field_decl = ctx.ast.CreateFieldDecl(locals_struct, type, name);
