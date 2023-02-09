@@ -39,6 +39,7 @@
 DEFINE_string(spec, "", "input spec");
 DEFINE_string(output, "", "output patch file");
 DEFINE_string(lift_list, "", "list of entities to lift");
+DEFINE_bool(add_edges, false, "add outgoing edges to blocks for cfg construction");
 DEFINE_bool(type_propagation, false, "output patch file");
 DEFINE_bool(h, false, "help");
 
@@ -128,7 +129,8 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    auto block_contexts = builder.GetSpec().GetBlockContexts();
+    auto spec           = builder.GetSpec();
+    auto block_contexts = spec.GetBlockContexts();
     llvm::json::Array patches;
 
     for (auto &[addr, compound] : decomp_res.Value().blocks) {
@@ -138,6 +140,18 @@ int main(int argc, char *argv[]) {
         llvm::json::Object patch;
         patch["patch-name"] = "block_" + std::to_string(addr);
         patch["patch-addr"] = to_hex(addr);
+
+        if (FLAGS_add_edges) {
+            llvm::json::Array edges;
+
+            auto func_decl = spec.FunctionAt(block.GetParentFunctionAddress());
+            auto cb        = func_decl->cfg.find(addr)->second;
+            for (auto e : cb.outgoing_edges) {
+                edges.push_back(to_hex(e));
+            }
+
+            patch["edges"] = std::move(edges);
+        }
 
         std::string code;
         llvm::raw_string_ostream os(code);
