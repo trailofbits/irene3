@@ -27,16 +27,13 @@ object BasicBlockContextProducer {
     maybe_dpth != Function.INVALID_STACK_DEPTH_CHANGE && maybe_dpth != Function.UNKNOWN_STACK_DEPTH_CHANGE
 }
 
-class BasicBlockContextProducer(gfunc: Function, val max_depth: Long) {
+class BasicBlockContextProducer(gfunc: Function, stack_depth_info: CallDepthChangeInfo, val max_depth: Long) {
 
   val aliases: scala.collection.mutable.Map[Long, TypeSpec] =
     scala.collection.mutable.Map.empty
 
-  val stack_depth_info =
-    CallDepthChangeInfo(gfunc, ghidra.util.task.TaskMonitor.DUMMY)
-
   val live_analysis =
-    LivenessAnalysis(Util.getCfgAsGraph(gfunc), gfunc, aliases)
+    LivenessAnalysis(Util.getCfgAsGraph(gfunc), gfunc, stack_depth_info, aliases)
   val liveness_info = live_analysis
     .getBlockLiveness()
     .map((k, v) => (k.getFirstStartAddress(), v))

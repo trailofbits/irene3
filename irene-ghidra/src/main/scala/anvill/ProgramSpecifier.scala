@@ -591,8 +591,7 @@ object ProgramSpecifier {
     StackEffects()
   }
 
-  def maxDepth(func: Function): Int = {
-    val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
+  def maxDepth(func: Function, cdi: CallDepthChangeInfo): Int = {
     val func_insns: ju.Iterator[Instruction] = func.getProgram
       .getListing()
       .getInstructions(func.getBody(), true)
@@ -652,8 +651,9 @@ object ProgramSpecifier {
     if (!(cfg contains func.getEntryPoint().getOffset())) {
       cfg = Map.empty
     }
-    val max_depth = maxDepth(func)
-    val bb_context_prod = BasicBlockContextProducer(func, max_depth)
+    val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
+    val max_depth = maxDepth(func, cdi)
+    val bb_context_prod = BasicBlockContextProducer(func, cdi, max_depth)
     FuncSpec(
       getThunkRedirection(func.getProgram(), func.getEntryPoint())
         .getOffset(),
