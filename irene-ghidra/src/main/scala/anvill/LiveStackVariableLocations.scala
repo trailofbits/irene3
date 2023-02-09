@@ -18,9 +18,9 @@ object LiveStackVariableLocations {
 
   def analyzeVariables(
       target_func: Function,
+      stack_depth_info: CallDepthChangeInfo,
       followStackDirection: Boolean
   ): Map[Address, Set[Variable]] = {
-    def stack_depth_info = new CallDepthChangeInfo(target_func)
     def live_to_stack_variable =
       target_func
         .getStackFrame()
@@ -81,11 +81,11 @@ object LiveStackVariableLocations {
       .toMap
   }
 
-  def getAllocationPoints(target_func: Function) =
-    analyzeVariables(target_func, true)
+  def getAllocationPoints(target_func: Function, cdi: CallDepthChangeInfo) =
+    analyzeVariables(target_func, cdi, true)
 
-  def getFreePoints(target_func: Function) =
-    analyzeVariables(target_func, false)
+  def getFreePoints(target_func: Function, cdi: CallDepthChangeInfo) =
+    analyzeVariables(target_func, cdi, false)
 
   def getVariablesMissingFromPoints(
       target_func: Function,

@@ -42,11 +42,11 @@ case class BlockLiveness(
 class LivenessAnalysis(
     val control_flow_graph: Util.CFG,
     val func: ghidra.program.model.listing.Function,
+    val cdi: CallDepthChangeInfo,
     val aliases: scala.collection.mutable.Map[Long, TypeSpec]
 ) {
 
   val lang = func.getProgram().getLanguage()
-  val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
   val register_to_variable: Map[Register, Variable] =
     func
       .getAllVariables()

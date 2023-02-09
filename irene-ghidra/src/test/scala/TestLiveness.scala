@@ -12,6 +12,8 @@ import ghidra.program.model.lang.Register
 import scala.collection.mutable
 import anvill.Util.getLiveRegisters
 import anvill.ProgramSpecifier
+import ghidra.app.cmd.function.CallDepthChangeInfo
+import ghidra.util.task.TaskMonitor
 
 class TestLiveness extends BaseProgramLoadTest {
 
@@ -29,9 +31,10 @@ class TestLiveness extends BaseProgramLoadTest {
   @Test def testLivenessCollatz(): Unit = {
     val coll_prog = loadProgram(proj, "binaries/collatz-x86")
     val func = firstFunctionNamed(coll_prog, "_leaf_function")
+    val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
 
     val bb_cont =
-      BasicBlockContextProducer(func, ProgramSpecifier.maxDepth(func))
+      BasicBlockContextProducer(func, cdi, ProgramSpecifier.maxDepth(func, cdi))
     val live_info =
       bb_cont.liveness(coll_prog.getAddressFactory().getAddress("100003f94"))
 
@@ -69,9 +72,11 @@ class TestLiveness extends BaseProgramLoadTest {
   @Test def testChal3SetDutyKillsFromBlock(): Unit = {
     val prog = loadProgram(proj, "binaries/challenge-3_amd64_program_c.elf")
     val func = firstFunctionNamed(prog, "set_duty")
+    val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
     val liveanalysis = anvill.LivenessAnalysis(
       anvill.Util.getCfgAsGraph(func),
       func,
+      cdi,
       mutable.Map()
     )
 
@@ -93,9 +98,10 @@ class TestLiveness extends BaseProgramLoadTest {
 
     val prog = loadProgram(proj, "binaries/challenge-3_amd64_program_c.elf")
     val func = firstFunctionNamed(prog, "set_duty")
+    val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
 
     val bb_cont =
-      BasicBlockContextProducer(func, ProgramSpecifier.maxDepth(func))
+      BasicBlockContextProducer(func, cdi, ProgramSpecifier.maxDepth(func, cdi))
 
     val liveness_entry_block =
       bb_cont.liveness(prog.getAddressFactory().getAddress("401af0"))
@@ -125,8 +131,9 @@ class TestLiveness extends BaseProgramLoadTest {
     val prog =
       loadProgram(proj, "binaries/challenge-3_amd64_program_c.elf")
     val func = firstFunctionNamed(prog, "set_duty")
+    val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
     val bb_prod =
-      BasicBlockContextProducer(func, ProgramSpecifier.maxDepth(func))
+      BasicBlockContextProducer(func, cdi, ProgramSpecifier.maxDepth(func, cdi))
     val stack_vals = bb_prod.getBlockContext(
       func.getEntryPoint(),
       prog.getAddressFactory().getAddress("00401b14")
@@ -149,9 +156,10 @@ class TestLiveness extends BaseProgramLoadTest {
     val prog =
       loadProgram(proj, "binaries/challenge-3_amd64_program_c.elf")
     val func = firstFunctionNamed(prog, "main")
+    val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
 
     val bb_prod =
-      BasicBlockContextProducer(func, ProgramSpecifier.maxDepth(func))
+      BasicBlockContextProducer(func, cdi, ProgramSpecifier.maxDepth(func, cdi))
 
     val orig_stack_locs = bb_prod.live_analysis.local_paramspecs().toSeq
     println(orig_stack_locs.flatMap(_.name).toSet)
@@ -171,8 +179,9 @@ class TestLiveness extends BaseProgramLoadTest {
     val coll_prog =
       loadProgram(proj, "binaries/challenge-3_amd64_program_c.elf")
     val func = firstFunctionNamed(coll_prog, "set_power")
+    val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
     val bb_cont =
-      BasicBlockContextProducer(func, ProgramSpecifier.maxDepth(func))
+      BasicBlockContextProducer(func, cdi, ProgramSpecifier.maxDepth(func, cdi))
     val live_info =
       bb_cont.liveness(coll_prog.getAddressFactory().getAddress("00401920"))
 
