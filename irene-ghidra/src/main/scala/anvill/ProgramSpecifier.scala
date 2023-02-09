@@ -699,7 +699,8 @@ object ProgramSpecifier {
           func.getStackFrame.getFrameSize,
           func.getStackFrame.getReturnAddressOffset,
           func.getStackFrame.getParameterSize,
-          max_depth
+          max_depth,
+          func.getStackFrame.getParameterOffset
         )
       )
     )
