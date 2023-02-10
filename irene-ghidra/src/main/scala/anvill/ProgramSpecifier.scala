@@ -102,6 +102,7 @@ import ghidra.program.model.data.AbstractStringDataType
 import specification.specification.StackFrame
 import ghidra.app.cmd.function.CallDepthChangeInfo
 import ghidra.util.task.TaskMonitor
+import scala.collection.mutable.{Map => MutableMap}
 
 def pair[A, B](ma: Option[A], mb: Option[B]): Option[(A, B)] =
   ma.flatMap(a => mb.map(b => (a, b)))
@@ -299,7 +300,9 @@ object ProgramSpecifier {
     val model = BasicBlockModel(prog)
     val queue = scala.collection.mutable.Queue[Address]()
     val monitor = () => TimeoutTaskMonitor.timeoutIn(5, TimeUnit.SECONDS)
-    def is_internal(addr: Address) = func == listing.getFunctionContaining(addr)
+    val is_internal_map: MutableMap[Address, Boolean] = MutableMap.empty
+    def is_internal(addr: Address) =
+      is_internal_map.getOrElseUpdate(addr, func == listing.getFunctionContaining(addr))
     queue.enqueue(func.getEntryPoint())
     while (queue.size > 0) {
       val addr = queue.dequeue()
