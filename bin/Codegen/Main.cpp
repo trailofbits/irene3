@@ -11,6 +11,7 @@
 #include <anvill/Providers.h>
 #include <anvill/Specification.h>
 #include <clang/AST/GlobalDecl.h>
+#include <clang/AST/Stmt.h>
 #include <clang/Tooling/Tooling.h>
 #include <cstdint>
 #include <cstdio>
@@ -85,9 +86,11 @@ std::string PrintBodyToString(clang::CompoundStmt *compound) {
     std::string code;
     llvm::raw_string_ostream os(code);
     for (auto &stmt : compound->body()) {
-        stmt->printPretty(os, nullptr, { {} });
-        if (clang::isa< clang::Expr >(stmt)) {
-            os << ";\n";
+        if (!clang::isa< clang::ReturnStmt >(stmt)) {
+            stmt->printPretty(os, nullptr, { {} });
+            if (clang::isa< clang::Expr >(stmt)) {
+                os << ";\n";
+            }
         }
     }
     return code;
