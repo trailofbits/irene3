@@ -166,6 +166,14 @@ protobuf {
   }
 }
 
+// Required for protobuf dependency management. Not sure why this isn't
+// captured in 'generateProtoTasks' section
+tasks.configureEach { task ->
+    if (task.name == 'extractIncludeProto') {
+        task.dependsOn copyDependencies
+    }
+}
+
 
 test {
     useJUnit()
