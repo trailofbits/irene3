@@ -23,7 +23,8 @@ namespace irene3
             rellic::DecompilationContext& dec_ctx,
             anvill::Specification& spec,
             TypeDecoder& type_decoder,
-            bool stack_grows_down);
+            bool stack_grows_down,
+            bool should_preserve_unused_decls);
         ~SpecLayoutOverride();
 
         bool HasOverride(llvm::Function& func) final;
