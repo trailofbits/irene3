@@ -34,16 +34,19 @@ namespace irene3
         anvill::Specification spec;
         TypeDecoder& type_decoder;
         bool stack_grows_down;
+        bool should_preserve_unused_decls;
 
         Impl(
             DecompilationContext& ctx,
             anvill::Specification& spec,
             TypeDecoder& type_decoder,
-            bool stack_grows_down)
+            bool stack_grows_down,
+            bool should_preserve_unused_decls)
             : ctx(ctx)
             , spec(spec)
             , type_decoder(type_decoder)
-            , stack_grows_down(stack_grows_down) {}
+            , stack_grows_down(stack_grows_down)
+            , should_preserve_unused_decls(should_preserve_unused_decls) {}
 
         std::optional< std::reference_wrapper< const anvill::BasicBlockContext > > GetContext(
             llvm::Function& func) {
@@ -155,19 +158,22 @@ namespace irene3
             std::vector< std::pair< llvm::Argument*, unsigned > > stack_vars;
 
             for (size_t i = 0; i < num_available_vars; ++i) {
-                auto arg   = func.getArg(i + first_var_idx);
-                auto& var  = available_vars[i];
+                auto arg  = func.getArg(i + first_var_idx);
+                auto& var = available_vars[i];
                 if (var.param.mem_reg == stack_pointer_reg) {
                     auto offset = stk.StackOffsetFromStackPointer(var.param.mem_offset);
                     // A declared local *must* be contained in the stack
                     CHECK(offset.has_value());
                     stack_vars.push_back({ arg, *offset });
                 } else {
-                    auto type = type_decoder.Decode(ctx, spec, var.param.spec_type, arg->getType());
-                    auto& decl = ctx.value_decls[arg];
-                    auto name  = arg->getName().str();
-                    decl       = ctx.ast.CreateVarDecl(fdecl, type, name);
-                    fdecl->addDecl(decl);
+                    if (arg->getNumUses() != 0 || this->should_preserve_unused_decls) {
+                        auto type
+                            = type_decoder.Decode(ctx, spec, var.param.spec_type, arg->getType());
+                        auto& decl = ctx.value_decls[arg];
+                        auto name  = arg->getName().str();
+                        decl       = ctx.ast.CreateVarDecl(fdecl, type, name);
+                        fdecl->addDecl(decl);
+                    }
                 }
             }
 
@@ -272,15 +278,17 @@ namespace irene3
             stack_union->completeDefinition();
 
             for (auto& svar : stack_var_decls) {
-                auto& decl       = ctx.value_decls[svar.arg];
-                auto base_stack  = ctx.ast.CreateDeclRef(stack_var);
-                auto base_locals = ctx.ast.CreateFieldAcc(base_stack, locals_field, false);
-                auto local_var   = ctx.ast.CreateVarDecl(
-                      fdecl, ctx.ast_ctx.getPointerType(svar.type), svar.name);
-                local_var->setInit(ctx.ast.CreateAddrOf(
-                    ctx.ast.CreateFieldAcc(base_locals, svar.field_decl, false)));
-                decl = local_var;
-                fdecl->addDecl(local_var);
+                if (svar.arg->getNumUses() != 0 || should_preserve_unused_decls) {
+                    auto& decl       = ctx.value_decls[svar.arg];
+                    auto base_stack  = ctx.ast.CreateDeclRef(stack_var);
+                    auto base_locals = ctx.ast.CreateFieldAcc(base_stack, locals_field, false);
+                    auto local_var   = ctx.ast.CreateVarDecl(
+                          fdecl, ctx.ast_ctx.getPointerType(svar.type), svar.name);
+                    local_var->setInit(ctx.ast.CreateAddrOf(
+                        ctx.ast.CreateFieldAcc(base_locals, svar.field_decl, false)));
+                    decl = local_var;
+                    fdecl->addDecl(local_var);
+                }
             }
         }
 
@@ -314,9 +322,11 @@ namespace irene3
         DecompilationContext& dec_ctx,
         anvill::Specification& spec,
         TypeDecoder& type_decoder,
-        bool stack_grows_down)
+        bool stack_grows_down,
+        bool should_preserve_unused_decls)
         : FunctionLayoutOverride(dec_ctx)
-        , impl(std::make_unique< Impl >(dec_ctx, spec, type_decoder, stack_grows_down)) {}
+        , impl(std::make_unique< Impl >(
+              dec_ctx, spec, type_decoder, stack_grows_down, should_preserve_unused_decls)) {}
     SpecLayoutOverride::~SpecLayoutOverride() = default;
 
     bool SpecLayoutOverride::HasOverride(llvm::Function& func) { return impl->HasOverride(func); }
@@ -347,6 +357,6 @@ namespace irene3
     std::unique_ptr< FunctionLayoutOverride > SpecLayoutOverride::Factory::create(
         rellic::DecompilationContext& dec_ctx) {
         return std::make_unique< SpecLayoutOverride >(
-            dec_ctx, spec, type_decoder, stack_grows_down);
+            dec_ctx, spec, type_decoder, stack_grows_down, false);
     }
 } // namespace irene3
