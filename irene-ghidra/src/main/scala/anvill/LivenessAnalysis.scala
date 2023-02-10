@@ -204,6 +204,8 @@ class LivenessAnalysis(
 
   def get_initial_after_liveness(blk: CodeBlock): Set[ParamSpec] = {
     if (blk.getFlowType().isTerminal()) {
+      // If a block can return then the saves need to be live at that point,
+      // + returns
       Option(
         func
           .getCallingConvention()
@@ -219,7 +221,8 @@ class LivenessAnalysis(
               .getRegister(r.getAddress(), r.getSize())
           )
         )
-        .toSet
+        .toSet ++ get_live_reigsters(Option(func.getReturn()).toSeq)
+        .map(registerToParam)
     } else {
       Set.empty
     }
