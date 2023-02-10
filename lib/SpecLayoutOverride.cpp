@@ -14,6 +14,7 @@
 #include <clang/AST/Decl.h>
 #include <clang/AST/Type.h>
 #include <functional>
+#include <glog/logging.h>
 #include <irene3/Util.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
@@ -21,6 +22,7 @@
 #include <optional>
 #include <rellic/AST/DecompilationContext.h>
 #include <rellic/AST/FunctionLayoutOverride.h>
+#include <remill/Arch/Arch.h>
 #include <remill/BC/ABI.h>
 #include <string>
 #include <tuple>
@@ -144,6 +146,29 @@ namespace irene3
             llvm::Argument* arg;
         };
 
+        void PopulateRegisterDecls(
+            llvm::Function& func,
+            clang::FunctionDecl* fdecl,
+            const std::vector< anvill::BasicBlockVariable >& available_vars,
+            unsigned first_var_idx,
+            const remill::Register* stack_pointer_reg) {
+            unsigned num_available_vars = available_vars.size();
+            for (size_t i = 0; i < num_available_vars; ++i) {
+                auto arg  = func.getArg(i + first_var_idx);
+                auto& var = available_vars[i];
+                if (var.param.mem_reg != stack_pointer_reg) {
+                    if (arg->getNumUses() != 0 || this->should_preserve_unused_decls) {
+                        auto type
+                            = type_decoder.Decode(ctx, spec, var.param.spec_type, arg->getType());
+                        auto& decl = ctx.value_decls[arg];
+                        auto name  = arg->getName().str();
+                        decl       = ctx.ast.CreateVarDecl(fdecl, type, name);
+                        fdecl->addDecl(decl);
+                    }
+                }
+            }
+        }
+
         std::vector< StackVar > PopulateStackStruct(
             llvm::Function& func,
             clang::FunctionDecl* fdecl,
@@ -165,15 +190,6 @@ namespace irene3
                     // A declared local *must* be contained in the stack
                     CHECK(offset.has_value());
                     stack_vars.push_back({ arg, *offset });
-                } else {
-                    if (arg->getNumUses() != 0 || this->should_preserve_unused_decls) {
-                        auto type
-                            = type_decoder.Decode(ctx, spec, var.param.spec_type, arg->getType());
-                        auto& decl = ctx.value_decls[arg];
-                        auto name  = arg->getName().str();
-                        decl       = ctx.ast.CreateVarDecl(fdecl, type, name);
-                        fdecl->addDecl(decl);
-                    }
                 }
             }
 
@@ -241,6 +257,26 @@ namespace irene3
             return { locals_struct, stack_union, locals_field, stack_var, raw_stack_var };
         }
 
+        bool HasStackUses(
+            llvm::Function& func,
+            const anvill::BasicBlockContext& block_ctx,
+            const remill::Register* sp) {
+            auto stack_arg = func.getArg(remill::kStatePointerArgNum);
+
+            auto available_vars = block_ctx.LiveParamsAtEntryAndExit();
+
+            auto used_stack_local = std::any_of(
+                available_vars.begin(), available_vars.end(),
+                [&func, &block_ctx, sp](const anvill::BasicBlockVariable& bbvar) {
+                    return bbvar.param.mem_reg == sp
+                           && anvill::ProvidePointerFromFunctionArgs(&func, bbvar.index, block_ctx)
+                                      ->getNumUses()
+                                  != 0;
+                });
+
+            return stack_arg->getNumUses() != 0 || used_stack_local;
+        }
+
         void BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) {
             auto block_addr = anvill::GetBasicBlockAddr(&func);
             CHECK(block_addr.has_value());
@@ -259,36 +295,44 @@ namespace irene3
 
             fdecl->setParams(CreateFunctionParams(func, first_var_idx));
 
-            auto [locals_struct, stack_union, locals_field, stack_var, raw_stack_var]
-                = CreateStackLayout(fdecl, *fspec);
+            this->PopulateRegisterDecls(
+                func, fdecl, available_vars, first_var_idx, stack_pointer_reg);
 
-            ctx.value_decls[stack_arg] = raw_stack_var;
+            if (HasStackUses(func, block_ctx, stack_pointer_reg)) {
+                LOG(INFO) << "has stack uses";
+                auto [locals_struct, stack_union, locals_field, stack_var, raw_stack_var]
+                    = CreateStackLayout(fdecl, *fspec);
 
-            anvill::AbstractStack stk(
-                func.getContext(),
-                {
-                    {block_ctx.GetStackSize(), stack_arg}
-            },
-                stack_grows_down, block_ctx.GetPointerDisplacement());
+                ctx.value_decls[stack_arg] = raw_stack_var;
 
-            auto stack_var_decls = PopulateStackStruct(
-                func, fdecl, available_vars, first_var_idx, stack_pointer_reg, stk, locals_struct,
-                stack_var, locals_field);
-            locals_struct->completeDefinition();
-            stack_union->completeDefinition();
+                anvill::AbstractStack stk(
+                    func.getContext(),
+                    {
+                        {block_ctx.GetStackSize(), stack_arg}
+                },
+                    stack_grows_down, block_ctx.GetPointerDisplacement());
 
-            for (auto& svar : stack_var_decls) {
-                if (svar.arg->getNumUses() != 0 || should_preserve_unused_decls) {
-                    auto& decl       = ctx.value_decls[svar.arg];
-                    auto base_stack  = ctx.ast.CreateDeclRef(stack_var);
-                    auto base_locals = ctx.ast.CreateFieldAcc(base_stack, locals_field, false);
-                    auto local_var   = ctx.ast.CreateVarDecl(
-                          fdecl, ctx.ast_ctx.getPointerType(svar.type), svar.name);
-                    local_var->setInit(ctx.ast.CreateAddrOf(
-                        ctx.ast.CreateFieldAcc(base_locals, svar.field_decl, false)));
-                    decl = local_var;
-                    fdecl->addDecl(local_var);
+                auto stack_var_decls = PopulateStackStruct(
+                    func, fdecl, available_vars, first_var_idx, stack_pointer_reg, stk,
+                    locals_struct, stack_var, locals_field);
+                locals_struct->completeDefinition();
+                stack_union->completeDefinition();
+
+                for (auto& svar : stack_var_decls) {
+                    if (svar.arg->getNumUses() != 0 || should_preserve_unused_decls) {
+                        auto& decl       = ctx.value_decls[svar.arg];
+                        auto base_stack  = ctx.ast.CreateDeclRef(stack_var);
+                        auto base_locals = ctx.ast.CreateFieldAcc(base_stack, locals_field, false);
+                        auto local_var   = ctx.ast.CreateVarDecl(
+                              fdecl, ctx.ast_ctx.getPointerType(svar.type), svar.name);
+                        local_var->setInit(ctx.ast.CreateAddrOf(
+                            ctx.ast.CreateFieldAcc(base_locals, svar.field_decl, false)));
+                        decl = local_var;
+                        fdecl->addDecl(local_var);
+                    }
                 }
+            } else {
+                LOG(INFO) << "Does not have stack uses";
             }
         }
 
