@@ -8,6 +8,7 @@
 
 #include "SpecLayoutOverride.h"
 
+#include <algorithm>
 #include <anvill/Declarations.h>
 #include <anvill/Specification.h>
 #include <anvill/Utils.h>
