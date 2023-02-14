@@ -39,7 +39,7 @@ class TestLiveness extends BaseProgramLoadTest {
       bb_cont.liveness(coll_prog.getAddressFactory().getAddress("100003f94"))
 
     assertEquals(
-      Set("RBX", "RSP", "RBP", "R12", "R13", "R14", "R15"),
+      Set("RBX", "RSP", "RBP", "R12", "R13", "R14", "R15", "RAX"),
       live_info.live_after
         .filter(p => p.reprVar.get.values(0).innerValue.isReg)
         .map(p => p.reprVar.get.values(0).innerValue.reg.get)
