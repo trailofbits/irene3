@@ -157,15 +157,13 @@ namespace irene3
             for (size_t i = 0; i < num_available_vars; ++i) {
                 auto arg  = func.getArg(i + first_var_idx);
                 auto& var = available_vars[i];
-                if (var.param.mem_reg != stack_pointer_reg) {
-                    if (arg->getNumUses() != 0 || this->should_preserve_unused_decls) {
-                        auto type
-                            = type_decoder.Decode(ctx, spec, var.param.spec_type, arg->getType());
-                        auto& decl = ctx.value_decls[arg];
-                        auto name  = arg->getName().str();
-                        decl       = ctx.ast.CreateVarDecl(fdecl, type, name);
-                        fdecl->addDecl(decl);
-                    }
+                if (var.param.mem_reg != stack_pointer_reg
+                    && (arg->getNumUses() != 0 || this->should_preserve_unused_decls)) {
+                    auto type = type_decoder.Decode(ctx, spec, var.param.spec_type, arg->getType());
+                    auto& decl = ctx.value_decls[arg];
+                    auto name  = arg->getName().str();
+                    decl       = ctx.ast.CreateVarDecl(fdecl, type, name);
+                    fdecl->addDecl(decl);
                 }
             }
         }
@@ -300,7 +298,7 @@ namespace irene3
                 func, fdecl, available_vars, first_var_idx, stack_pointer_reg);
 
             if (HasStackUses(func, block_ctx, stack_pointer_reg)) {
-                LOG(INFO) << "has stack uses";
+                DLOG(INFO) << "has stack uses";
                 auto [locals_struct, stack_union, locals_field, stack_var, raw_stack_var]
                     = CreateStackLayout(fdecl, *fspec);
 
@@ -333,7 +331,7 @@ namespace irene3
                     }
                 }
             } else {
-                LOG(INFO) << "Does not have stack uses";
+                DLOG(INFO) << "Does not have stack uses";
             }
         }
 
