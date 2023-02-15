@@ -28,8 +28,8 @@ import ghidra.util.task.TaskMonitor
 import ghidra.util.Msg
 
 case class BlockLiveness(
-    val live_before: mutable.Set[ParamSpec],
-    val live_after: mutable.Set[ParamSpec]
+    val live_before: Set[ParamSpec],
+    val live_after: Set[ParamSpec]
 )
 
 /** Reverse dataflow analysis over the CFG for register liveness
@@ -73,7 +73,7 @@ class LivenessAnalysis(
     )
   }
 
-  def local_paramspecs(): Seq[ParamSpec] = {
+  def local_paramspecs(): Set[ParamSpec] = {
     func
       .getLocalVariables()
       .toSeq
@@ -84,25 +84,22 @@ class LivenessAnalysis(
           Seq.empty
         }
       )
+      .toSet
   }
 
   // TODO(Ian) right now we gen all stack vars for any load
   // We could be missing a var for part of the stack becuase of how ghidra does locals
   // Need to conservatively split the stack, also need a backing alias analysis
-  def gen_stack_vars(
-      op: PcodeOp,
-      cb: ParamSpec => Unit
-  ) = {
+  def gen_stack_vars(op: PcodeOp): Set[ParamSpec] = {
     if (op.getOpcode() == PcodeOp.LOAD) {
-      local_paramspecs().foreach(cb)
-    }
+      local_paramspecs()
+    } else { Set.empty }
   }
 
   // The safe assumption is we kill nothing
-  def kill_stack_vars(
-      op: PcodeOp,
-      cb: ParamSpec => Unit
-  ) = {}
+  def kill_stack_vars(op: PcodeOp) = {
+    Set.empty
+  }
 
   def getUniqueCallee(
       insn: Instruction
@@ -126,47 +123,39 @@ class LivenessAnalysis(
     getUniqueCallee(insn).map(f => f.getParameters().toSeq).getOrElse(Seq.empty)
   }
 
-  def get_live_reigsters(vars: Seq[Variable]): Seq[Register] = {
+  def get_live_reigsters(vars: Seq[Variable]): Set[Register] = {
     vars
       .flatMap(v =>
         Option(v.getRegisters()).map(rs => rs.asScala).getOrElse(Seq.empty)
       )
+      .toSet
   }
 
-  def kill_call_live(
-      insn: Instruction,
-      op: PcodeOp,
-      cb: ParamSpec => Unit
-  ) = {
+  def kill_call_live(insn: Instruction, op: PcodeOp): Set[ParamSpec] = {
     if (op.getOpcode() == PcodeOp.CALL) {
       getUniqueCallee(insn)
         .flatMap(f => Option(f.getReturn()))
         .flatMap(r => Option(r.getRegisters()).map(r => r.asScala))
         .getOrElse(Seq.empty)
         .map(registerToParam)
-        .foreach(cb)
+        .toSet
+    } else {
+      Set.empty
     }
   }
 
-  def gen_call_live(
-      insn: Instruction,
-      op: PcodeOp,
-      cb: ParamSpec => Unit
-  ) = {
+  def gen_call_live(insn: Instruction, op: PcodeOp): Set[ParamSpec] = {
     if (op.getOpcode() == PcodeOp.CALL) {
       // TODO(Ian): this assumes that we arent going to build up a stack parameter in a calling block
       // this requires handling stack extensions, which we dont handle... this could come up with something like int a; if (x<0) a= b else a = c; call(a)
       // A reasonable thing for a compile to do would be to either push b or c to the stack in each of those blocks.
-      get_live_reigsters(get_called_sig(insn))
-        .map(registerToParam)
-        .foreach(cb)
+      get_live_reigsters(get_called_sig(insn)).map(registerToParam).toSet
+    } else {
+      Set.empty
     }
   }
 
-  def gen_registers(
-      op: PcodeOp,
-      cb: ParamSpec => Unit
-  ) = {
+  def gen_registers(op: PcodeOp): Set[ParamSpec] = {
     val read_regs = op
       .getInputs()
       .map(vnode =>
@@ -177,46 +166,43 @@ class LivenessAnalysis(
 
     read_regs.flatten
       .map(r => registerToParam(r))
-      .foreach(cb)
+      .toSet
   }
 
   // TODO(Ian): Call pcodeops should kill returns
-  def kill_registers(
-      op: PcodeOp,
-      cb: ParamSpec => Unit
-  ) = {
+  def kill_registers(op: PcodeOp): Set[ParamSpec] = {
     val out = Option(op.getOutput())
     out
       .flatMap(vnode =>
         Option(lang.getRegister(vnode.getAddress(), vnode.getSize()))
       )
-      .foreach(r =>
-        cb(registerToParam(r))
-        r.getChildRegisters()
-          .asScala
-          .foreach(child => {
-            cb(registerToParam(child))
-          })
+      .map(r =>
+        // TODO(Ian): do this more effeciently somehow
+        (Seq(r) ++ r.getChildRegisters().asScala)
+          .map(r => registerToParam(r))
+          .toSet
       )
+      .getOrElse(Set.empty)
+
+  }
+
+  def gen(op: PcodeOp, insn: Instruction): Set[ParamSpec] = {
+    gen_call_live(insn, op) ++ gen_stack_vars(op) ++ gen_registers(op)
+  }
+
+  def kill(op: PcodeOp, insn: Instruction): Set[ParamSpec] = {
+    kill_registers(op) ++ kill_stack_vars(op) ++ kill_call_live(insn, op)
   }
 
   def transfer(
       insn: Instruction,
-      op: PcodeOp,
-      live_after: mutable.Set[ParamSpec]
-  ) = {
-    kill_registers(op, p => { live_after -= p })
-    kill_stack_vars(op, p => { live_after -= p })
-    kill_call_live(insn, op, p => { live_after -= p })
-    gen_call_live(insn, op, p => { live_after += p })
-    gen_stack_vars(op, p => { live_after += p })
-    gen_registers(op, p => { live_after += p })
+      n: PcodeOp,
+      live_after: Set[ParamSpec]
+  ): Set[ParamSpec] = {
+    (live_after -- kill(n, insn)) ++ gen(n, insn)
   }
 
-  def get_initial_after_liveness(
-      blk: CodeBlock,
-      output: mutable.Set[ParamSpec]
-  ) = {
+  def get_initial_after_liveness(blk: CodeBlock): Set[ParamSpec] = {
     if (blk.getFlowType().isTerminal()) {
       Option(
         func
@@ -233,47 +219,45 @@ class LivenessAnalysis(
               .getRegister(r.getAddress(), r.getSize())
           )
         )
-        .foreach(p => {
-          output += p
-        })
+        .toSet
+    } else {
+      Set.empty
     }
   }
 
   def transfer_block(
       blk: CodeBlock,
-      live_after: mutable.Set[ParamSpec]
-  ) = {
+      live_after: Set[ParamSpec]
+  ): Set[ParamSpec] = {
 
     // get instructions in reverse then iterate over pcode in reverse
     val insns_reverse: ju.Iterator[Instruction] =
       func.getProgram().getListing().getInstructions(blk, false)
-    insns_reverse.asScala.toSeq.foreach(curr_insn => {
-      curr_insn
-        .getPcode()
-        .reverseIterator
-        .foreach(pcode => {
-          transfer(curr_insn, pcode, live_after)
-        })
-    })
+    insns_reverse.asScala.toSeq.foldLeft(live_after)(
+      (curr_liveness, curr_insn) =>
+        curr_insn
+          .getPcode()
+          .foldRight(curr_liveness)((pcode, liveness) =>
+            transfer(curr_insn, pcode, liveness)
+          )
+    )
   }
 
   def collectLiveOnExit(
       n: CodeBlock,
-      curr_liveness: scala.collection.Map[CodeBlock, mutable.Set[ParamSpec]],
-      output: mutable.Set[ParamSpec]
-  ) = {
+      curr_liveness: scala.collection.Map[CodeBlock, Set[ParamSpec]]
+  ): Set[ParamSpec] = {
     if (control_flow_graph.get(n).diSuccessors.isEmpty) {
-      get_initial_after_liveness(n, output)
-    } else {
-      control_flow_graph
-        .get(n)
-        .diSuccessors
-        .toSeq
-        .flatMap(out => curr_liveness.get(out.toOuter))
-        .foreach(p => {
-          output ++= p
-        })
+      return get_initial_after_liveness(n)
     }
+
+    val regs: Seq[Set[ParamSpec]] = control_flow_graph
+      .get(n)
+      .diSuccessors
+      .toSeq
+      .map(out => curr_liveness.get(out.toOuter).getOrElse(Set.empty))
+
+    regs.fold(Set.empty)((x: Set[ParamSpec], y: Set[ParamSpec]) => x.union(y))
   }
 
   def getNextLocalDepth(): Int = {
@@ -369,26 +353,25 @@ class LivenessAnalysis(
     val analysisRes = this.analyze()
     analysisRes.toMap.map((blk: CodeBlock, _) => {
       val live_past_stack = collectInjectLiveOnEntryExit(blk)
-      val live_on_exit: mutable.Set[ParamSpec] = mutable.Set.empty
-      collectLiveOnExit(blk, analysisRes, live_on_exit)
-      val live_on_entry = live_on_exit.clone()
-      transfer_block(blk, live_on_entry)
-      if hasStackBeyondLocalsAtEntry(blk) then {
-        live_on_entry ++= live_past_stack
-      }
-      if hasStackBeyondLocalsAtExit(blk) then {
-        live_on_exit ++= live_past_stack
-      }
+      val live_on_exit = collectLiveOnExit(blk, analysisRes)
+      val live_on_entry = transfer_block(blk, live_on_exit)
       (
         blk,
-        BlockLiveness(live_on_entry, live_on_exit)
+        BlockLiveness(
+          live_on_entry ++ (if (hasStackBeyondLocalsAtEntry(blk)) then
+                              live_past_stack
+                            else Set()),
+          live_on_exit ++ (if (hasStackBeyondLocalsAtExit(blk)) then
+                             live_past_stack
+                           else Set())
+        )
       )
     })
   }
 
-  def analyze(): mutable.Map[CodeBlock, mutable.Set[ParamSpec]] = {
-    val res: mutable.Map[CodeBlock, mutable.Set[ParamSpec]] = mutable.Map.from(
-      this.control_flow_graph.nodes.map(nd => (nd.toOuter, mutable.Set.empty))
+  def analyze(): mutable.Map[CodeBlock, Set[ParamSpec]] = {
+    val res: mutable.Map[CodeBlock, Set[ParamSpec]] = mutable.Map.from(
+      this.control_flow_graph.nodes.map(nd => (nd.toOuter, Set.empty))
     )
 
     val worklist: Stack[CodeBlock] = Stack.from(
@@ -399,13 +382,14 @@ class LivenessAnalysis(
     while (!worklist.isEmpty) {
       val curr_block = worklist.pop()
       val curr_block_value =
-        res.getOrElse(curr_block, mutable.Set.empty)
-      val size_before = curr_block_value.size
+        res.getOrElse(curr_block, Set.empty)
 
-      collectLiveOnExit(curr_block, res, curr_block_value)
-      transfer_block(curr_block, curr_block_value)
+      val input = collectLiveOnExit(curr_block, res)
 
-      if (size_before != curr_block_value.size) {
+      val live_before_block = transfer_block(curr_block, input)
+
+      res.addOne((curr_block, live_before_block))
+      if (live_before_block != curr_block_value) {
         for (
           in_neighbor <- this.control_flow_graph.get(curr_block).diPredecessors
         ) {
