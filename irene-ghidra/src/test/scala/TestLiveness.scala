@@ -85,14 +85,11 @@ class TestLiveness extends BaseProgramLoadTest {
       .getInstructionAt(prog.getAddressFactory().getAddress("00401b1b"))
 
     val copy_op = target_insn.getPcode()(0)
-    val kill_regs: mutable.Set[Parameter] = mutable.Set.empty
-    liveanalysis.kill_registers(copy_op, r => {
-      kill_regs += r
-    })
 
     assertEquals(
       Set("RDX", "EDX"),
-      getLiveRegisters(kill_regs.toSet).map(r => r.registerName)
+      getLiveRegisters(liveanalysis.kill(copy_op, target_insn))
+        .map(r => r.registerName)
     )
   }
 
@@ -111,7 +108,7 @@ class TestLiveness extends BaseProgramLoadTest {
 
     assertTrue(
       "The value of  RDX should be dead",
-      !getLiveRegisters(liveness_entry_block.live_after.toSet)
+      !getLiveRegisters(liveness_entry_block.live_after)
         .map(r => r.registerName)
         .contains("RDX")
     )
@@ -119,11 +116,11 @@ class TestLiveness extends BaseProgramLoadTest {
     val live_info =
       bb_cont.liveness(prog.getAddressFactory().getAddress("00401b16"))
 
-    val lives = getLiveRegisters(live_info.live_before.toSet).map(r => r.registerName)
+    val lives = getLiveRegisters(live_info.live_before).map(r => r.registerName)
     assertEquals(Set("EBX", "R14", "R13", "R12", "R15", "RSP"), lives)
 
     val lives_after =
-      getLiveRegisters(live_info.live_after.toSet).map(r => r.registerName)
+      getLiveRegisters(live_info.live_after).map(r => r.registerName)
     assertEquals(
       Set("EBX", "RSI", "R14", "R13", "R12", "R15", "RSP", "RDX"),
       lives_after
