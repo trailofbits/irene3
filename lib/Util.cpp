@@ -30,6 +30,7 @@ namespace irene3
         const std::filesystem::path& input_spec,
         bool propagate_types,
         bool args_as_locals,
+        bool unsafe_stack_locations,
         TypeDecoder& type_decoder) {
         auto maybe_buff = llvm::MemoryBuffer::getFileOrSTDIN(input_spec.c_str());
         if (remill::IsError(maybe_buff)) {
@@ -41,7 +42,8 @@ namespace irene3
         const std::unique_ptr< llvm::MemoryBuffer >& buff = remill::GetReference(maybe_buff);
 
         return SpecDecompilationJobBuilder::CreateDefaultBuilder(
-            buff->getBuffer().str(), propagate_types, args_as_locals, type_decoder);
+            buff->getBuffer().str(), propagate_types, args_as_locals, unsafe_stack_locations,
+            type_decoder);
     }
 
     std::optional< uint64_t > GetPCMetadata(const llvm::Value* value) {

@@ -48,4 +48,36 @@ namespace irene3
                 rellic::DecompilationContext& ctx) override;
         };
     };
+
+    class UnsafeSpecLayoutOverride final : public rellic::FunctionLayoutOverride {
+        struct Impl;
+        std::unique_ptr< Impl > impl;
+
+      public:
+        UnsafeSpecLayoutOverride(
+            rellic::DecompilationContext& dec_ctx,
+            anvill::Specification& spec,
+            TypeDecoder& type_decoder,
+            bool should_preserve_unused_decls);
+        ~UnsafeSpecLayoutOverride();
+
+        bool HasOverride(llvm::Function& func) final;
+
+        std::vector< clang::QualType > GetArguments(llvm::Function& func) final;
+        void BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) final;
+        bool VisitInstruction(
+            llvm::Instruction& insn, clang::FunctionDecl* fdecl, clang::ValueDecl*& vdecl) final;
+        bool NeedsDereference(llvm::Function& func, llvm::Value& val) final;
+
+        class Factory final : public rellic::FunctionLayoutOverrideFactory {
+            anvill::Specification spec;
+            TypeDecoder& type_decoder;
+
+          public:
+            Factory(anvill::Specification spec, TypeDecoder& type_decoder);
+
+            std::unique_ptr< rellic::FunctionLayoutOverride > create(
+                rellic::DecompilationContext& ctx) override;
+        };
+    };
 } // namespace irene3

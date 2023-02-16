@@ -44,6 +44,10 @@ namespace irene3
         // Whether arguments that represent stack locations should be treated as locals by Rellic
         bool args_as_locals;
 
+        // Whether arguments that represent stack locations should be represented as separate locals
+        // or not
+        bool unsafe_stack_locations;
+
         // Type decoder to be used by Rellic when generating locals
         TypeDecoder& type_decoder;
 
@@ -54,6 +58,7 @@ namespace irene3
             std::unordered_set< uint64_t > target_funcs,
             std::unique_ptr< rellic::DecompilationOptions > options,
             bool args_as_locals,
+            bool unsafe_stack_locations,
             TypeDecoder& type_decoder,
             std::shared_ptr< llvm::LLVMContext > context);
 
@@ -62,6 +67,7 @@ namespace irene3
             const std::string& spec_pb,
             bool propagate_types,
             bool args_as_locals,
+            bool unsafe_stack_locations,
             TypeDecoder& type_decoder);
     };
 
@@ -156,6 +162,7 @@ namespace irene3
         std::unique_ptr< rellic::DecompilationOptions > options;
         anvill::Specification spec;
         bool args_as_locals;
+        bool unsafe_stack_locations;
         TypeDecoder& type_decoder;
 
         std::unordered_map< uint64_t, std::string > symbol_map;

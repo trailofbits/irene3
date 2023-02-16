@@ -45,6 +45,7 @@ DEFINE_string(output, "", "output patch file");
 DEFINE_string(lift_list, "", "list of entities to lift");
 DEFINE_bool(add_edges, false, "add outgoing edges to blocks for cfg construction");
 DEFINE_bool(type_propagation, false, "output patch file");
+DEFINE_bool(unsafe_stack_locations, false, "create separate locals for each stack location");
 DEFINE_bool(h, false, "help");
 
 DECLARE_bool(version);
@@ -209,7 +210,8 @@ int main(int argc, char *argv[]) {
 
     irene3::TypeDecoder type_decoder;
     auto maybe_spec = irene3::ProtobufPathToDecompilationBuilder(
-        FLAGS_spec, FLAGS_type_propagation, /*args_as_locals=*/true, type_decoder);
+        FLAGS_spec, FLAGS_type_propagation, /*args_as_locals=*/true, FLAGS_unsafe_stack_locations,
+        type_decoder);
     if (!maybe_spec.Succeeded()) {
         std::cerr << maybe_spec.TakeError() << std::endl;
         return EXIT_FAILURE;
