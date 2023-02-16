@@ -175,9 +175,14 @@ namespace irene3
 
     void SpecDecompilationJob::CreateSpecLayoutOverride(bool stack_grows_down) const {
         if (args_as_locals) {
-            options->additional_variable_providers.push_back(
-                std::make_unique< SpecLayoutOverride::Factory >(
-                    spec, type_decoder, stack_grows_down));
+            if (unsafe_stack_locations) {
+                options->additional_variable_providers.push_back(
+                    std::make_unique< UnsafeSpecLayoutOverride::Factory >(spec, type_decoder));
+            } else {
+                options->additional_variable_providers.push_back(
+                    std::make_unique< SpecLayoutOverride::Factory >(
+                        spec, type_decoder, stack_grows_down));
+            }
         }
     }
 
@@ -349,6 +354,7 @@ namespace irene3
         , options(std::move(o.options))
         , spec(std::move(o.spec))
         , args_as_locals(o.args_as_locals)
+        , unsafe_stack_locations(o.unsafe_stack_locations)
         , type_decoder(o.type_decoder) {
         this->spec.ForEachSymbol([this](uint64_t addr, const std::string& name) {
             this->symbol_map.emplace(addr, name);
@@ -361,6 +367,7 @@ namespace irene3
             const std::string& spec_pb,
             bool propagate_types,
             bool args_as_locals,
+            bool unsafe_stack_locations,
             TypeDecoder& type_decoder) {
         std::shared_ptr< llvm::LLVMContext > context = std::make_shared< llvm::LLVMContext >();
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
@@ -388,8 +395,8 @@ namespace irene3
                 std::make_unique< SpecTypeProvider::Factory >(spec, type_decoder));
         }
         return SpecDecompilationJobBuilder(
-            spec, target_function_list, std::move(opts), args_as_locals, type_decoder,
-            std::move(context));
+            spec, target_function_list, std::move(opts), args_as_locals, unsafe_stack_locations,
+            type_decoder, std::move(context));
     }
 
     SpecDecompilationJobBuilder::SpecDecompilationJobBuilder(
@@ -397,6 +404,7 @@ namespace irene3
         std::unordered_set< uint64_t > target_funcs,
         std::unique_ptr< rellic::DecompilationOptions > options,
         bool args_as_locals,
+        bool unsafe_stack_locations,
         TypeDecoder& type_decoder,
         std::shared_ptr< llvm::LLVMContext > context)
         : context(std::move(context))
@@ -404,6 +412,7 @@ namespace irene3
         , target_funcs(std::move(target_funcs))
         , options(std::move(options))
         , args_as_locals(args_as_locals)
+        , unsafe_stack_locations(unsafe_stack_locations)
         , type_decoder(type_decoder) {}
 
 } // namespace irene3

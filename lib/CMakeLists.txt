@@ -31,6 +31,7 @@ set(irene3_SOURCES
   SpecTypeProvider.cpp
   SpecLayoutOverride.cpp
   TypeDecoder.cpp
+  UnsafeSpecLayoutOverride.cpp
 )
 
 add_library("${PROJECT_NAME}" STATIC ${irene3_PUBLIC_HEADERS} ${irene3_SOURCES})

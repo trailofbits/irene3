@@ -11,6 +11,7 @@ namespace irene3
         const std::filesystem::path& input_spec,
         bool propagate_types,
         bool args_as_locals,
+        bool unsafe_stack_locations,
         TypeDecoder& type_decoder);
 
     // Gets pc metadata repersented in irene3 by the "pc" metadata kind.
