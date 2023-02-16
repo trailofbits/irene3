@@ -78,7 +78,6 @@ class BasicBlockContextProducer(gfunc: Function, stack_depth_info: CallDepthChan
       .filter((_, dpth) => BasicBlockContextProducer.validDepth(dpth))
       .map((r, dpth) => (r, dpth + additional_displacement))
       .toMap
-
   }
 
   def liveness(block_addr: Address): BlockLiveness = {
@@ -140,6 +139,29 @@ class BasicBlockContextProducer(gfunc: Function, stack_depth_info: CallDepthChan
     )
   }
 
+  def produceGlobalRegOverrides(block_addr: Address): Seq[ValueMapSpec] = {
+    val ctxt = gfunc.getProgram().getProgramContext()
+    val global_regs = ctxt.getRegistersWithValues().toList.toSet diff ctxt
+      .getContextRegisters()
+      .asScala
+      .toSet
+    global_regs
+      .map((reg) => (reg, ctxt.getRegisterValue(reg, block_addr)))
+      .collect {
+        case (reg, regvalue) if regvalue.hasValue() =>
+          ValueMapSpec(
+            Some(registerToVariable(reg)),
+            Some(
+              ValueDomain(
+                ValueDomain.Inner
+                  .Constant(regvalue.getUnsignedValue().longValue())
+              )
+            )
+          )
+      }
+      .toSeq
+  }
+
   def getBlockContext(
       block_addr: Address,
       last_insn_addr: Address
@@ -148,6 +170,7 @@ class BasicBlockContextProducer(gfunc: Function, stack_depth_info: CallDepthChan
     assert(!liveness_info.isEmpty)
 
     val stack_depths_entry = produceSymvals(block_addr, 0)
+    val global_reg_overrides = produceGlobalRegOverrides(block_addr)
     val last_insn_disp = stack_depth_info.getInstructionStackDepthChange(
       gfunc.getProgram().getListing().getInstructionAt(last_insn_addr)
     )
@@ -167,7 +190,9 @@ class BasicBlockContextProducer(gfunc: Function, stack_depth_info: CallDepthChan
           )
 
         })
-        .toSeq,
+        .toSeq
+        ++
+          global_reg_overrides,
       // TODO(Ian): filter by curr depth
       filterStackLocationsByStackDepth(
         max_depth,
