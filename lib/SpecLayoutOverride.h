@@ -30,6 +30,7 @@ namespace irene3
         bool HasOverride(llvm::Function& func) final;
 
         std::vector< clang::QualType > GetArguments(llvm::Function& func) final;
+
         void BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) final;
         bool VisitInstruction(
             llvm::Instruction& insn, clang::FunctionDecl* fdecl, clang::ValueDecl*& vdecl) final;

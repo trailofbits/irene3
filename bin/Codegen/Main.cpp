@@ -145,6 +145,15 @@ std::string PrintBodyToString(clang::CompoundStmt *compound) {
     return code;
 }
 
+void GVarToSpec(const irene3::GlobalVarInfo &ginfo, llvm::json::Array &patch_vars) {
+    llvm::json::Object memory;
+    memory["address"] = to_hex(ginfo.address) + ":" + std::to_string(ginfo.size);
+    llvm::json::Object var;
+    var["name"]   = ginfo.name;
+    var["memory"] = std::move(memory);
+    patch_vars.push_back(std::move(var));
+}
+
 void ParamToSpec(
     const anvill::BasicBlockVariable &bb_param,
     const remill::Register *stack_pointer_reg,
@@ -265,6 +274,10 @@ int main(int argc, char *argv[]) {
         });
         for (auto &bb_param : block.LiveParamsAtEntryAndExit()) {
             ParamToSpec(bb_param, stack_pointer_reg, patch_vars);
+        }
+
+        for (const auto &gv : decomp_res.block_globals[addr]) {
+            GVarToSpec(gv, patch_vars);
         }
 
         patch["patch-vars"] = std::move(patch_vars);

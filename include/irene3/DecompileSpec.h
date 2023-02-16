@@ -4,6 +4,7 @@
 #include <anvill/Specification.h>
 #include <clang/AST/Decl.h>
 #include <clang/AST/Stmt.h>
+#include <cstdint>
 #include <irene3/TypeDecoder.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/IR/Constant.h>
@@ -18,6 +19,7 @@
 #include <stdint.h>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 namespace irene3
 {
@@ -121,6 +123,14 @@ namespace irene3
         std::unordered_map< uint64_t, FunctionDecompResult > function_results;
     };
 
+    struct GlobalVarInfo {
+        std::string name;
+        uint64_t address;
+        size_t size;
+    };
+
+    using GvarInfoByBlock = std::unordered_map< std::uint64_t, std::vector< GlobalVarInfo > >;
+
     struct CodegenResult {
         std::shared_ptr< llvm::LLVMContext > context;
         std::unique_ptr< llvm::Module > mod;
@@ -128,6 +138,8 @@ namespace irene3
         std::unique_ptr< clang::ASTUnit > ast;
 
         ProvenanceInfo prov_info;
+
+        GvarInfoByBlock block_globals;
 
         std::unordered_map< std::uint64_t, clang::CompoundStmt* > blocks;
     };
@@ -159,7 +171,8 @@ namespace irene3
         ExtractLLVMProvenance(const llvm::Module* anvill_mod) const;
 
         DecompilationResult PopulateDecompResFromRellic(rellic::DecompilationResult res) const;
-        CodegenResult PopulateCodegenResFromRellic(rellic::DecompilationResult res) const;
+        CodegenResult PopulateCodegenResFromRellic(
+            rellic::DecompilationResult res, GvarInfoByBlock) const;
         void CreateSpecLayoutOverride(bool stack_grows_down) const;
 
       public:

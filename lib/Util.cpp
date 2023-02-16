@@ -11,6 +11,21 @@
 
 namespace irene3
 {
+
+    std::vector< llvm::GlobalVariable* > UsedGlobalVars(llvm::Function* func) {
+        std::vector< llvm::GlobalVariable* > vars;
+        for (auto& gv : func->getParent()->getGlobalList()) {
+            for (auto use : gv.users()) {
+                if (auto insn = llvm::dyn_cast< llvm::Instruction >(use)) {
+                    if (insn->getFunction() == func) {
+                        vars.push_back(&gv);
+                    }
+                }
+            }
+        }
+        return vars;
+    }
+
     rellic::Result< SpecDecompilationJobBuilder, std::string > ProtobufPathToDecompilationBuilder(
         const std::filesystem::path& input_spec,
         bool propagate_types,

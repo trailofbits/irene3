@@ -19,6 +19,10 @@
 #include <irene3/Util.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/GlobalVariable.h>
+#include <llvm/IR/InstIterator.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/Support/Casting.h>
 #include <llvm/Support/raw_ostream.h>
 #include <optional>
 #include <rellic/AST/DecompilationContext.h>
@@ -27,7 +31,9 @@
 #include <remill/BC/ABI.h>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace irene3
 {
@@ -276,6 +282,26 @@ namespace irene3
             return stack_arg->getNumUses() != 0 || used_stack_local;
         }
 
+        void DeclUsedGlobals(
+            llvm::Function& func, clang::FunctionDecl* fdecl, anvill::Specification& spec) {
+            auto vars = UsedGlobalVars(&func);
+            for (auto gv : vars) {
+                auto maybe_addr = GetPCMetadata(gv);
+                if (!maybe_addr) {
+                    continue;
+                }
+
+                auto var  = spec.VariableAt(*maybe_addr);
+                auto type = type_decoder.Decode(ctx, spec, var->spec_type, gv->getType());
+                if (!type.isNull()) {
+                    auto& decl = ctx.value_decls[gv];
+                    auto name  = std::string(gv->getName());
+                    decl       = ctx.ast.CreateVarDecl(fdecl, type, name);
+                    fdecl->addDecl(decl);
+                }
+            }
+        }
+
         void BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) {
             auto block_addr = anvill::GetBasicBlockAddr(&func);
             CHECK(block_addr.has_value());
@@ -284,6 +310,7 @@ namespace irene3
             CHECK(maybe_block_ctx.has_value());
             const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
+            this->DeclUsedGlobals(func, fdecl, spec);
             auto available_vars     = block_ctx.LiveParamsAtEntryAndExit();
             auto num_available_vars = available_vars.size();
             auto stack_pointer_reg

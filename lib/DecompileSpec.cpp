@@ -200,7 +200,7 @@ namespace irene3
     }
 
     CodegenResult SpecDecompilationJob::PopulateCodegenResFromRellic(
-        rellic::DecompilationResult res) const {
+        rellic::DecompilationResult res, GvarInfoByBlock gvar_prov) const {
         std::unordered_map< uint64_t, FunctionDecompResult > function_results;
 
         auto [prov, rev_prov] = this->ExtractLLVMProvenance(res.module.get());
@@ -230,7 +230,12 @@ namespace irene3
             blocks[addr] = body;
         }
 
-        return { context, std::move(res.module), std::move(res.ast), std::move(prov_info), blocks };
+        return { context,
+                 std::move(res.module),
+                 std::move(res.ast),
+                 std::move(prov_info),
+                 std::move(gvar_prov),
+                 blocks };
     }
 
     rellic::Result< DecompilationResult, std::string > SpecDecompilationJob::Decompile() const {
@@ -285,11 +290,27 @@ namespace irene3
 
         anvill::OptimizeModule(lifter, *module, spec.GetBlockContexts(), spec);
 
+        std::unordered_map< uint64_t, std::vector< GlobalVarInfo > > gvars;
+
         for (auto& func : module->functions()) {
             auto block_addr = anvill::GetBasicBlockAddr(&func);
             if (!block_addr.has_value()) {
                 func.deleteBody();
                 continue;
+            }
+
+            std::vector< GlobalVarInfo > blk_gvars;
+            for (auto var : UsedGlobalVars(&func)) {
+                auto pc = GetPCMetadata(var);
+                if (!pc) {
+                    continue;
+                }
+                auto v = spec.VariableAt(*pc);
+                if (v) {
+                    size_t sz = v->type->getScalarSizeInBits();
+                    blk_gvars.push_back({ std::string(var->getName()), *pc, sz });
+                }
+                gvars.insert({ *block_addr, blk_gvars });
             }
 
             // Copy instructions to temporary storage so we don't invalidate iterators
@@ -319,7 +340,7 @@ namespace irene3
             return maybe_dec_res.TakeError().message;
         }
 
-        return PopulateCodegenResFromRellic(maybe_dec_res.TakeValue());
+        return PopulateCodegenResFromRellic(maybe_dec_res.TakeValue(), std::move(gvars));
     }
 
     SpecDecompilationJob::SpecDecompilationJob(SpecDecompilationJobBuilder&& o)
