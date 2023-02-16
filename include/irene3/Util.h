@@ -1,6 +1,8 @@
 #include <filesystem>
 #include <irene3/DecompileSpec.h>
 #include <irene3/TypeDecoder.h>
+#include <llvm/IR/GlobalVariable.h>
+#include <vector>
 
 namespace irene3
 {
@@ -13,4 +15,6 @@ namespace irene3
 
     // Gets pc metadata repersented in irene3 by the "pc" metadata kind.
     std::optional< uint64_t > GetPCMetadata(const llvm::Value* value);
+
+    std::vector< llvm::GlobalVariable* > UsedGlobalVars(llvm::Function* func);
 } // namespace irene3
