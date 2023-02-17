@@ -135,12 +135,12 @@ namespace irene3
             fdecl->setParams(CreateFunctionParams(func, first_var_idx));
 
             for (unsigned i = 0; i < num_available_vars; ++i) {
-                auto arg = func.getArg(i);
+                auto arg = func.getArg(i + first_var_idx);
                 auto var = available_vars[i];
                 if (arg->getNumUses() != 0 || should_preserve_unused_decls) {
                     auto& decl = ctx.value_decls[arg];
                     auto vdecl = ctx.ast.CreateVarDecl(
-                        fdecl, type_decoder.Decode(ctx, spec, var.param.spec_type, arg->getType()),
+                        fdecl, type_decoder.Decode(ctx, spec, var.param.spec_type, var.param.type),
                         arg->getName().str());
                     decl = vdecl;
                     fdecl->addDecl(vdecl);

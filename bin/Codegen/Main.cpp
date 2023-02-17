@@ -158,7 +158,8 @@ void GVarToSpec(const irene3::GlobalVarInfo &ginfo, llvm::json::Array &patch_var
 void ParamToSpec(
     const anvill::BasicBlockVariable &bb_param,
     const remill::Register *stack_pointer_reg,
-    llvm::json::Array &patch_vars) {
+    llvm::json::Array &patch_vars,
+    bool unsafe = false) {
     auto var_spec = bb_param.param;
     llvm::json::Object var;
     var["name"] = var_spec.name;
@@ -171,7 +172,7 @@ void ParamToSpec(
             var["at-exit"] = var_spec.reg->name;
         }
     } else if (var_spec.mem_reg) {
-        if (var_spec.mem_reg == stack_pointer_reg) {
+        if (!unsafe && var_spec.mem_reg == stack_pointer_reg) {
             return;
         }
 
@@ -275,7 +276,7 @@ int main(int argc, char *argv[]) {
  { "offset", 0 } }                                           }
         });
         for (auto &bb_param : block.LiveParamsAtEntryAndExit()) {
-            ParamToSpec(bb_param, stack_pointer_reg, patch_vars);
+            ParamToSpec(bb_param, stack_pointer_reg, patch_vars, FLAGS_unsafe_stack_locations);
         }
 
         for (const auto &gv : decomp_res.block_globals[addr]) {
