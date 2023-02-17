@@ -274,8 +274,9 @@ namespace irene3
         anvill::LifterOptions options(spec.Arch().get(), *module, spec_tp, spec_cfp, spec_mp);
         options.stack_frame_recovery_options.stack_frame_struct_init_procedure
             = this->stack_initialization_strategy;
-        options.should_remove_anvill_pc = this->should_remove_anvill_pc;
-        options.pc_metadata_name        = "pc";
+        options.should_remove_anvill_pc              = this->should_remove_anvill_pc;
+        options.pc_metadata_name                     = "pc";
+        options.should_remove_assignments_to_next_pc = true;
         CreateSpecLayoutOverride(options.stack_frame_recovery_options.stack_grows_down);
         anvill::EntityLifter lifter(options);
 
@@ -313,7 +314,7 @@ namespace irene3
         dec_opts.additional_type_providers = std::move(this->options->additional_type_providers);
         dec_opts.additional_variable_providers
             = std::move(this->options->additional_variable_providers);
-        auto maybe_dec_res            = rellic::Decompile(std::move(module), std::move(dec_opts));
+        auto maybe_dec_res = rellic::Decompile(std::move(module), std::move(dec_opts));
         if (!maybe_dec_res.Succeeded()) {
             return maybe_dec_res.TakeError().message;
         }
