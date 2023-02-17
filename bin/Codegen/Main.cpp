@@ -12,6 +12,7 @@
 #include <anvill/Specification.h>
 #include <clang/AST/GlobalDecl.h>
 #include <clang/AST/Stmt.h>
+#include <clang/Basic/LLVM.h>
 #include <clang/Tooling/Tooling.h>
 #include <cstdint>
 #include <cstdio>
@@ -82,18 +83,48 @@ std::string to_hex(T &&value) {
     return ss.str();
 }
 
+std::string PrintBodyToString(clang::CompoundStmt *compound);
+std::string PrintStmtToString(clang::Stmt *st) {
+    if (clang::isa< clang::ReturnStmt >(st)) {
+        return "";
+    }
+
+    if (auto comp = clang::dyn_cast< clang::CompoundStmt >(st)) {
+        return PrintBodyToString(comp);
+    }
+
+    std::string code;
+    llvm::raw_string_ostream os(code);
+
+    if (auto ifst = clang::dyn_cast< clang::IfStmt >(st)) {
+        os << "if (";
+        ifst->getCond()->printPretty(os, nullptr, { {} });
+        os << ") { \n";
+        os << PrintStmtToString(ifst->getThen());
+        os << "}";
+
+        if (ifst->getElse()) {
+            os << " else { \n";
+            os << PrintStmtToString(ifst->getElse());
+            os << "}";
+        }
+        os << "\n";
+        return code;
+    }
+
+    st->printPretty(os, nullptr, { {} });
+    if (clang::isa< clang::Expr >(st)) {
+        os << ";\n";
+    }
+
+    return code;
+}
+
 std::string PrintBodyToString(clang::CompoundStmt *compound) {
     std::string code;
     llvm::raw_string_ostream os(code);
     for (auto &stmt : compound->body()) {
-        if (clang::isa< clang::ReturnStmt >(stmt)) {
-            continue;
-        }
-
-        stmt->printPretty(os, nullptr, { {} });
-        if (clang::isa< clang::Expr >(stmt)) {
-            os << ";\n";
-        }
+        os << PrintStmtToString(stmt);
     }
     return code;
 }
