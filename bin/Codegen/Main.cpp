@@ -6,10 +6,13 @@
  * the LICENSE file found in the root directory of this source tree.
  */
 
+#include "anvill/ABI.h"
+
 #include <anvill/Lifters.h>
 #include <anvill/Optimize.h>
 #include <anvill/Providers.h>
 #include <anvill/Specification.h>
+#include <clang/AST/Expr.h>
 #include <clang/AST/GlobalDecl.h>
 #include <clang/AST/Stmt.h>
 #include <clang/Basic/LLVM.h>
@@ -95,6 +98,20 @@ std::string PrintStmtToString(clang::Stmt *st) {
 
     std::string code;
     llvm::raw_string_ostream os(code);
+
+    if (auto call = clang::dyn_cast< clang::CallExpr >(st)) {
+        auto callee    = call->getCallee();
+        auto maybe_ref = callee->IgnoreCasts();
+        if (auto ref = clang::dyn_cast< clang::DeclRefExpr >(maybe_ref)) {
+            if (ref->getDecl()->getDeclName().getAsString() == anvill::kAnvillGoto) {
+                auto target_addr = clang::cast< clang::IntegerLiteral >(call->getArg(0));
+                // TODO(Ian): 64 bit is fine for now...
+                os << "goto L_" << to_hex(target_addr->getValue().getLimitedValue());
+                os << ";\n";
+                return code;
+            }
+        }
+    }
 
     if (auto ifst = clang::dyn_cast< clang::IfStmt >(st)) {
         os << "if (";
