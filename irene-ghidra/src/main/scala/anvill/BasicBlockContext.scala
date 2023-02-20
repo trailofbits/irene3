@@ -27,13 +27,22 @@ object BasicBlockContextProducer {
     maybe_dpth != Function.INVALID_STACK_DEPTH_CHANGE && maybe_dpth != Function.UNKNOWN_STACK_DEPTH_CHANGE
 }
 
-class BasicBlockContextProducer(gfunc: Function, stack_depth_info: CallDepthChangeInfo, val max_depth: Long) {
+class BasicBlockContextProducer(
+    gfunc: Function,
+    stack_depth_info: CallDepthChangeInfo,
+    val max_depth: Long
+) {
 
   val aliases: scala.collection.mutable.Map[Long, TypeSpec] =
     scala.collection.mutable.Map.empty
 
   val live_analysis =
-    LivenessAnalysis(Util.getCfgAsGraph(gfunc), gfunc, stack_depth_info, aliases)
+    LivenessAnalysis(
+      Util.getCfgAsGraph(gfunc),
+      gfunc,
+      stack_depth_info,
+      aliases
+    )
   val liveness_info = live_analysis
     .getBlockLiveness()
     .map((k, v) => (k.getFirstStartAddress(), v))
@@ -139,27 +148,44 @@ class BasicBlockContextProducer(gfunc: Function, stack_depth_info: CallDepthChan
     )
   }
 
+  val AllowedConstRegisterNames = Map(
+    "PowerPC:BE:64:VLE-32addr" -> Seq(("R13", true), ("R2", true))
+  )
+
   def produceGlobalRegOverrides(block_addr: Address): Seq[ValueMapSpec] = {
     val ctxt = gfunc.getProgram().getProgramContext()
-    val global_regs = ctxt.getRegistersWithValues().toList.toSet diff ctxt
-      .getContextRegisters()
-      .asScala
-      .toSet
-    global_regs
-      .map((reg) => (reg, ctxt.getRegisterValue(reg, block_addr)))
-      .collect {
-        case (reg, regvalue) if regvalue.hasValue() =>
-          ValueMapSpec(
-            Some(registerToVariable(reg)),
+
+    AllowedConstRegisterNames
+      .getOrElse(
+        gfunc.getProgram().getLanguage().getLanguageID().getIdAsString(),
+        Seq.empty
+      )
+      .collect(scala.Function.unlift((rname, should_taint_by_pc) => {
+        val reg = gfunc.getProgram().getRegister(rname)
+        Option(ctxt.getRegisterValue(reg, block_addr)).flatMap(reg_val =>
+          if (reg_val.hasValue()) {
             Some(
-              ValueDomain(
-                ValueDomain.Inner
-                  .Constant(regvalue.getUnsignedValue().longValue())
+              ValueMapSpec(
+                Some(registerToVariable(reg)),
+                Some(
+                  ValueDomain(
+                    ValueDomain.Inner
+                      .Constant(
+                        specification.specification.Constant(
+                          reg_val.getUnsignedValue().longValue(),
+                          should_taint_by_pc
+                        )
+                      )
+                  )
+                )
               )
             )
-          )
-      }
-      .toSeq
+          } else {
+            None
+          }
+        )
+      }))
+
   }
 
   def getBlockContext(
