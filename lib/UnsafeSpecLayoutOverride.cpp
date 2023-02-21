@@ -17,6 +17,7 @@
 #include <functional>
 #include <glog/logging.h>
 #include <irene3/Util.h>
+#include <llvm/IR/Argument.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
 #include <llvm/Support/raw_ostream.h>
@@ -70,6 +71,12 @@ namespace irene3
             return block_contexts.GetBasicBlockContextForAddr(*block_addr).has_value();
         }
 
+        clang::QualType CreateCharArray(unsigned size) {
+            return ctx.ast_ctx.getConstantArrayType(
+                ctx.ast_ctx.CharTy, llvm::APInt(64, size), nullptr,
+                clang::ArrayType::ArraySizeModifier::Normal, 0);
+        }
+
         std::vector< clang::ParmVarDecl* > CreateFunctionParams(
             llvm::Function& func, unsigned first_var_idx) {
             std::vector< clang::ParmVarDecl* > params;
@@ -88,6 +95,7 @@ namespace irene3
                 auto func    = arg.getParent();
                 auto fdecl   = clang::cast< clang::FunctionDecl >(ctx.value_decls[func]);
                 auto argtype = ctx.type_provider->GetArgumentType(arg);
+
                 // Create a declaration
                 parm = ctx.ast.CreateParamDecl(fdecl, argtype, name);
                 params.push_back(clang::dyn_cast< clang::ParmVarDecl >(ctx.value_decls[&arg]));
@@ -134,17 +142,26 @@ namespace irene3
 
             fdecl->setParams(CreateFunctionParams(func, first_var_idx));
 
+            auto add_arg_to_local_override
+                = [fdecl, this](llvm::Argument* arg, clang::QualType ty) {
+                      if (arg->getNumUses() != 0 || this->should_preserve_unused_decls) {
+                          auto& decl = this->ctx.value_decls[arg];
+                          auto vdecl = this->ctx.ast.CreateVarDecl(fdecl, ty, arg->getName().str());
+                          decl       = vdecl;
+                          fdecl->addDecl(decl);
+                      }
+                  };
+
+            // Setup the stack variable as well
+            add_arg_to_local_override(
+                func.getArg(remill::kStatePointerArgNum),
+                this->CreateCharArray(fspec->maximum_depth));
+
             for (unsigned i = 0; i < num_available_vars; ++i) {
                 auto arg = func.getArg(i + first_var_idx);
                 auto var = available_vars[i];
-                if (arg->getNumUses() != 0 || should_preserve_unused_decls) {
-                    auto& decl = ctx.value_decls[arg];
-                    auto vdecl = ctx.ast.CreateVarDecl(
-                        fdecl, type_decoder.Decode(ctx, spec, var.param.spec_type, var.param.type),
-                        arg->getName().str());
-                    decl = vdecl;
-                    fdecl->addDecl(vdecl);
-                }
+                add_arg_to_local_override(
+                    arg, type_decoder.Decode(ctx, spec, var.param.spec_type, var.param.type));
             }
         }
 
@@ -170,7 +187,9 @@ namespace irene3
             auto num_available_vars = available_vars.size();
             auto first_var_idx      = func.arg_size() - num_available_vars;
             auto arg                = llvm::dyn_cast< llvm::Argument >(&value);
-            return arg && arg->getArgNo() >= first_var_idx;
+            return arg
+                   && (arg->getArgNo() >= first_var_idx
+                       || arg->getArgNo() == remill::kStatePointerArgNum);
         }
     };
 
