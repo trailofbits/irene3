@@ -127,6 +127,26 @@ namespace irene3
             return arg_types;
         }
 
+        void DeclUsedGlobals(
+            llvm::Function& func, clang::FunctionDecl* fdecl, anvill::Specification& spec) {
+            auto vars = UsedGlobalVars(&func);
+            for (auto gv : vars) {
+                auto maybe_addr = GetPCMetadata(gv);
+                if (!maybe_addr) {
+                    continue;
+                }
+
+                auto var  = spec.VariableAt(*maybe_addr);
+                auto type = type_decoder.Decode(ctx, spec, var->spec_type, gv->getType());
+                if (!type.isNull()) {
+                    auto& decl = ctx.value_decls[gv];
+                    auto name  = std::string(gv->getName());
+                    decl       = ctx.ast.CreateVarDecl(fdecl, type, name);
+                    fdecl->addDecl(decl);
+                }
+            }
+        }
+
         void BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) {
             auto block_addr = anvill::GetBasicBlockAddr(&func);
             CHECK(block_addr.has_value());
@@ -135,6 +155,7 @@ namespace irene3
             CHECK(maybe_block_ctx.has_value());
             const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
+            this->DeclUsedGlobals(func, fdecl, spec);
             auto available_vars     = block_ctx.LiveParamsAtEntryAndExit();
             auto num_available_vars = available_vars.size();
 
