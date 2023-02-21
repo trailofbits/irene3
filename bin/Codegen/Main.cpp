@@ -6,6 +6,8 @@
  * the LICENSE file found in the root directory of this source tree.
  */
 
+#include "anvill/Declarations.h"
+
 #include <anvill/ABI.h>
 #include <anvill/Lifters.h>
 #include <anvill/Optimize.h>
@@ -32,7 +34,9 @@
 #include <llvm/Support/JSON.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/raw_ostream.h>
+#include <optional>
 #include <rellic/Decompiler.h>
+#include <remill/Arch/Arch.h>
 #include <remill/BC/Error.h>
 #include <remill/BC/Util.h>
 #include <sstream>
@@ -155,9 +159,63 @@ void GVarToSpec(const irene3::GlobalVarInfo &ginfo, llvm::json::Array &patch_var
     patch_vars.push_back(std::move(var));
 }
 
+namespace
+{
+    struct StackOffsets {
+        std::int64_t stack_depth_at_entry;
+        std::int64_t stack_depth_at_exit;
+    };
+
+    std::optional< std::int64_t > GetDepthForBlockEntry(
+        const remill::Register *stack_reg, const anvill::BasicBlockContext &bbcont) {
+        for (const auto &c : bbcont.GetStackOffsets().affine_equalities) {
+            if (c.target_value.mem_reg && c.target_value.mem_reg == stack_reg) {
+                return c.stack_offset;
+            }
+        }
+        return std::nullopt;
+    }
+
+    std::optional< std::int64_t > GetDepthForBlockExit(
+        const remill::Register *stack_reg, const anvill::FunctionDecl &decl, uint64_t bbaddr) {
+        auto nd = decl.cfg.at(bbaddr);
+
+        if (nd.outgoing_edges.empty()) {
+            return 0;
+        }
+
+        for (auto e : nd.outgoing_edges) {
+            auto blk_depth = GetDepthForBlockEntry(stack_reg, decl.GetBlockContext(e));
+            if (blk_depth) {
+                return blk_depth;
+            }
+        }
+
+        return std::nullopt;
+    }
+    StackOffsets ComputeStackOffsets(
+        const remill::Register *stack_reg, const anvill::FunctionDecl &decl, uint64_t bbaddr) {
+        auto cont       = decl.GetBlockContext(bbaddr);
+        auto ent_depth  = GetDepthForBlockEntry(stack_reg, cont);
+        auto exit_depth = GetDepthForBlockExit(stack_reg, decl, bbaddr);
+
+        if (!ent_depth) {
+            LOG(ERROR) << "Overriding entry depth with 0";
+        }
+
+        if (!exit_depth) {
+            LOG(ERROR) << "Overriding exit depth with 0";
+        }
+
+        return { ent_depth ? *ent_depth : 0, exit_depth ? *exit_depth : 0 };
+    }
+
+} // namespace
+
 void ParamToSpec(
     const anvill::BasicBlockVariable &bb_param,
     const remill::Register *stack_pointer_reg,
+    const StackOffsets &block_stack_disp,
     llvm::json::Array &patch_vars,
     bool unsafe = false) {
     auto var_spec = bb_param.param;
@@ -176,10 +234,21 @@ void ParamToSpec(
             return;
         }
 
+        // If this is a stack pointer variable then the "mem_offset is from the 0 of __anvill_rsp"
+        // which is the pointer at the entrance of the function so we need displace this by the
+        // stack depth
+
+        auto offset = var_spec.mem_offset;
+        if (var_spec.mem_reg == stack_pointer_reg) {
+            // TODO(Ian): Do they support stack vars that live in different locations at entry and
+            // exit??? we kinda need to for when the stack pointer shifts
+            offset = var_spec.mem_offset - block_stack_disp.stack_depth_at_entry;
+        }
+
         llvm::json::Object memory;
         memory["frame-pointer"] = var_spec.mem_reg->name;
-        memory["offset"]        = to_hex(var_spec.mem_offset) + ":"
-                           + std::to_string(var_spec.type->getScalarSizeInBits());
+        memory["offset"]
+            = to_hex(offset) + ":" + std::to_string(var_spec.type->getScalarSizeInBits());
         var["memory"] = std::move(memory);
     } else {
         llvm::json::Object memory;
@@ -275,8 +344,13 @@ int main(int argc, char *argv[]) {
             {"memory", llvm::json::Object{ { "frame-pointer", stack_pointer_reg->name },
  { "offset", 0 } }                                           }
         });
+
+        auto fdecl = spec.FunctionAt(block.GetParentFunctionAddress());
+        CHECK(fdecl);
+        auto stackoffs = ComputeStackOffsets(stack_pointer_reg, *fdecl, addr);
         for (auto &bb_param : block.LiveParamsAtEntryAndExit()) {
-            ParamToSpec(bb_param, stack_pointer_reg, patch_vars, FLAGS_unsafe_stack_locations);
+            ParamToSpec(
+                bb_param, stack_pointer_reg, stackoffs, patch_vars, FLAGS_unsafe_stack_locations);
         }
 
         for (const auto &gv : decomp_res.block_globals[addr]) {
