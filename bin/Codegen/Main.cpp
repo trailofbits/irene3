@@ -184,6 +184,11 @@ namespace
         }
 
         for (auto e : nd.outgoing_edges) {
+            // NOTE(Ian): This assumes that the stack depth at entry to all successor blocks is the
+            // same otherwise we would have to have path sensitive variable expressions ie. (down cf
+            // edge 1 the variable is at RSP+2 and the other RSP+4). This gets super messy and we
+            // dont have downstream support. For now we only use entry offsets anyways, we need a
+            // long convo about how to actually represent variable locations.
             auto blk_depth = GetDepthForBlockEntry(stack_reg, decl.GetBlockContext(e));
             if (blk_depth) {
                 return blk_depth;
