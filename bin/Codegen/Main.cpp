@@ -206,7 +206,7 @@ namespace
             LOG(ERROR) << "Overriding exit depth with 0";
         }
 
-        return { ent_depth ? *ent_depth : 0, exit_depth ? *exit_depth : 0 };
+        return { ent_depth.value_or(0), exit_depth.value_or(0) };
     }
 
 } // namespace
