@@ -12,7 +12,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test-ghidra:
+  build-and-test-ghidra:
+    strategy:
+      matrix:
+        ghidra:
+          - { version: '10.1.5', date: '20220726'}
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
@@ -23,12 +27,22 @@ jobs:
           cargo install just
       - name: 'Setup Ghidra'
         run: |
-          wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.1.5_build/ghidra_10.1.5_PUBLIC_20220726.zip --output-document=ghidra.zip
+          wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_${{ matrix.ghidra.version }}_build/ghidra_${{ matrix.ghidra.version }}_PUBLIC_${{ matrix.ghidra.date }}.zip --output-document=ghidra.zip
           unzip ghidra.zip
-          echo "GHIDRA_INSTALL_DIR=$(pwd)/ghidra_10.1.5_PUBLIC" >> $GITHUB_ENV
+          echo "GHIDRA_INSTALL_DIR=$(pwd)/ghidra_${{ matrix.ghidra.version }}_PUBLIC" >> $GITHUB_ENV
       - name: "IRENE Ghidra tests"
         run: |
           just test-irene3-ghidra
+      - name: "Build IRENE Ghidra"
+        run: |
+          just install-irene3-ghidra
+      - name: "Upload IRENE Ghidra"
+        if: github.event.release
+        uses: actions/upload-artifact@v3
+        with:
+          name: IRENE3 Ghidra ${{ matrix.ghidra.version }}
+          path: ./irene-ghidra/dist/ghidra_${{ matrix.ghidra.version }}_PUBLIC_*_irene-ghidra.zip
+
   build-decompiler:
     strategy:
       fail-fast: false

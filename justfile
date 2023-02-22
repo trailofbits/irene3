@@ -166,4 +166,4 @@ decompile-spec-ll spec out_ir: check-irene3-decompile
     "${CMAKE_INSTALL_PREFIX}/bin/irene3-decompile" -spec {{spec}} -c_out /dev/null -ir_out {{out_ir}}
 
 clean:
-    rm -rf install builds venv
+    rm -rf install builds venv irene-ghidra/dist irene-ghidra/build
