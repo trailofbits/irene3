@@ -163,7 +163,8 @@ namespace irene3
             for (size_t i = 0; i < num_available_vars; ++i) {
                 auto arg  = func.getArg(i + first_var_idx);
                 auto& var = available_vars[i];
-                if (var.param.mem_reg != stack_pointer_reg
+                if ((var.param.oredered_locs.size() != 1
+                     || var.param.oredered_locs[0].mem_reg != stack_pointer_reg)
                     && (arg->getNumUses() != 0 || this->should_preserve_unused_decls)) {
                     auto type = type_decoder.Decode(ctx, spec, var.param.spec_type, arg->getType());
                     auto& decl = ctx.value_decls[arg];
@@ -190,8 +191,12 @@ namespace irene3
             for (size_t i = 0; i < num_available_vars; ++i) {
                 auto arg  = func.getArg(i + first_var_idx);
                 auto& var = available_vars[i];
-                if (var.param.mem_reg == stack_pointer_reg) {
-                    auto offset = stk.StackOffsetFromStackPointer(var.param.mem_offset);
+                // we should do a better job of baking this assumption into the type...
+                // we only allow memory to be contigous
+                if (var.param.oredered_locs.size() == 1
+                    && var.param.oredered_locs[0].mem_reg == stack_pointer_reg) {
+                    auto offset
+                        = stk.StackOffsetFromStackPointer(var.param.oredered_locs[0].mem_offset);
                     // A declared local *must* be contained in the stack
                     CHECK(offset.has_value());
                     stack_vars.push_back({ arg, *offset });
@@ -273,7 +278,8 @@ namespace irene3
             auto used_stack_local = std::any_of(
                 available_vars.begin(), available_vars.end(),
                 [&func, &block_ctx, sp](const anvill::BasicBlockVariable& bbvar) {
-                    return bbvar.param.mem_reg == sp
+                    return bbvar.param.oredered_locs.size() == 1
+                           && bbvar.param.oredered_locs[0].mem_reg == sp
                            && anvill::ProvidePointerFromFunctionArgs(&func, bbvar.index, block_ctx)
                                       ->getNumUses()
                                   != 0;

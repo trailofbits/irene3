@@ -32,12 +32,10 @@ find_package(Z3 CONFIG REQUIRED)
 find_package(LLVM CONFIG REQUIRED)
 find_package(remill CONFIG REQUIRED)
 
-
 set(ANVILL_ENABLE_TESTS OFF)
 add_subdirectory("vendor/anvill" EXCLUDE_FROM_ALL)
 set(RELLIC_ENABLE_TESTING OFF)
 add_subdirectory("vendor/rellic" EXCLUDE_FROM_ALL)
-
 
 if(IRENE3_ENABLE_INSTALL)
   export(PACKAGE "${PROJECT_NAME}")
@@ -72,10 +70,12 @@ if(IRENE3_ENABLE_TESTS)
   message(STATUS "Clang path for tests: \"${CLANG_PATH}\"")
 
   set(PYTHON_FIND_VIRTUALENV FIRST)
-  if (EXISTS ${CMAKE_SOURCE_DIR}/venv)
+
+  if(EXISTS ${CMAKE_SOURCE_DIR}/venv)
     message(STATUS "Using virtualenv ${CMAKE_SOURCE_DIR}/venv")
     set(Python3_ROOT_DIR "${CMAKE_SOURCE_DIR}/venv")
   endif()
+
   find_package(
     Python3
     COMPONENTS Interpreter
