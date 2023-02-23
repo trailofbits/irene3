@@ -6,6 +6,8 @@
  * the LICENSE file found in the root directory of this source tree.
  */
 
+#include "anvill/Declarations.h"
+
 #include <anvill/ABI.h>
 #include <anvill/Declarations.h>
 #include <anvill/Lifters.h>
@@ -42,6 +44,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 DEFINE_string(spec, "", "input spec");
 DEFINE_string(output, "", "output patch file");
@@ -168,7 +171,8 @@ namespace
     std::optional< std::int64_t > GetDepthForBlockEntry(
         const remill::Register *stack_reg, const anvill::BasicBlockContext &bbcont) {
         for (const auto &c : bbcont.GetStackOffsets().affine_equalities) {
-            if (c.target_value.mem_reg && c.target_value.mem_reg == stack_reg) {
+            if (c.target_value.oredered_locs.size() == 1 && c.target_value.oredered_locs[0].mem_reg
+                && c.target_value.oredered_locs[0].mem_reg == stack_reg) {
                 return c.stack_offset;
             }
         }
@@ -215,6 +219,52 @@ namespace
     }
 
 } // namespace
+std::optional< llvm::json::Array > LowLocToStorage(
+    const anvill::LowLoc &loc,
+    const remill::Register *stack_pointer_reg,
+    const StackOffsets &block_stack_disp,
+    bool unsafe) {
+    llvm::json::Array arr;
+    if (loc.reg) {
+        arr.push_back("register");
+
+        std::stringstream ss;
+        ss << loc.reg->name;
+        if (loc.size) {
+            ss << ":" << *loc.size;
+        }
+        arr.push_back(ss.str());
+    } else if (loc.mem_reg) {
+        if (!unsafe && loc.mem_reg == stack_pointer_reg) {
+            return std::nullopt;
+        }
+        arr.push_back("memory");
+        llvm::json::Array memory;
+
+        // If this is a stack pointer variable then the "mem_offset is from the 0 of __anvill_rsp"
+        // which is the pointer at the entrance of the function so we need displace this by the
+        // stack depth
+
+        auto offset = loc.mem_offset;
+        if (loc.mem_reg == stack_pointer_reg) {
+            // TODO(Ian): Do they support stack vars that live in different locations at entry and
+            // exit??? we kinda need to for when the stack pointer shifts
+            offset = loc.mem_offset - block_stack_disp.stack_depth_at_entry;
+        }
+        memory.push_back("frame");
+        memory.push_back(loc.mem_reg->name);
+        memory.push_back(to_hex(offset) + ":" + std::to_string(loc.Size()));
+        arr.push_back(std::move(memory));
+    } else {
+        llvm::json::Array memory;
+        memory.push_back("address");
+        memory.push_back(to_hex(loc.mem_offset) + ":" + std::to_string(loc.Size()));
+        arr.push_back("memory");
+        arr.push_back(std::move(memory));
+    }
+
+    return std::move(arr);
+}
 
 void ParamToSpec(
     const anvill::BasicBlockVariable &bb_param,
@@ -225,42 +275,26 @@ void ParamToSpec(
     auto var_spec = bb_param.param;
     llvm::json::Object var;
     var["name"] = var_spec.name;
-    if (var_spec.reg) {
-        if (bb_param.live_at_entry) {
-            var["at-entry"] = var_spec.reg->name;
-        }
 
-        if (bb_param.live_at_exit) {
-            var["at-exit"] = var_spec.reg->name;
-        }
-    } else if (var_spec.mem_reg) {
-        if (!unsafe && var_spec.mem_reg == stack_pointer_reg) {
+    std::vector< llvm::json::Value > storage;
+
+    for (const auto &loc : var_spec.oredered_locs) {
+        auto comp = LowLocToStorage(loc, stack_pointer_reg, block_stack_disp, unsafe);
+        if (comp) {
+            storage.push_back(std::move(*comp));
+        } else {
             return;
         }
-
-        // If this is a stack pointer variable then the "mem_offset is from the 0 of __anvill_rsp"
-        // which is the pointer at the entrance of the function so we need displace this by the
-        // stack depth
-
-        auto offset = var_spec.mem_offset;
-        if (var_spec.mem_reg == stack_pointer_reg) {
-            // TODO(Ian): Do they support stack vars that live in different locations at entry and
-            // exit??? we kinda need to for when the stack pointer shifts
-            offset = var_spec.mem_offset - block_stack_disp.stack_depth_at_entry;
-        }
-
-        llvm::json::Object memory;
-        memory["frame-pointer"] = var_spec.mem_reg->name;
-        memory["offset"]
-            = to_hex(offset) + ":" + std::to_string(var_spec.type->getScalarSizeInBits());
-        var["memory"] = std::move(memory);
-    } else {
-        llvm::json::Object memory;
-        memory["address"] = to_hex(var_spec.mem_offset) + ":"
-                            + std::to_string(var_spec.type->getScalarSizeInBits());
-
-        var["memory"] = std::move(memory);
     }
+
+    if (bb_param.live_at_entry) {
+        var["at-entry"] = storage;
+    }
+
+    if (bb_param.live_at_exit) {
+        var["at-exit"] = storage;
+    }
+
     patch_vars.push_back(std::move(var));
 }
 
@@ -343,15 +377,17 @@ int main(int argc, char *argv[]) {
         patch["patch-code"] = PrintBodyToString(compound);
 
         llvm::json::Array patch_vars;
+
+        auto fdecl     = spec.FunctionAt(block.GetParentFunctionAddress());
+        auto stackoffs = ComputeStackOffsets(stack_pointer_reg, *fdecl, addr);
+
         patch_vars.push_back(llvm::json::Object{
-            {  "name",                                                      "stack"},
+            {  "name",                                                                                    "stack"},
             {"memory", llvm::json::Object{ { "frame-pointer", stack_pointer_reg->name },
- { "offset", 0 } }                                           }
+ { "offset", -stackoffs.stack_depth_at_entry } }                                           }
         });
 
-        auto fdecl = spec.FunctionAt(block.GetParentFunctionAddress());
         CHECK(fdecl);
-        auto stackoffs = ComputeStackOffsets(stack_pointer_reg, *fdecl, addr);
         for (auto &bb_param : block.LiveParamsAtEntryAndExit()) {
             ParamToSpec(
                 bb_param, stack_pointer_reg, stackoffs, patch_vars, FLAGS_unsafe_stack_locations);
