@@ -316,7 +316,8 @@ class LivenessAnalysis(
                       ),
                       if (func.getStackFrame().growsNegative()) {
                         getNextLocalDepth() - overflow_size
-                      } else { getNextLocalDepth() }
+                      } else { getNextLocalDepth() },
+                      overflow_size
                     )
                   )
                 )
