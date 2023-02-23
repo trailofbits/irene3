@@ -50,8 +50,9 @@ class LivenessAnalysis(
   val register_to_variable: Map[Register, Variable] =
     func
       .getAllVariables()
-      .filter(v => v.isRegisterVariable())
-      .map(v => (v.getRegister(), v))
+      .flatMap(v =>
+        (Option(v.getRegisters()).toSeq.flatMap(_.asScala.map((_, v))))
+      )
       .toMap
 
   def registerToParam(r: Register): ParamSpec = {
