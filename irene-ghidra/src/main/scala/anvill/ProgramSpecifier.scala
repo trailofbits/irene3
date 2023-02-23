@@ -302,7 +302,10 @@ object ProgramSpecifier {
     val monitor = () => TimeoutTaskMonitor.timeoutIn(5, TimeUnit.SECONDS)
     val is_internal_map: MutableMap[Address, Boolean] = MutableMap.empty
     def is_internal(addr: Address) =
-      is_internal_map.getOrElseUpdate(addr, func == listing.getFunctionContaining(addr))
+      is_internal_map.getOrElseUpdate(
+        addr,
+        func == listing.getFunctionContaining(addr)
+      )
     queue.enqueue(func.getEntryPoint())
     while (queue.size > 0) {
       val addr = queue.dequeue()
@@ -383,12 +386,13 @@ object ProgramSpecifier {
     val param_size = func.getStackFrame().getParameterSize()
     val innerValue: InnerValue = if (addr.isRegisterAddress()) {
       val reg = program.getRegister(addr, vnode.getSize())
-      Reg(RegSpec(getRegisterName(reg)))
+      Reg(RegSpec(getRegisterName(reg), Some(vnode.getSize())))
     } else if (addr.isStackAddress()) {
       Mem(
         MemSpec(
           Some(getStackRegister(program)),
-          addr.getOffset()
+          addr.getOffset(),
+          vnode.getSize()
         )
       )
     } else {
