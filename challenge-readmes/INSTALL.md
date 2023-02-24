@@ -34,6 +34,8 @@ Hit OK and Ghidra will ask you to restart for the plugin to be loaded. Close ghi
 
 ## Enabling the GUI
 
+If you have not created a project by this point create one with `File -> New Project`
+
 Import the arm challenge by doing `Import File -> Select chal10-arm.gzf`.
 
 Open the program and you will be asked to configure new extensions. Select yes and click the blue check mark next to `AnvillGraphPlugin` and hit Ok.
