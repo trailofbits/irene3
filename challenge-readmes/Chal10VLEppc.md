@@ -187,11 +187,6 @@ With the knowledge from analysis we can develop a patch for this block.
 ```c
 unsigned short size;
 char stack[40];
-unsigned long long R13;
-unsigned long long call3;
-unsigned long long call4;
-unsigned long long call5;
-unsigned int call6;
 unsigned int num_packets = (unsigned int)(*(char *)(*(unsigned int *)(&stack[8U]) + 1072U));
 bool check = num_packets * 7 != size;
 if (!check) { 
