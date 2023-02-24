@@ -142,7 +142,7 @@ LAB_00014144:
 
 ## Exporting a specification
 
-IRENE consumes a specification of the properties of a function from Ghidra to produce a patcheable version of decompilation that preserves source to binary provenance to the extent required in order to guarentee patch situation.
+IRENE consumes a specification of the properties of a function from Ghidra to produce a patchable version of decompilation that preserves source to binary provenance to the extent required in order to guarantee patch situation.
 
 A spec is produced by running the script `SpecifySingleFunction.java` with the target function selected in Ghidra.
 
@@ -163,7 +163,7 @@ After finishing the script will ask you to select a file name and location to cr
 
 ## Decompiling the Specification
 
-Now that we have a specificaton of the function we intend to patch we need to decompile the patch to a patchset json file with irene-codegen. During `Install.md` we installed a docker image `ghcr.io/trailofbits/irene3/irene3-ubuntu20.04-amd64:0.0.1` for this purpose. 
+Now that we have a specification of the function we intend to patch we need to decompile the patch to a patchset json file with irene-codegen. During `Install.md` we installed a docker image `ghcr.io/trailofbits/irene3/irene3-ubuntu20.04-amd64:0.0.1` for this purpose. 
 
 Navigate to the directory where you saved the spec. Typing `ls` you should see 
 ```
@@ -181,7 +181,7 @@ This command mounts your working directory in `/app` of the docker container and
 
 `-add-edges` adds control flow edges to the specification
 
-`-unsafe-stack-locations` splits stack variabels rather than representing the stack as a low level structure (this mode produces better output at the cost of no longer being strictly C compliant).
+`-unsafe-stack-locations` splits stack variables rather than representing the stack as a low level structure (this mode produces better output at the cost of no longer being strictly C compliant).
 
 ## Viewing the Basic Block Decompilation and Developing a Patch
 
@@ -200,7 +200,7 @@ At the top write select the "Load Patch File Button"
 
 ![shows graphv view with load button highlighted](resources/AddPatchDef.png)
 
-This button will open a filebrowser, select `chal10-arm-patchset.json` from where it was generated.
+This button will open a file browser, select `chal10-arm-patchset.json` from where it was generated.
 
 ![shows file selection menu with load button highlihgted](resources/SelectPatchFile.png)
 
@@ -232,7 +232,7 @@ Looking at the successor blocks to 0x140f8:
 
 We can also notice based on the `ceilf((float R4)/7.F);` or through looking at Ghidra that R4 in this block currently holds the value of size. 
 
-We now have enough information to develop a patch canidate.
+We now have enough information to develop a patch candidate.
 
 ### Patching
 
