@@ -178,7 +178,7 @@ We now have enough information to develop a patch canidate.
 
 To allow a block to be patched you need to unlock it by pressing the lock icon on the top right:
 
-![Block 0x140f8 Unlock](resources/TargetBlockUnlock.png)
+![Block 0x8cf76 Unlock](resources/ppc-block-unlock.png)
 
 The lock icon will switch to unlocked and the text for the block will now be editable.
 
