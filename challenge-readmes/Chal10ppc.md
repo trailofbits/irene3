@@ -5,15 +5,15 @@ patch as a solution to Chal 10 on the MPC5777C. The walkthrough assumes the step
 
 ## Ghidra Setup/Reverse Engineering
 
-The steps here are identical to the steps outlined in [Chal10VLEppc.md](Chal10VLEppc.md).
+The steps here are identical to the steps outlined in [Chal10VLEppc.md#ghidra-setupreverse-engineering](Chal10VLEppc.md#ghidra-setupreverse-engineering).
 
 ## Exporting a specification
 
-The steps here are identical to the steps outlined in [Chal10VLEppc.md](Chal10VLEppc.md).
+The steps here are identical to the steps outlined in [Chal10VLEppc.md#exporting-a-specification](Chal10VLEppc.md#exporting-a-specification).
 
 ## Decompiling the Specification
 
-The steps here are identical to the steps outlined in [Chal10VLEppc.md](Chal10VLEppc.md).
+The steps here are identical to the steps outlined in [Chal10VLEppc.md#decompiling-the-specification](Chal10VLEppc.md#decompiling-the-specification).
 
 ## Viewing the Basic Block Decompilation and Developing a Patch
 
