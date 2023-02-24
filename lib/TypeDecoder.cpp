@@ -11,6 +11,7 @@
 #include <clang/AST/PrettyPrinter.h>
 #include <clang/AST/Type.h>
 #include <irene3/TypeDecoder.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <rellic/AST/DecompilationContext.h>
 #include <unordered_map>
 #include <variant>
@@ -138,8 +139,24 @@ namespace irene3
                         llvm::cast< llvm::VectorType >(ir_type)->getElementType()),
                     vec->size, clang::VectorType::VectorKind::GenericVector);
         } else if (std::holds_alternative< std::shared_ptr< anvill::ArrayType > >(type_spec)) {
-            CHECK(type.isNull());
-            return type;
+            // CHECK(type.isNull());
+            auto strct   = std::get< std::shared_ptr< anvill::ArrayType > >(type_spec);
+            auto arr     = llvm::cast< llvm::ArrayType >(ir_type);
+            auto elem_ty = Decode(ctx, spec, strct->base, arr->getElementType());
+            auto tudecl  = ctx.ast_ctx.getTranslationUnitDecl();
+            auto name    = "arr" + std::to_string(ctx.num_declared_structs++);
+            auto sdecl   = ctx.ast.CreateStructDecl(tudecl, name);
+
+            if (elem_ty.isNull()) {
+                elem_ty = ctx.GetQualType(arr->getElementType());
+            }
+            for (unsigned i = 0; i < strct->size; i++) {
+                sdecl->addDecl(
+                    ctx.ast.CreateFieldDecl(sdecl, elem_ty, "field" + std::to_string(i++)));
+            }
+            sdecl->completeDefinition();
+            tudecl->addDecl(sdecl);
+            type = ctx.ast_ctx.getRecordType(sdecl);
         } else if (std::holds_alternative< std::shared_ptr< anvill::StructType > >(type_spec)) {
             auto& tdecl = ctx.type_decls[ir_type];
             if (tdecl) {
