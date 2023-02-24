@@ -32,6 +32,7 @@
 plugins  {
   id "com.google.protobuf" version "0.8.18"
   id 'scala'
+  id 'java'
 }
 
 //----------------------START "DO NOT MODIFY" SECTION------------------------------
@@ -190,6 +191,11 @@ sourceSets {
     scala {
         srcDirs "${protobuf.generatedFilesBaseDir}/main/scalapb"
         srcDirs 'ghidra_scripts'
+        srcDirs 'src/main/scala'
+    }
+
+    java {
+        srcDirs 'src/main/java'
     }
 
     proto {
