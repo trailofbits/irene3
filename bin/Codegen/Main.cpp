@@ -6,8 +6,6 @@
  * the LICENSE file found in the root directory of this source tree.
  */
 
-#include "anvill/Declarations.h"
-
 #include <anvill/ABI.h>
 #include <anvill/Declarations.h>
 #include <anvill/Lifters.h>
@@ -114,6 +112,16 @@ std::string PrintStmtToString(clang::Stmt *st) {
                 // TODO(Ian): 64 bit is fine for now...
                 os << "goto L_" << to_hex(target_addr->getValue().getLimitedValue());
                 os << ";\n";
+                return code;
+            }
+
+            if (ref->getDecl()->getDeclName().getAsString() == anvill::kAnvillBasicBlockReturn
+                && call->getNumArgs() <= 1) {
+                os << "return ";
+                if (call->getNumArgs() == 1) {
+                    os << PrintStmtToString(call->getArg(0));
+                }
+
                 return code;
             }
         }
