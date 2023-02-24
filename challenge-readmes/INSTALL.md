@@ -4,7 +4,7 @@ Irene is disributed as two components: a docker image containing the decompiler 
 specifications and the GUI.
 
 The IRENE-3-v0.0.1.zip contains corresponding artifacts:
-* `IRENE3 Ghidra 10.1.5.zip` (Our Ghidra plugin)
+* `ghidra_10.1.5_PUBLIC_20230224_irene-ghidra.zip` (Our Ghidra plugin)
 * `ghidra_10.1.5_PUBLIC_20220726.patched.zip` (Our version of 10.1.5 Ghidra with patches for PPC)
 * `irene3-ubuntu20.04-amd64:0.0.1.tar`
 
@@ -25,19 +25,23 @@ This should leave you at an empty project window:
 
 ## Installing the plugin
 
-Unzip `IRENE3 Ghidra 10.1.5.zip` into `<Ghidra Home>/Ghidra/Extensions` with the following command: `unzip <Path to IRENE3 Ghidra 10.1.5.zip> -d <Ghidra home>/Ghidra/Extensions 
+Open `File -> Install extensions` and select the plus button: 
+![install ext](resources/InstallExtPlus.png)
 
-Now open `File -> Install extensions` and select the box by irene-ghidra:
+This will open a file browser, find `ghidra_10.1.5_PUBLIC_20230224_irene-ghidra.zip` and select it.
 
-![Ghidra install extensions](resources/PluginList.png)
-
-Irene-ghidra should now have a blue check by it, hit OK and Ghidra will ask you to restart for the plugin to be loaded. Close ghidra and reopen it with `<path to ghidra>/ghidraRun`.
+Hit OK and Ghidra will ask you to restart for the plugin to be loaded. Close ghidra and reopen it with `<path to ghidra>/ghidraRun`.
 
 ## Enabling the GUI
 
 Import the arm challenge by doing `Import File -> Select chal10-arm.gzf`.
 
 Open the program and you will be asked to configure new extensions. Select yes and click the blue check mark next to `AnvillGraphPlugin` and hit Ok.
+
+After enabling the GUI there should be a blue checkmark next to `AnvillGraphPlugin`:
+![blue check mark by GUI plugin](resources/GraphPlugin.png)
+
+If Ghidra does not ask you to configure the plugin you can configure it manually by selections `File -> Configure... -> Experimental -> Configure`
 
 ## Installing the Decompiler
 
