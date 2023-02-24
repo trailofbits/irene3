@@ -187,5 +187,102 @@ This command mounts your working directory in `/app` of the docker container and
 
 Now that decompilation has been produced in `chal10-arm-patchset.json` this decompilation can be viewed in the Ghidra GUI. In `Install.md` the Ghidra plugin should have been installed and the `AnvillGraphPlugin` enabled.
 
-Navigate to `transport_handler` and open the Anvill graph viewer by selecting the "Display Anvill Graph" button:
+### Viewing the CFG
 
+Navigate to `transport_handler` and open the Anvill graph viewer by selecting the "Display Anvill Graph" button (the left most graph icon with the tooltip):
+
+![shows file selection menu with Create button highlighted](resources/AnvillGraphButton.png)
+
+
+This will open a new empty graph viewer window.
+
+At the top write select the "Load Patch File Button"
+
+![shows graphv view with load button highlighted](resources/AddPatchDef.png)
+
+This button will open a filebrowser, select `chal10-arm-patchset.json` from where it was generated.
+
+![shows file selection menu with load button highlihgted](resources/SelectPatchFile.png)
+
+This should produce a CFG of C decompilation in the graph view. If the window is still blank make sure to open `transport_handler` in the Ghidra listing view.
+
+The graph view navigation is tied to the Ghidra decompiler and listing view, so clicking on a location in the Ghidra decompiler will bring the Anvill Graph view to that location.
+
+We want to patch the if condition that leads to the puts "RTS mismatch":
+![RTS Mismatch Puts](resources/RTSMismatchPuts.png)
+
+Click on the if should bring the Anvill Graph view to the target block to patch 0x140f8:
+
+Ghidra Decompiler:
+![RTS Mismatch Puts with if highlihgted](resources/IfSelected.png)
+
+Anvill Graph View:
+![Block 0x140f8](resources/TargetBlock.png)
+
+You can also navigate directly to this block by `Navigation -> Goto -> 0x140f8`
+
+Now we can develop the patch.
+
+### Analysis
+
+Looking at the successor blocks to 0x140f8:
+![Two successors](resources/Successors.png)
+
+ we can see that 0x141b0 prints the error then goes to funxtion exit, while 0x1412a is the success case.
+
+We can also notice based on the `ceilf((float R4)/7.F);` or through looking at Ghidra that R4 in this block currently holds the value of size. 
+
+We now have enough information to develop a patch canidate.
+
+### Patching
+
+To allow a block to be patched you need to unlock it by pressing the lock icon on the top right:
+
+![Block 0x140f8 Unlock](resources/TargetBlockUnlock.png)
+
+The lock icon will switch to unlocked and the text for the block will now be editable.
+
+With the knowledge from analysis we can develop a patch for this block.
+
+![A block with a patch](resources/PatchedBlock.png)
+
+Since we know that R4 == size should_fail = `num_packets * 7 != R4` then if !should_fail we go to the success block 0x1412a otherwise we go to the fail block 0x141b0.
+
+### Exporting the Patch Definition
+
+Finally, we can export the patch definition which defines the C semantics, target location, and contextual information about variable storage that TA2 needs to situate this patch. Click the save icon at the top right:
+
+![Save icon highlighted](resources/SaveIcon.png)
+
+Select a location and name, for instance: `chal10-arm-patchdef`, if a file already exists the plugin will ask you if it is ok to overwrite it.
+
+Examining the patch file you can see the code, the target location:
+```
+{
+  "patches": [
+    {
+      "edges": [
+        "0x1412a",
+        "0x141b0"
+      ],
+      "patch-addr": "0x140f8",
+      "patch-code": "unsigned char num_packets;\nunsigned int R4;\nbool should_fail;\nshould_fail = num_packets * 7 != R4;\nif (!should_fail) { \ngoto L_0x1412a;\n} else { \ngoto L_0x141b0;\n}\n",
+      "patch-name": "block_82168",
+      "patch-vars": [
+```
+
+As well as live variable definitions, for instance R4 (size) is only live at entry to this block, and not at exit:
+```
+{
+          "at-entry": [
+            [
+              "register",
+              "R4"
+            ]
+          ],
+          "name": "R4"
+        }
+}
+```
+
+This patch definition can now be passed on to TA2.
