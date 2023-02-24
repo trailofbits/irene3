@@ -40,7 +40,7 @@ This should produce a CFG of C decompilation in the graph view. If the window is
 The graph view navigation is tied to the Ghidra decompiler and listing view, so clicking on a location in the Ghidra decompiler will bring the Anvill Graph view to that location.
 
 We want to patch the the block that contains the following:
-![PPC decompilation patch location](resources/ppc-graph-block.png)
+![PPC decompilation patch location](resources/ppc-vle-decompilation-block.png)
 
 Click on the if should bring the Anvill Graph view to the target block to patch 0x833e10:
 
