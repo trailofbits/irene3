@@ -1,4 +1,4 @@
-# Challenge 10: Beagle Bone Black
+# Challenge 10: MPC5777C
 
 This document serves as a walkthrough for generating a candidate
 patch as a solution to Chal 10 on the MPC5777C. The walkthrough assumes the steps in `INSTALL.md` have been completed. The goal is to replace a check of the form `(tp->num_packets > ceil((float)size/7)` with `((tp->num_packets * 7) != size)`.
@@ -7,7 +7,7 @@ patch as a solution to Chal 10 on the MPC5777C. The walkthrough assumes the step
 
 IRENE decompiles single functions that the user intends to develop a patch for. This workflow assumes that the user already knows what function they want to patch (`create_conn` in this challenge) and that the user has setup the types of the function and it's callees as would occur in a typical reverse engineering workflow. These function signatures and names can be produced by other teams working on function matching problems (ie. BSI) and imported into the Ghidra database to jump-start this reverse engineering process. 
 
-For the purpose of the walkthough, we have provided a Ghidra database `ppc-program_c.vuln.chal-10.gzf` that can be imported into Ghidra with `File > Import file... > Browse to the .gzf `
+For the purpose of the walkthough, we have provided a Ghidra database `ppc-vle-program_c.vuln.chal-10.gzf` that can be imported into Ghidra with `File > Import file... > Browse to the .gzf `
 
 After importing and opening the ghidra program you should be able to find `create_conn` in the symbol tree.
 
@@ -117,10 +117,10 @@ As one of the files in the directory.
 You should now be able to run the following (replacing `<specfile>` with the name of your spec):
 
 ```
-docker run -v $(pwd):/app -it --rm ghcr.io/trailofbits/irene3/irene3-ubuntu20.04-amd64:0.0.1 /opt/trailofbits/bin/irene3-codegen -spec /app/<specfile> -output /app/chal10-ppc-patchset.json -unsafe_stack_locations -add_edges
+docker run -v $(pwd):/app -it --rm ghcr.io/trailofbits/irene3/irene3-ubuntu20.04-amd64:0.0.1 /opt/trailofbits/bin/irene3-codegen -spec /app/<specfile> -output /app/chal10-ppc-vle-patchset.json -unsafe_stack_locations -add_edges
 ```
 
-This command mounts your working directory in `/app` of the docker container and runs irene3-codegen on the spec creating a patchset in your current working directory called `chal10-ppc-patchset.json`.
+This command mounts your working directory in `/app` of the docker container and runs irene3-codegen on the spec creating a patchset in your current working directory called `chal10-ppc-vle-patchset.json`.
 
 `-add-edges` adds control flow edges to the specification
 
@@ -128,7 +128,7 @@ This command mounts your working directory in `/app` of the docker container and
 
 ## Viewing the Basic Block Decompilation and Developing a Patch
 
-Now that decompilation has been produced in `chal10-ppc-patchset.json` this decompilation can be viewed in the Ghidra GUI. In `Install.md` the Ghidra plugin should have been installed and the `AnvillGraphPlugin` enabled.
+Now that decompilation has been produced in `chal10-ppc-vle-patchset.json` this decompilation can be viewed in the Ghidra GUI. In `Install.md` the Ghidra plugin should have been installed and the `AnvillGraphPlugin` enabled.
 
 ### Viewing the CFG
 
@@ -143,7 +143,7 @@ At the top write select the "Load Patch File Button"
 
 ![shows graphv view with load button highlighted](resources/AddPatchDef.png)
 
-This button will open a filebrowser, select `chal10-ppc-patchset.json` from where it was generated.
+This button will open a filebrowser, select `chal10-ppc-vle-patchset.json` from where it was generated.
 
 ![shows file selection menu with load button highlihgted](resources/SelectPatchFile.png)
 
@@ -212,7 +212,7 @@ Finally, we can export the patch definition which defines the C semantics, targe
 
 ![Save icon highlighted](resources/SaveIcon.png)
 
-Select a location and name, for instance: `chal10-ppc-patchdef`, if a file already exists the plugin will ask you if it is ok to overwrite it.
+Select a location and name, for instance: `chal10-ppc-vle-patchdef`, if a file already exists the plugin will ask you if it is ok to overwrite it.
 
 Examining the patch file you can see the code, the target location:
 ```
