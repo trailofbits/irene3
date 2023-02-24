@@ -1,4 +1,4 @@
-# Challenge 10: MPC5777C
+# Challenge 10: MPC5777C - VLE
 
 This document serves as a walkthrough for generating a candidate
 patch as a solution to Chal 10 on the MPC5777C. The walkthrough assumes the steps in `INSTALL.md` have been completed. The goal is to replace a check of the form `(tp->num_packets > ceil((float)size/7)` with `((tp->num_packets * 7) != size)`.
@@ -8,10 +8,6 @@ patch as a solution to Chal 10 on the MPC5777C. The walkthrough assumes the step
 IRENE decompiles single functions that the user intends to develop a patch for. This workflow assumes that the user already knows what function they want to patch (`create_conn` in this challenge) and that the user has setup the types of the function and it's callees as would occur in a typical reverse engineering workflow. These function signatures and names can be produced by other teams working on function matching problems (ie. BSI) and imported into the Ghidra database to jump-start this reverse engineering process. 
 
 For the purpose of the walkthough, we have provided a Ghidra database `ppc-vle-program_c.vuln.chal-10.gzf` that can be imported into Ghidra with `File > Import file... > Browse to the .gzf `
-
-After importing and opening the Ghidra program you should be able to find `create_conn` in the symbol tree.
-
-![Ghidra symbol tree searching for create_conn](resources/symboltree_ppc.png)
 
 Ghidra by default is unable to correctly initialize the R2 and R13 registers which should point to the small data areas according to the PowerPC Embedded ABI. We have provided a Ghidra script that should be run that sets them correctly in order for both the Ghidra analysis and our own analysis to work correctly.
 
@@ -23,6 +19,10 @@ This will open the script manager window with a `Filter` box. You can find `FixG
 Highlight the script and press the play button to run the script:
 
 ![fix register script highlighted with button](resources/fix-globals.png)
+
+After importing and opening the Ghidra program you should be able to find `create_conn` in the symbol tree.
+
+![Ghidra symbol tree searching for create_conn](resources/symboltree_ppc.png)
 
 After fixing up the `create_conn` function in Ghidra, the decompilation should be similar to:
 
@@ -168,9 +168,9 @@ Now we can develop the patch.
 Looking at the successor blocks to 0x8cf76:
 ![Two successors](resources/ppc-vle-graph-block.png)
 
-We can see that 0x82cfcc `console_println` and goes to the function return block, while 0x82cfde is the success case.
+We can see that 0x82cfcc calls `console_println` and goes to the function return block, while 0x82cfde is the success case.
 
-We can also notice based on the `call3 = __floatsidf((unsigned int)(*(char *)(*(unsigned int *)(&stack[8U]) + 1072U)));` or through looking at Ghidra that `(unsigned int)(*(char *)(*(unsigned int *)(&stack[8U]) + 1072U))` in this block currently holds the value of `tp->num_packets`. 
+We can also notice based on `call3 = __floatsidf((unsigned int)(*(char *)(*(unsigned int *)(&stack[8U]) + 1072U)));` and referencing Ghidra decompilation that `(unsigned int)(*(char *)(*(unsigned int *)(&stack[8U]) + 1072U))` currently holds the value of `tp->num_packets`. 
 
 We now have enough information to develop a patch canidate.
 
