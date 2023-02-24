@@ -9,3 +9,152 @@ IRENE decompiles single functions that the user intends to develop a patch for. 
 
 For the purpose of the walkthough, we have provided a Ghidra database `arm-program_c.vuln.chal-10.gzf` that can be imported into Ghidra with `File > Import file... > Browse to the .gzf `
 
+After importing and opening the ghidra program you should be able to find `transport_handler` in the symbol tree.
+
+![Ghidra symbol tree searching for transport](resources/symboltree_arm.png)
+
+After clicking on transport handler Ghidra should bring you to the function with decompilation similar to:
+
+```c
+void transport_handler(uint32_t can_frame_id,uint8_t can_frame_dlc,uint8_t data1 [4],
+                      uint8_t data2 [4],int can_socket_desc,byte current_sa)
+
+{
+  int iVar1;
+  byte bVar2;
+  uint8_t uVar3;
+  ssize_t sVar4;
+  uchar *puVar5;
+  ConnectionInfo *pCVar6;
+  uint uVar7;
+  uint __nmemb;
+  float fVar8;
+  ushort local_1f;
+  byte bStack29;
+  byte bStack28;
+  undefined2 local_1b;
+  byte local_19;
+  
+  bStack28 = (byte)data2;
+  local_1b = (undefined2)((uint)data2 >> 8);
+  local_19 = (byte)((uint)data2 >> 0x18);
+  local_1f = (ushort)(data1 >> 8);
+  bStack29 = (byte)(data1 >> 0x18);
+  src = (byte)can_frame_id;
+  if ((can_frame_id << 0x10) >> 0x18 != (uint)current_sa) {
+    return;
+  }
+  if ((can_frame_id & 0xff0000) == 0xeb0000) {
+    pCVar6 = connection_infos[can_frame_id & 0xff];
+    if (pCVar6 == (ConnectionInfo *)0x0) {
+      return;
+    }
+    if (pCVar6->state != EST) {
+      return;
+    }
+    pCVar6->recv_num_packets = pCVar6->recv_num_packets + '\x01';
+    printf("Recieved packet %d from SA %02x\n");
+    uVar7 = data1 & 0xff;
+    if (uVar7 == 0) {
+      return;
+    }
+    pCVar6 = connection_infos[src];
+    if (pCVar6->num_packets < uVar7) {
+      puts("Arbit packet location detected! Connected closed");
+      FUN_00013fcc();
+      return;
+    }
+    puVar5 = pCVar6->data;
+    iVar1 = (uVar7 - 1) * 7;
+    *(uint *)(puVar5 + iVar1) = CONCAT13(bStack28,(int3)(data1 >> 8));
+    *(undefined2 *)(puVar5 + iVar1 + 4) = local_1b;
+    puVar5[iVar1 + 6] = local_19;
+    if (pCVar6->recv_num_packets < pCVar6->num_packets) {
+      return;
+    }
+    printf("Recieved all %d packets, closing connection\n");
+    FUN_00013fcc();
+    return;
+  }
+  if ((can_frame_id & 0xff0000) != 0xec0000) {
+    return;
+  }
+  if ((data1 & 0xff) != 0x10) {
+    if ((data1 & 0xff) != 0xff) {
+      return;
+    }
+    if (connection_infos[can_frame_id & 0xff] == (ConnectionInfo *)0x0) {
+      return;
+    }
+    printf("Recieved Abort from %d\n");
+    FUN_00013fcc();
+    return;
+  }
+  __nmemb = (local_1f & 0xff) << 8 | (uint)(local_1f >> 8);
+  num_packets = bStack29;
+  printf("Recieved RTS from %d to allocate %d bytes of data from %d no. of packets\n",
+         can_frame_id & 0xff,__nmemb,(uint)bStack29,can_frame_id,(uint)can_frame_dlc);
+  uVar3 = num_packets;
+  uVar7 = __nmemb + (__nmemb / 7 + (__nmemb - __nmemb / 7 >> 1) >> 2) * -7 & 0xffff;
+  if (uVar7 != 0) {
+    __nmemb = (__nmemb + 7) - uVar7 & 0xffff;
+  }
+  fVar8 = ceilf((float)(ulonglong)__nmemb / 7.0);
+  bVar2 = src;
+  if (fVar8 <= (float)(longlong)(int)(uint)uVar3) {
+    puts("RTS mismatch detected!! Connected rejected");
+    return;
+  }
+  uVar7 = (uint)src;
+  if (0x91 < num_connections) {
+    return;
+  }
+  pCVar6 = connection_infos[uVar7];
+  if (pCVar6 == (ConnectionInfo *)0x0) {
+    pCVar6 = (ConnectionInfo *)calloc(1,0xc);
+    connection_infos[uVar7] = pCVar6;
+    pCVar6->state = IDLE;
+    pCVar6->data = (uchar *)0x0;
+  }
+  else if (pCVar6->data != (uchar *)0x0) {
+    puVar5 = (uchar *)realloc(pCVar6->data,__nmemb);
+    pCVar6->data = puVar5;
+    goto LAB_00014144;
+  }
+  puVar5 = (uchar *)calloc(__nmemb,1);
+  pCVar6->data = puVar5;
+LAB_00014144:
+  pCVar6->num_packets = uVar3;
+  pCVar6->state = EST;
+  num_connections = num_connections + '\x01';
+  CTS.data._5_2_ = local_1b;
+  CTS.data[7] = local_19;
+  CTS.can_id._1_1_ = bVar2;
+  CTS.data[1] = bStack28;
+  sVar4 = write(can_socket_desc,&CTS,0x10);
+  if (sVar4 == 0x10) {
+    return;
+  }
+                    /* WARNING: Subroutine does not return */
+  err(1,"could not send CTS");
+}
+```
+
+## Exporting a specification
+
+IRENE consumes a specification of the properties of a function from Ghidra to produce a patcheable version of decompilation that preserves source to binary provenance to the extent required in order to guarentee patch situation.
+
+A spec is produced by running the script `SpecifySingleFunction.java` with the target function selected in Ghidra.
+
+To do this browse to the `transport_handler` function and open the Ghidra script manager:
+![play button for ghidra script manager](resources/scriptmanager.png)
+
+This will open the script manager window with a `Filter` box. You can find `SpecifySingleFunction.java` by entering `SpecifySingleFunction` into the filter.
+
+![specify single functions script highlighted](resources/specify_script.png)
+
+Highlight the script and press the play button to run the script:
+
+![specify single functions script highlighted with button highlighted](resources/specify_script_running.png)
+
+## Decompiling the Specification
