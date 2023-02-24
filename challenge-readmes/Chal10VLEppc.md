@@ -204,7 +204,7 @@ if (!check) {
 ![A block with a patch](resources/ppc-vle-patched-block.png)
 
 Here we assign the stack variable offset `(unsigned int)(*(char *)(*(unsigned int *)(&stack[8U]) + 1072U));` to `unsigned num_packets` and then use the check `bool check = num_packets * 7 != size;`.
-For the if statement, if the check is not true, it should go to the success block 0x82cfde, otherwise go to the fail block 0x82cfcc;
+For the if statement, if the check is not true, it should go to the success block 0x82cfde, otherwise go to the fail block 0x82cfcc.
 
 ### Exporting the Patch Definition
 

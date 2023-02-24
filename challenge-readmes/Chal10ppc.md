@@ -95,7 +95,7 @@ if (check) {
 ![A block with a patch](resources/ppc-block-patch.png)
 
 Here we assign the local variable `(unsigned int)(*(char *)(local_18 + 1072U))` to `unsigned num_packets` and then use the check `bool check = num_packets * 7 != size;`.
-For the if statement, if the check is true, it should go to the fail block 0x833e84, otherwise go to the success block 0x833e98;
+For the if statement, if the check is true, it should go to the fail block 0x833e84, otherwise go to the success block 0x833e98.
 
 ### Exporting the Patch Definition
 
