@@ -26,9 +26,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-      - name: 'Install Just'
-        run: |
-          cargo install just
+      - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d # v1.6.0
       - name: 'Setup Ghidra'
         run: |
           wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_${{ matrix.ghidra.version }}_build/ghidra_${{ matrix.ghidra.version }}_PUBLIC_${{ matrix.ghidra.date }}.zip --output-document=ghidra.zip
@@ -36,6 +34,8 @@ jobs:
           echo "GHIDRA_INSTALL_DIR=$(pwd)/ghidra_${{ matrix.ghidra.version }}_PUBLIC" >> $GITHUB_ENV
       - name: "IRENE Ghidra tests"
         run: |
+          Xvfb :99 -nolisten tcp &
+          export DISPLAY=:99
           just test-irene3-ghidra
       - name: "Build IRENE Ghidra"
         run: |
