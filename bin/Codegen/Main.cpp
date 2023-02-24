@@ -370,11 +370,13 @@ int main(int argc, char *argv[]) {
         patch["patch-name"] = "block_" + std::to_string(addr);
         patch["patch-addr"] = to_hex(addr);
 
+        auto func_decl      = spec.FunctionAt(block.GetParentFunctionAddress());
+        auto cb             = func_decl->cfg.find(addr)->second;
+        patch["patch-size"] = to_hex(cb.size);
+
         if (FLAGS_add_edges) {
             llvm::json::Array edges;
 
-            auto func_decl = spec.FunctionAt(block.GetParentFunctionAddress());
-            auto cb        = func_decl->cfg.find(addr)->second;
             for (auto e : cb.outgoing_edges) {
                 edges.push_back(to_hex(e));
             }
