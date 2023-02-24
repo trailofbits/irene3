@@ -9,7 +9,7 @@ IRENE decompiles single functions that the user intends to develop a patch for. 
 
 For the purpose of the walkthough, we have provided a Ghidra database `ppc-vle-program_c.vuln.chal-10.gzf` that can be imported into Ghidra with `File > Import file... > Browse to the .gzf `
 
-After importing and opening the ghidra program you should be able to find `create_conn` in the symbol tree.
+After importing and opening the Ghidra program you should be able to find `create_conn` in the symbol tree.
 
 ![Ghidra symbol tree searching for create_conn](resources/symboltree_ppc.png)
 
@@ -85,7 +85,7 @@ uchar create_conn(Transport *tp)
 
 ## Exporting a specification
 
-IRENE consumes a specification of the properties of a function from Ghidra to produce a patcheable version of decompilation that preserves source to binary provenance to the extent required in order to guarentee patch situation.
+IRENE consumes a specification of the properties of a function from Ghidra to produce a patchable version of decompilation that preserves source to binary provenance to the extent required in order to guarantee patch situation.
 
 A spec is produced by running the script `SpecifySingleFunction.java` with the target function selected in Ghidra.
 
@@ -106,7 +106,7 @@ After finishing the script will ask you to select a file name and location to cr
 
 ## Decompiling the Specification
 
-Now that we have a specificaton of the function we intend to patch we need to decompile the patch to a patchset json file with irene-codegen. During `Install.md` we installed a docker image `ghcr.io/trailofbits/irene3/irene3-ubuntu20.04-amd64:0.0.1` for this purpose. 
+Now that we have a specification of the function we intend to patch we need to decompile the patch to a patchset json file with irene-codegen. During `Install.md` we installed a docker image `ghcr.io/trailofbits/irene3/irene3-ubuntu20.04-amd64:0.0.1` for this purpose. 
 
 Navigate to the directory where you saved the spec. Typing `ls` you should see 
 ```
@@ -124,7 +124,7 @@ This command mounts your working directory in `/app` of the docker container and
 
 `-add-edges` adds control flow edges to the specification
 
-`-unsafe-stack-locations` splits stack variabels rather than representing the stack as a low level structure (this mode produces better output at the cost of no longer being strictly C compliant).
+`-unsafe-stack-locations` splits stack variables rather than representing the stack as a low level structure (this mode produces better output at the cost of no longer being strictly C compliant).
 
 ## Viewing the Basic Block Decompilation and Developing a Patch
 
@@ -143,7 +143,7 @@ At the top write select the "Load Patch File Button"
 
 ![shows graphv view with load button highlighted](resources/AddPatchDef.png)
 
-This button will open a filebrowser, select `chal10-ppc-vle-patchset.json` from where it was generated.
+This button will open a file browser, select `chal10-ppc-vle-patchset.json` from where it was generated.
 
 ![shows file selection menu with load button highlihgted](resources/SelectPatchFile.png)
 
@@ -204,7 +204,7 @@ if (!check) {
 ![A block with a patch](resources/ppc-vle-patched-block.png)
 
 Here we assign the stack variable offset `(unsigned int)(*(char *)(*(unsigned int *)(&stack[8U]) + 1072U));` to `unsigned num_packets` and then use the check `bool check = num_packets * 7 != size;`.
-For the if statement, if the check is not true, it should go to the sucess block 0x82cfde, otherwise go to the fail block 0x82cfcc;
+For the if statement, if the check is not true, it should go to the success block 0x82cfde, otherwise go to the fail block 0x82cfcc;
 
 ### Exporting the Patch Definition
 

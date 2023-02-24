@@ -4,8 +4,8 @@ Irene is disributed as two components: a docker image containing the decompiler 
 specifications and the GUI.
 
 The IRENE-3-v0.0.1.zip contains corresponding artifacts:
-* `IRENE3 Ghidra 10.1.5.zip` (Our ghidra plugin)
-* `ghidra_10.1.5_PUBLIC_20220726.patched.zip` (Our version of 10.1.5 ghidra with patches for PPC)
+* `IRENE3 Ghidra 10.1.5.zip` (Our Ghidra plugin)
+* `ghidra_10.1.5_PUBLIC_20220726.patched.zip` (Our version of 10.1.5 Ghidra with patches for PPC)
 * `irene3-ubuntu20.04-amd64:0.0.1.tar`
 
 The release also contains pre-reverse engineered Ghidra databases for Chal 10 ARM/ PPC/ PPC-vle:
@@ -16,7 +16,7 @@ The release also contains pre-reverse engineered Ghidra databases for Chal 10 AR
 
 ## Installing Ghidra
 
-To install ghidra unpack the `ghidra_10.1.5_PUBLIC_20220726.patched.zip` to a location where you want your Ghidra home to be. 
+To install Ghidra unpack the `ghidra_10.1.5_PUBLIC_20220726.patched.zip` to a location where you want your Ghidra home to be. 
 
 Run Ghidra by `<path to ghidra>/ghidraRun` which should open a menu to create a new project.
 
