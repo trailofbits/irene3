@@ -181,8 +181,14 @@ namespace irene3
             for (unsigned i = 0; i < num_available_vars; ++i) {
                 auto arg = func.getArg(i + first_var_idx);
                 auto var = available_vars[i];
-                add_arg_to_local_override(
-                    arg, type_decoder.Decode(ctx, spec, var.param.spec_type, var.param.type));
+                auto ty  = type_decoder.Decode(ctx, spec, var.param.spec_type, var.param.type);
+
+                LOG_IF(ERROR, ty.isNull())
+                    << "Expected to be able to decode type for param " << var.param.name << " in "
+                    << std::string(func.getName());
+                if (!ty.isNull()) {
+                    add_arg_to_local_override(arg, ty);
+                }
             }
         }
 
