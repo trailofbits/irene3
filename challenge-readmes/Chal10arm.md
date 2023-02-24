@@ -157,4 +157,35 @@ Highlight the script and press the play button to run the script:
 
 ![specify single functions script highlighted with button highlighted](resources/specify_script_running.png)
 
+After finishing the script will ask you to select a file name and location to create the specification. Press the `Create` button to create a specification in your selected location.
+
+![shows file selection menu with Create button highlighted](resources/CreateFile.png)
+
 ## Decompiling the Specification
+
+Now that we have a specificaton of the function we intend to patch we need to decompile the patch to a patchset json file with irene-codegen. During `Install.md` we installed a docker image `ghcr.io/trailofbits/irene3/irene3-ubuntu20.04-amd64:0.0.1` for this purpose. 
+
+Navigate to the directory where you saved the spec. Typing `ls` you should see 
+```
+<specfile>
+```
+As one of the files in the directory.
+
+You should now be able to run the following (replacing `<specfile>` with the name of your spec):
+
+```
+docker run -v $(pwd):/app -it --rm ghcr.io/trailofbits/irene3/irene3-ubuntu20.04-amd64:0.0.1 /opt/trailofbits/bin/irene3-codegen -spec /app/<specfile> -output /app/chal10-arm-patchset.json -unsafe_stack_locations -add_edges
+```
+
+This command mounts your working directory in `/app` of the docker container and runs irene3-codegen on the spec creating a patchset in your current working directory called `chal10-arm-patchset.json`.
+
+`-add-edges` adds control flow edges to the specification
+
+`-unsafe-stack-locations` splits stack variabels rather than representing the stack as a low level structure (this mode produces better output at the cost of no longer being strictly C compliant).
+
+## Viewing the Basic Block Decompilation and Developing a Patch
+
+Now that decompilation has been produced in `chal10-arm-patchset.json` this decompilation can be viewed in the Ghidra GUI. In `Install.md` the Ghidra plugin should have been installed and the `AnvillGraphPlugin` enabled.
+
+Navigate to `transport_handler` and open the Anvill graph viewer by selecting the "Display Anvill Graph" button:
+
