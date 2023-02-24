@@ -1,6 +1,6 @@
 # Challenge 10: Beagle Bone Black
 
-This document serves as a walkthrough for generating a canidate
+This document serves as a walkthrough for generating a candidate
 patch as a solution to Chal 10 on the Beagle Bone. The walkthrough assumes the steps in `INSTALL.md` have been completed. The goal is to replace a check of the form `(num_packets > ceil((float)size/7)` with `((num_packets * 7) != size)`.
 
 ## Ghidra Setup/Reverse Engineering
@@ -228,7 +228,7 @@ Now we can develop the patch.
 Looking at the successor blocks to 0x140f8:
 ![Two successors](resources/Successors.png)
 
- we can see that 0x141b0 prints the error then goes to funxtion exit, while 0x1412a is the success case.
+ we can see that 0x141b0 prints the error then goes to function exit, while 0x1412a is the success case.
 
 We can also notice based on the `ceilf((float R4)/7.F);` or through looking at Ghidra that R4 in this block currently holds the value of size. 
 
