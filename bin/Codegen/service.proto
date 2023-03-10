@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+// General guidance says to point the proto include path to the root of the directory
+import "data_specifications/specification.proto";
+
+package irene.server;
+
+message Codegen {
+  // Hard-coded json object
+  string json = 1;
+}
+
+service Irene {
+  rpc ProcessSpecification(specification.Specification)
+      returns (Codegen)
+  {}
+}

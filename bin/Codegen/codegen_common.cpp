@@ -299,15 +299,15 @@ void ParamToSpec(
 }
 
 rellic::Result< llvm::json::Object, std::string > ProcessSpecification(
-    std::filesystem::path &in_spec,
+    const std::string &spec_pb,
     std::unordered_set< uint64_t > &target_funcs,
     bool propagate_types,
     bool args_as_locals,
     bool unsafe_stack_locations,
     bool add_edges) {
     irene3::TypeDecoder type_decoder;
-    auto maybe_spec = irene3::ProtobufPathToDecompilationBuilder(
-        in_spec, propagate_types, args_as_locals, unsafe_stack_locations, type_decoder);
+    auto maybe_spec = irene3::SpecDecompilationJobBuilder::CreateDefaultBuilder(
+        spec_pb, propagate_types, args_as_locals, unsafe_stack_locations, type_decoder);
     if (!maybe_spec.Succeeded()) {
         return { std::string(maybe_spec.TakeError()) };
     }
