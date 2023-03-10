@@ -8,43 +8,15 @@
 
 #include "codegen_common.h"
 
-#include <anvill/ABI.h>
-#include <anvill/Declarations.h>
-#include <anvill/Lifters.h>
-#include <anvill/Optimize.h>
-#include <anvill/Providers.h>
-#include <anvill/Specification.h>
-#include <clang/AST/Expr.h>
-#include <clang/AST/GlobalDecl.h>
-#include <clang/AST/Stmt.h>
-#include <clang/Basic/LLVM.h>
-#include <clang/Tooling/Tooling.h>
-#include <cstdint>
-#include <cstdio>
 #include <filesystem>
+#include <iostream>
+#include <sstream>
+#include <unordered_set>
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <iostream>
-#include <irene3/DecompileSpec.h>
-#include <irene3/TypeDecoder.h>
-#include <irene3/Util.h>
-#include <irene3/Version.h>
-#include <llvm/ADT/Triple.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Module.h>
 #include <llvm/Support/JSON.h>
-#include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/raw_ostream.h>
-#include <optional>
-#include <rellic/Decompiler.h>
-#include <remill/Arch/Arch.h>
-#include <remill/BC/Error.h>
-#include <remill/BC/Util.h>
-#include <sstream>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
 DEFINE_string(spec, "", "input spec");
 DEFINE_string(output, "", "output patch file");
