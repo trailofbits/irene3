@@ -5,8 +5,8 @@
 #ifndef IRENE3_CODEGEN_COMMON_H
 #define IRENE3_CODEGEN_COMMON_H
 
-#include <filesystem>
 #include <cstdint>
+#include <string>
 #include <unordered_set>
 
 #include <llvm/Support/JSON.h>
@@ -15,7 +15,7 @@
 void SetVersion();
 
 rellic::Result<llvm::json::Object, std::string>
-ProcessSpecification(std::filesystem::path &spec,
+ProcessSpecification(const std::string& spec,
                      std::unordered_set<uint64_t> &target_funcs,
                      bool propagate_types,
                      bool args_as_locals,

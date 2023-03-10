@@ -9,14 +9,15 @@
 #include "codegen_common.h"
 
 #include <filesystem>
-#include <iostream>
-#include <sstream>
-#include <unordered_set>
-
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <iostream>
 #include <llvm/Support/JSON.h>
+#include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/raw_ostream.h>
+#include <remill/BC/Error.h>
+#include <sstream>
+#include <unordered_set>
 
 DEFINE_string(spec, "", "input spec");
 DEFINE_string(output, "", "output patch file");
@@ -29,7 +30,7 @@ DEFINE_bool(h, false, "help");
 DECLARE_bool(version);
 DECLARE_bool(help);
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     SetVersion();
     google::SetUsageMessage("IRENE3 codegen");
     google::ParseCommandLineNonHelpFlags(&argc, &argv, false);
@@ -42,8 +43,13 @@ int main(int argc, char *argv[]) {
 
     google::HandleCommandLineHelpFlags();
 
-    std::filesystem::path input_spec(FLAGS_spec);
-    std::filesystem::path output_file(FLAGS_output);
+    auto maybe_buff = llvm::MemoryBuffer::getFileOrSTDIN(FLAGS_spec);
+    if (remill::IsError(maybe_buff)) {
+        std::cout << "Unable to read protobuf spec file '" << FLAGS_spec
+                  << "': " << remill::GetErrorString(maybe_buff) << std::endl;
+        return EXIT_FAILURE;
+    }
+    const std::unique_ptr< llvm::MemoryBuffer >& buff = remill::GetReference(maybe_buff);
 
     std::unordered_set< uint64_t > target_funcs;
 
@@ -59,8 +65,8 @@ int main(int argc, char *argv[]) {
         }
     }
     auto maybe_result = ProcessSpecification(
-        input_spec, target_funcs, FLAGS_type_propagation, true, FLAGS_unsafe_stack_locations,
-        FLAGS_add_edges);
+        buff->getBuffer().str(), target_funcs, FLAGS_type_propagation, true,
+        FLAGS_unsafe_stack_locations, FLAGS_add_edges);
     if (!maybe_result.Succeeded()) {
         std::cerr << maybe_result.TakeError() << std::endl;
         return EXIT_FAILURE;
