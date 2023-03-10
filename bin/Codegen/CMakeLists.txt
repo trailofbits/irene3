@@ -12,10 +12,13 @@ set(IRENE3_CODEGEN
     PARENT_SCOPE
 )
 
-add_executable("${IRENE3_CODEGEN}" "Main.cpp")
+add_executable("${IRENE3_CODEGEN}" Main.cpp codegen_common.cpp)
 
 set_target_properties("${IRENE3_CODEGEN}" PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries("${IRENE3_CODEGEN}" PRIVATE irene3)
+target_include_directories(
+  "${IRENE3_CODEGEN}" PRIVATE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
+)
 
 if (IRENE3_ENABLE_INSTALL)
   install(
