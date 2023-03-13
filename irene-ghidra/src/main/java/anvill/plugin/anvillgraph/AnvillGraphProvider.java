@@ -34,6 +34,7 @@ import docking.widgets.filechooser.GhidraFileChooser;
 import docking.widgets.filechooser.GhidraFileChooserMode;
 import edu.uci.ics.jung.visualization.RenderContext;
 import ghidra.app.nav.DecoratorPanel;
+import ghidra.app.services.GoToService;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.preferences.Preferences;
 import ghidra.graph.VisualGraphComponentProvider;
@@ -208,6 +209,16 @@ public class AnvillGraphProvider extends
     currentProgram = newProgram;
   }
 
+  public void goTo(ProgramLocation newLocation) {
+    if (graph != null && graph.getVertexAtAddr(currentLocation.getAddress())
+        .equals(graph.getVertexAtAddr(newLocation.getAddress()))) {
+      // Already at a location in this vertex. Don't do anything else
+      return;
+    }
+    GoToService goToService = tool.getService(GoToService.class);
+    goToService.goTo(newLocation);
+  }
+
   /**
    * Called when for location changes that are <b>external</b> to the function graph (e.g., when the
    * user clicks in Ghidra's Listing window)
@@ -254,8 +265,10 @@ public class AnvillGraphProvider extends
       if (graph != null && graph.getFunction().getBody().contains(newAddress)) {
         BasicBlockVertex newVertex = graph.getVertexAtAddr(newAddress);
         if (newVertex != null) {
-          graph.setVertexFocused(newVertex, true);
-          view.getViewUpdater().moveVertexToCenterWithAnimation(newVertex);
+          // This only centers the title-bar
+          view.getViewUpdater().ensureVertexVisible(newVertex, null);
+          view.getGraphComponent().setVertexFocused(newVertex);
+          view.repaint();
         } else {
           Msg.info(this, "Weird: No vertex for graph");
         }
@@ -311,7 +324,7 @@ public class AnvillGraphProvider extends
         return;
       }
 
-      BasicBlockVertex vertex = new AnvillVertex(codeBlock, patch);
+      BasicBlockVertex vertex = new AnvillVertex(this, codeBlock, patch);
       vertices.put(codeBlock, vertex);
 
       long blockAddressCount = codeBlock.getNumAddresses();
@@ -591,6 +604,10 @@ public class AnvillGraphProvider extends
 
   public Program getProgram() {
     return currentProgram;
+  }
+
+  public ProgramLocation getLocation() {
+    return currentLocation;
   }
 
   private void notifyContextChanged() {
