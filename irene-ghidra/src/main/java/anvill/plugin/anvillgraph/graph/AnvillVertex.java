@@ -17,6 +17,7 @@
  */
 package anvill.plugin.anvillgraph.graph;
 
+import anvill.plugin.anvillgraph.AnvillGraphProvider;
 import anvill.plugin.anvillgraph.AnvillPatchInfo;
 import docking.ActionContext;
 import docking.GenericHeader;
@@ -27,6 +28,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.block.CodeBlock;
 import ghidra.program.model.listing.Program;
+import ghidra.program.util.ProgramLocation;
 import java.awt.Color;
 import java.awt.Component;
 import javax.swing.ImageIcon;
@@ -39,6 +41,7 @@ public class AnvillVertex extends DockingVisualVertex implements BasicBlockVerte
   private final Program program;
   private final Address address;
   private final AddressSetView addressSetView;
+  private final AnvillGraphProvider provider;
   private boolean editable = false;
   public static final ImageIcon LOCK_IMAGE;
   public static final ImageIcon UNLOCK_IMAGE;
@@ -48,8 +51,9 @@ public class AnvillVertex extends DockingVisualVertex implements BasicBlockVerte
     UNLOCK_IMAGE = ResourceManager.loadImage("images/unlock.gif");
   }
 
-  public AnvillVertex(CodeBlock block, AnvillPatchInfo.Patch patch) {
+  public AnvillVertex(AnvillGraphProvider provider, CodeBlock block, AnvillPatchInfo.Patch patch) {
     super(block.getFirstStartAddress().toString());
+    this.provider = provider;
     address = block.getFirstStartAddress();
     addressSetView = block;
     program = block.getModel().getProgram();
@@ -94,6 +98,14 @@ public class AnvillVertex extends DockingVisualVertex implements BasicBlockVerte
 
     header.actionAdded(editLockAction);
     header.update();
+  }
+
+  @Override
+  public void setFocused(boolean focused) {
+    super.setFocused(focused);
+    if (focused) {
+      provider.goTo(new ProgramLocation(getProgram(), address));
+    }
   }
 
   @Override
