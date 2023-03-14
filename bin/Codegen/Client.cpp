@@ -47,7 +47,8 @@ class IreneClient {
         ClientContext context;
         Status status = stub_->ProcessSpecification(&context, specification, codegen);
         if (!status.ok()) {
-            std::cout << "ProcessSpecification rpc failed.\n";
+            std::cout << "ProcessSpecification rpc failed with message:\n\"" << status.error_message()
+                      << "\"\nand details:\n\"" << status.error_details() << "\"\n";
             return false;
         }
         return true;
