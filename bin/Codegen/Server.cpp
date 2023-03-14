@@ -50,7 +50,6 @@ class IreneImpl final : public Irene::Service {
         , args_as_locals(args_as_locals)
         , unsafe_stack_locations(unsafe_stack_locations)
         , add_edges(add_edges) {}
-    explicit IreneImpl() = default;
 
     Status ProcessSpecification(
         ServerContext *context, const Specification *request, Codegen *response) override {
