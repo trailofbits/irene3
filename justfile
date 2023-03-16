@@ -68,7 +68,13 @@ install-ninja:
        exit 1
     fi
 
-install-prereqs: install-cxx-common install-ghidra install-cmake install-clang install-ninja
+setup-venv:
+    #!/usr/bin/env bash
+    if [[ ! -f "${VIRTUAL_ENV}/pyenv.cfg" ]]; then
+        python3 -m venv "${VIRTUAL_ENV}"
+    fi
+
+install-prereqs: install-cxx-common install-ghidra install-cmake install-clang install-ninja setup-venv
     #!/usr/bin/env bash
     if [[ "linux" == "{{os()}}" ]]; then
         set -x
