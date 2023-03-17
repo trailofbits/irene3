@@ -30,7 +30,7 @@
 // for the correction version of Gradle to use for the Ghidra installation you specify.
 
 plugins  {
-  id "com.google.protobuf" version "0.8.18"
+  id "com.google.protobuf" version "0.9.2"
   id 'scala'
   id 'java'
 }
@@ -54,7 +54,7 @@ else {
 //----------------------END "DO NOT MODIFY" SECTION-------------------------------
 
 ext {
-    scalapbVersion = '0.11.11'
+    scalapbVersion = '0.11.13'
 }
 
 repositories {
@@ -170,7 +170,7 @@ protobuf {
 // Required for protobuf dependency management. Not sure why this isn't
 // captured in 'generateProtoTasks' section
 tasks.configureEach { task ->
-    if (task.name == 'extractIncludeProto') {
+    if (task.name == 'extractIncludeProto' || task.name == 'extractIncludeTestProto') {
         task.dependsOn copyDependencies
     }
 }
