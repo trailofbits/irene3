@@ -243,7 +243,8 @@ namespace irene3
                  blocks };
     }
 
-    rellic::Result< DecompilationResult, std::string > SpecDecompilationJob::Decompile() const {
+    // Only compile to llvm through anvill
+    std::unique_ptr< llvm::Module > SpecDecompilationJob::DecompileToLLVM() const {
         auto module = std::make_unique< llvm::Module >("lifted_code", *this->context);
 
         anvill::SpecificationTypeProvider spec_tp(this->spec);
@@ -251,10 +252,12 @@ namespace irene3
         anvill::SpecificationMemoryProvider spec_mp(this->spec);
 
         anvill::LifterOptions options(spec.Arch().get(), *module, spec_tp, spec_cfp, spec_mp);
+        options.should_inline_basic_blocks = this->should_inline_basic_blocks;
         options.stack_frame_recovery_options.stack_frame_struct_init_procedure
             = this->stack_initialization_strategy;
-        options.should_remove_anvill_pc = this->should_remove_anvill_pc;
-        options.pc_metadata_name        = "pc";
+        options.state_struct_init_procedure = this->state_initialization_strategy;
+        options.should_remove_anvill_pc     = this->should_remove_anvill_pc;
+        options.pc_metadata_name            = "pc";
         CreateSpecLayoutOverride(options.stack_frame_recovery_options.stack_grows_down);
         anvill::EntityLifter lifter(options);
 
@@ -262,6 +265,11 @@ namespace irene3
         this->LiftOrDeclareVariablesInto(lifter);
 
         anvill::OptimizeModule(lifter, *module, spec.GetBlockContexts(), spec);
+        return module;
+    }
+
+    rellic::Result< DecompilationResult, std::string > SpecDecompilationJob::Decompile() const {
+        auto module = this->DecompileToLLVM();
 
         auto res = rellic::Decompile(std::move(module), std::move(*this->options));
 
@@ -284,6 +292,7 @@ namespace irene3
         anvill::LifterOptions options(spec.Arch().get(), *module, spec_tp, spec_cfp, spec_mp);
         options.stack_frame_recovery_options.stack_frame_struct_init_procedure
             = this->stack_initialization_strategy;
+        options.state_struct_init_procedure          = this->state_initialization_strategy;
         options.should_remove_anvill_pc              = this->should_remove_anvill_pc;
         options.pc_metadata_name                     = "pc";
         options.should_remove_assignments_to_next_pc = true;
