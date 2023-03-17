@@ -154,7 +154,11 @@ namespace irene3
       public:
         anvill::StackFrameStructureInitializationProcedure stack_initialization_strategy
             = anvill::StackFrameStructureInitializationProcedure::kSymbolic;
-        bool should_remove_anvill_pc = true;
+
+        anvill::StateStructureInitializationProcedure state_initialization_strategy
+            = anvill::StateStructureInitializationProcedure::kGlobalRegisterVariablesAndZeroes;
+        bool should_remove_anvill_pc    = true;
+        bool should_inline_basic_blocks = false;
 
       private:
         std::shared_ptr< llvm::LLVMContext > context;
@@ -192,6 +196,9 @@ namespace irene3
         SpecDecompilationJob(SpecDecompilationJobBuilder&&);
 
         rellic::Result< CodegenResult, std::string > DecompileBlocks() const;
+
+        // Only compile to llvm through anvill
+        std::unique_ptr< llvm::Module > DecompileToLLVM() const;
 
         // Attempts to decompile the anvill spec to C and LLVM.
         rellic::Result< DecompilationResult, std::string > Decompile() const;

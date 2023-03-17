@@ -8,6 +8,8 @@
 add_subdirectory("Codegen")
 add_subdirectory("Decompile")
 add_subdirectory("Kleeable")
+add_subdirectory("EvalProduceLinkableModule")
+
 set(IRENE3_DECOMP
     "${IRENE3_DECOMP}"
     PARENT_SCOPE

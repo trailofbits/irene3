@@ -167,3 +167,6 @@ decompile-spec-ll spec out_ir: check-irene3-decompile
 
 clean:
     rm -rf install builds venv irene-ghidra/dist irene-ghidra/build
+ 
+build-docker-eval: build-docker
+    {{DOCKER_CMD}} build -t irene3-eval . -f eval.Dockerfile
