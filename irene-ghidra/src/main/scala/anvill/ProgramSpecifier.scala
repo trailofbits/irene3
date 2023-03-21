@@ -103,6 +103,8 @@ import specification.specification.StackFrame
 import ghidra.app.cmd.function.CallDepthChangeInfo
 import ghidra.util.task.TaskMonitor
 import scala.collection.mutable.{Map => MutableMap}
+import anvill.Util.getReachableCodeBlocks
+import ghidra.program.model.address.AddressSet
 
 def pair[A, B](ma: Option[A], mb: Option[B]): Option[(A, B)] =
   ma.flatMap(a => mb.map(b => (a, b)))
@@ -1162,7 +1164,21 @@ object ProgramSpecifier {
       .toSet
   }
 
+  def makeFunctionsPermissive(funcs: Seq[Function]) = {
+    funcs.foreach(f => {
+      val addrs = AddressSet()
+      val reachable = getReachableCodeBlocks(f)
+      if (!reachable.isEmpty) {
+        reachable.foreach(
+          _.getAddressRanges().iterator().asScala.foreach(addrs.add(_))
+        )
+        f.setBody(addrs)
+      }
+    })
+  }
+
   def specifySingleFunction(func: Function) = {
+    makeFunctionsPermissive(Seq(func))
     val decls = calledFunctions(func)
     specifyProgram(func.getProgram(), List(func), decls.toSeq)
   }
@@ -1172,12 +1188,15 @@ object ProgramSpecifier {
       funcs: java.lang.Iterable[Function]
   ): Specification = {
     val func_col = funcs.iterator().asScala.toSeq
+    makeFunctionsPermissive(func_col)
     val decls = func_col.flatMap(calledFunctions)
     specifyProgram(program, func_col, decls)
   }
 
   def specifyProgram(prog: Program): Specification = {
     val it: ju.Iterator[Function] = prog.getFunctionManager().getFunctions(true)
-    specifyProgram(prog, it.asScala.toSeq, Seq.empty)
+    val funcs = it.asScala.toSeq
+    makeFunctionsPermissive(funcs)
+    specifyProgram(prog, funcs, Seq.empty)
   }
 }
