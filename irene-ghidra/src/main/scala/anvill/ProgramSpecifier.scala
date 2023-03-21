@@ -280,97 +280,6 @@ object ProgramSpecifier {
     }
   }
 
-  // We depend on some assumptions about basic blocks
-  // for now we rely on blocks being contigous non empty sequences of instructions
-  def isValidBlock(program: Program, blk: CodeBlock): Boolean = {
-    val blkinsns: ju.Iterator[Instruction] = program
-      .getListing()
-      .getInstructions(blk, true)
-    val blkinsnsseq = blkinsns.asScala.toSeq
-
-    !blkinsnsseq.isEmpty && blkinsnsseq.map(_.getLength()).sum.toLong == ((blk
-      .getMaxAddress()
-      .getOffset() - blk.getFirstStartAddress().getOffset()) + 1)
-  }
-
-  def getCFG(func: Function): Map[Long, CodeBlockSpec] = {
-    val res = MutableMap[Long, CodeBlockSpec]()
-    val prog = func.getProgram()
-    val listing = prog.getListing()
-    val model = BasicBlockModel(prog)
-    val queue = scala.collection.mutable.Queue[Address]()
-    val monitor = () => TimeoutTaskMonitor.timeoutIn(5, TimeUnit.SECONDS)
-    val is_internal_map: MutableMap[Address, Boolean] = MutableMap.empty
-    def is_internal(addr: Address) =
-      is_internal_map.getOrElseUpdate(
-        addr,
-        func == listing.getFunctionContaining(addr)
-      )
-    queue.enqueue(func.getEntryPoint())
-    while (queue.size > 0) {
-      val addr = queue.dequeue()
-      try {
-        val block = model.getCodeBlockAt(addr, monitor())
-        if (!res.isDefinedAt(addr.getOffset())) {
-          if (
-            Objects.nonNull(
-              block
-            ) && isValidBlock(func.getProgram(), block)
-          ) {
-
-            // If we arent going to consider this block then we may as well not consider its successors unless we encounter them somehow
-            // on a different path
-            val incoming = scala.collection.mutable.ArrayBuffer[Long]()
-            val incoming_it = block.getSources(monitor())
-            while (incoming_it.hasNext()) {
-              val ref = incoming_it.next()
-              val source_block_addr = ref.getSourceAddress()
-              if (is_internal(source_block_addr)) {
-                incoming.addOne(source_block_addr.getOffset())
-                queue.enqueue(source_block_addr)
-              }
-            }
-
-            val outgoing = scala.collection.mutable.ArrayBuffer[Long]()
-            val outgoing_it = block.getDestinations(monitor())
-            while (outgoing_it.hasNext()) {
-              val ref = outgoing_it.next()
-              val dest_block_addr = ref.getDestinationAddress()
-              if (is_internal(dest_block_addr)) {
-                outgoing.addOne(dest_block_addr.getOffset())
-                queue.enqueue(dest_block_addr)
-              }
-            }
-
-            res += (addr.getOffset() -> CodeBlockSpec(
-              addr.getOffset(),
-              block.getName(),
-              incoming.toSeq,
-              outgoing.toSeq,
-              // Blocks can technically allow non contigous regions, we filter out blocks we cant handle through isValidBlock
-              (block.getMaxAddress.getOffset() - addr.getOffset()).toInt + 1,
-              specifyContextAssignments(
-                prog,
-                addr
-              )
-            ))
-
-          } else {
-            Msg.warn(this, s"Skipping invalid block: $addr")
-          }
-        }
-      } catch {
-        case e: ghidra.util.exception.TimeoutException => {
-          Msg.warn(this, s"Timed out getting block $addr")
-        }
-        case e: ghidra.util.exception.CancelledException => {
-          Msg.warn(this, s"Time out lead to sources cancel on block $addr")
-        }
-      }
-    }
-    res.toMap
-  }
-
   def getStackRegister(program: Program): String = {
     getRegisterName(program.getCompilerSpec().getStackPointer())
   }
@@ -640,6 +549,39 @@ object ProgramSpecifier {
       .map(_.abs)
       .maxOption
       .getOrElse(0)
+  }
+
+  def specifyBlock(func: Function, blk: CodeBlock): CodeBlockSpec = {
+    val addr = blk.getFirstStartAddress()
+    CodeBlockSpec(
+      addr.getOffset(),
+      blk.getName(),
+      Util
+        .getValidAddresses(
+          func,
+          blk.getSources(TaskMonitor.DUMMY),
+          ref => ref.getSourceAddress()
+        )
+        .map(_.getOffset()),
+      Util
+        .getValidAddresses(
+          func,
+          blk.getDestinations(TaskMonitor.DUMMY),
+          ref => ref.getDestinationAddress()
+        )
+        .map(_.getOffset()),
+      (blk.getMaxAddress.getOffset() - addr.getOffset()).toInt + 1,
+      specifyContextAssignments(func.getProgram(), addr)
+    )
+  }
+
+  def getCFG(func: Function): Map[Long, CodeBlockSpec] = {
+    Util
+      .getReachableCodeBlocks(func)
+      .map(blk =>
+        (blk.getFirstStartAddress().getOffset(), specifyBlock(func, blk))
+      )
+      .toMap
   }
 
   def specifyFunction(
