@@ -19,7 +19,6 @@ Anti-Goals
 
 ## Repository Layout
 
-* `data_specifications` contains schemas for specifications of analysis information used to transform IRs. Currently, these schemas are expressed in protobuf
 * `irene-ghidra` a Ghidra plugin for exporting first layer specifications from Ghidra to bootstrap decompilation.
 * `bin` contains C++ code for different binary utilities
 * `lib` contains C++ code for the library

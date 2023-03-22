@@ -6,12 +6,13 @@
  * the LICENSE file found in the root directory of this source tree.
  */
 
+#include "anvill/data_specifications/specification.pb.h"
 #include "bin/Codegen/service.grpc.pb.h"
 #include "bin/Codegen/service.pb.h"
-#include "data_specifications/specification.pb.h"
+#include "codegen_common.h"
 
-#include <fstream>
 #include <filesystem>
+#include <fstream>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <grpc/grpc.h>
@@ -34,6 +35,7 @@ using irene::server::Irene;
 using specification::Specification;
 
 DEFINE_string(spec, "", "input spec to send");
+DEFINE_int32(port, 50080, "server port <65536");
 DEFINE_bool(h, false, "help");
 
 DECLARE_bool(help);
@@ -47,8 +49,9 @@ class IreneClient {
         ClientContext context;
         Status status = stub_->ProcessSpecification(&context, specification, codegen);
         if (!status.ok()) {
-            std::cout << "ProcessSpecification rpc failed with message:\n\"" << status.error_message()
-                      << "\"\nand details:\n\"" << status.error_details() << "\"\n";
+            std::cout << "ProcessSpecification rpc failed with message:\n\""
+                      << status.error_message() << "\"\nand details:\n\"" << status.error_details()
+                      << "\"\n";
             return false;
         }
         return true;
@@ -59,6 +62,7 @@ class IreneClient {
 };
 
 int main(int argc, char** argv) {
+    SetVersion();
     google::SetUsageMessage("IRENE3 grpc spec client");
     google::ParseCommandLineNonHelpFlags(&argc, &argv, false);
     google::InitGoogleLogging(argv[0]);
@@ -67,6 +71,14 @@ int main(int argc, char** argv) {
         google::ShowUsageWithFlagsRestrict(argv[0], __FILE__);
         return EXIT_FAILURE;
     }
+
+    if (FLAGS_port < 0 || FLAGS_port > 65536) {
+        google::ShowUsageWithFlagsRestrict(argv[0], __FILE__);
+        std::cerr << "Server port must be between 0 and 65536.\n";
+        return EXIT_FAILURE;
+    }
+
+    google::HandleCommandLineHelpFlags();
 
     std::filesystem::path input_spec(FLAGS_spec);
     std::ifstream is(input_spec, std::ifstream::binary);
@@ -81,7 +93,8 @@ int main(int argc, char** argv) {
     }
 
     // Send spec to server
-    IreneClient irene(grpc::CreateChannel("localhost:50080", grpc::InsecureChannelCredentials()));
+    IreneClient irene(grpc::CreateChannel(
+        "localhost:" + std::to_string(FLAGS_port), grpc::InsecureChannelCredentials()));
 
     std::cout << "-------------- ProcessSpec --------------" << std::endl;
     Codegen codegen;

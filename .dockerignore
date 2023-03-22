@@ -10,6 +10,7 @@ venv
 .dockerignore
 Dockerfile
 vendor/
+!vendor/CMakeLists.txt
 !vendor/pasta
 !vendor/remill
 !vendor/anvill
