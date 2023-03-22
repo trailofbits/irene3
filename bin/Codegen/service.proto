@@ -1,7 +1,6 @@
 syntax = "proto3";
 
-// General guidance says to point the proto include path to the root of the directory
-import "data_specifications/specification.proto";
+import "anvill/data_specifications/specification.proto";
 
 package irene.server;
 
