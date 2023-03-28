@@ -28,6 +28,7 @@ import specification.specification.{Memory => MemSpec}
 import specification.specification.{Parameter => ParamSpec}
 import specification.specification.{Value => ValueSpec}
 import specification.specification.{Variable => VariableSpec}
+import specification.specification.{BlockContext => BlockContextSpec}
 import specification.specification.MemoryRange
 import specification.specification.Specification
 import specification.specification.{Symbol => SymbolSpec}
@@ -586,6 +587,13 @@ object ProgramSpecifier {
       .toMap
   }
 
+  def getInScopeVars(
+      prog: Program,
+      cfg: Map[Long, BlockContextSpec]
+  ): Set[ParamSpec] = {
+    cfg.flatMap((_, bspec) => bspec.liveAtEntries ++ bspec.liveAtExits).toSet
+  }
+
   def specifyFunction(
       func: Function,
       defaultRetAddr: Option[ValueSpec],
@@ -605,6 +613,23 @@ object ProgramSpecifier {
     val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
     val max_depth = maxDepth(func, cdi)
     val bb_context_prod = BasicBlockContextProducer(func, cdi, max_depth)
+    val block_ctxts = cfg.map((addr, cb) => {
+      val gaddr = func.getProgram
+        .getAddressFactory()
+        .getDefaultAddressSpace
+        .getAddress(addr)
+      (
+        addr,
+        bb_context_prod.getBlockContext(
+          gaddr,
+          func
+            .getProgram()
+            .getListing()
+            .getInstructionBefore(gaddr.add(cb.size))
+            .getAddress()
+        )
+      )
+    })
     FuncSpec(
       getThunkRedirection(func.getProgram(), func.getEntryPoint())
         .getOffset(),
@@ -627,23 +652,7 @@ object ProgramSpecifier {
         .filter(x => !isVariableComposedOfHashVarnodes(x))
         .map(x => x.getName() -> specifyVariable(x, aliases))
         .toMap,
-      cfg.map((addr, cb) => {
-        val gaddr = func.getProgram
-          .getAddressFactory()
-          .getDefaultAddressSpace
-          .getAddress(addr)
-        (
-          addr,
-          bb_context_prod.getBlockContext(
-            gaddr,
-            func
-              .getProgram()
-              .getListing()
-              .getInstructionBefore(gaddr.add(cb.size))
-              .getAddress()
-          )
-        )
-      }),
+      block_ctxts,
       Some(getStackEffects(func, aliases)),
       Some(
         StackFrame(
@@ -653,7 +662,8 @@ object ProgramSpecifier {
           max_depth,
           func.getStackFrame.getParameterOffset
         )
-      )
+      ),
+      getInScopeVars(func.getProgram(), block_ctxts).toSeq
     )
   }
 
