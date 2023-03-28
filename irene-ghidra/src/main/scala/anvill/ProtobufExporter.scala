@@ -45,7 +45,13 @@ class ProtobufExporter
       monitor: TaskMonitor
   ): Boolean = {
     val os = new FileOutputStream(file)
-    ProgramSpecifier.specifyProgram(domainObj.asInstanceOf[Program]).writeTo(os)
+    val prog = domainObj.asInstanceOf[Program]
+    val txid = prog.startTransaction("Specify program")
+    try {
+      ProgramSpecifier.specifyProgram(prog).writeTo(os)
+    } finally {
+      prog.endTransaction(txid, /* commit= */ false);
+    }
     true
   }
 
