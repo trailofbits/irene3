@@ -280,7 +280,7 @@ namespace irene3
                 [&func, &block_ctx, sp](const anvill::BasicBlockVariable& bbvar) {
                     return bbvar.param.oredered_locs.size() == 1
                            && bbvar.param.oredered_locs[0].mem_reg == sp
-                           && anvill::ProvidePointerFromFunctionArgs(&func, bbvar.index, block_ctx)
+                           && block_ctx.ProvidePointerFromFunctionArgs(&func, bbvar.param)
                                       ->getNumUses()
                                   != 0;
                 });
