@@ -45,9 +45,15 @@ class JSONExporter extends Exporter("Anvill JSON spec", "json", null) {
       monitor: TaskMonitor
   ): Boolean = {
     val os = new FileOutputStream(file)
-    val spec = ProgramSpecifier.specifyProgram(domainObj.asInstanceOf[Program])
-    val json: String = JsonFormat.toJsonString(spec)
-    os.write(json.getBytes())
+    val prog = domainObj.asInstanceOf[Program]
+    val txid = prog.startTransaction("Specify program")
+    try {
+      val spec = ProgramSpecifier.specifyProgram(prog)
+      val json: String = JsonFormat.toJsonString(spec)
+      os.write(json.getBytes())
+    } finally {
+      prog.endTransaction(txid, /* commit= */ false)
+    }
     true
   }
 
