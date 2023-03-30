@@ -20,23 +20,6 @@ using namespace rellic;
 
 namespace std
 {
-    template<>
-    struct hash< anvill::UnknownType > {
-        size_t operator()(const anvill::UnknownType& unk) const {
-            return std::hash< unsigned >()(unk.size);
-        }
-    };
-} // namespace std
-
-namespace anvill
-{
-    bool operator==(const anvill::UnknownType& a, const anvill::UnknownType& b) {
-        return a.size == b.size;
-    }
-} // namespace anvill
-
-namespace std
-{
     std::string to_string(clang::QualType qt) {
         std::string s;
         llvm::raw_string_ostream os(s);

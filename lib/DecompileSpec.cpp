@@ -292,10 +292,9 @@ namespace irene3
         anvill::LifterOptions options(spec.Arch().get(), *module, spec_tp, spec_cfp, spec_mp);
         options.stack_frame_recovery_options.stack_frame_struct_init_procedure
             = this->stack_initialization_strategy;
-        options.state_struct_init_procedure          = this->state_initialization_strategy;
-        options.should_remove_anvill_pc              = this->should_remove_anvill_pc;
-        options.pc_metadata_name                     = "pc";
-        options.should_remove_assignments_to_next_pc = true;
+        options.state_struct_init_procedure = this->state_initialization_strategy;
+        options.should_remove_anvill_pc     = this->should_remove_anvill_pc;
+        options.pc_metadata_name            = "pc";
         CreateSpecLayoutOverride(options.stack_frame_recovery_options.stack_grows_down);
         anvill::EntityLifter lifter(options);
 
