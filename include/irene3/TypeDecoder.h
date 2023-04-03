@@ -27,6 +27,7 @@ namespace irene3
             rellic::DecompilationContext& dec_ctx,
             anvill::Specification& spec,
             anvill::TypeSpec type_spec,
-            llvm::Type* ir_type);
+            llvm::Type* ir_type,
+            bool wrap_arrays_in_struct);
     };
 } // namespace irene3

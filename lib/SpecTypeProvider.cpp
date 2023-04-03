@@ -52,7 +52,7 @@ namespace irene3
                 return {};
             }
 
-            return type_decoder.Decode(ctx, spec, var_spec->spec_type, gvar.getValueType());
+            return type_decoder.Decode(ctx, spec, var_spec->spec_type, gvar.getValueType(), false);
         }
     };
 
