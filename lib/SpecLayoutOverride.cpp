@@ -113,9 +113,9 @@ namespace irene3
             auto block_contexts  = spec.GetBlockContexts();
             auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
             CHECK(maybe_block_ctx.has_value());
-            const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
-            auto available_vars                        = block_ctx.LiveParamsAtEntryAndExit();
-            auto num_available_vars                    = available_vars.size();
+            auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
+            const auto& available_vars = fspec->in_scope_variables;
+            auto num_available_vars    = available_vars.size();
 
             auto first_var_idx = func.arg_size() - num_available_vars;
 
@@ -156,17 +156,17 @@ namespace irene3
         void PopulateRegisterDecls(
             llvm::Function& func,
             clang::FunctionDecl* fdecl,
-            const std::vector< anvill::BasicBlockVariable >& available_vars,
+            const std::vector< anvill::ParameterDecl >& available_vars,
             unsigned first_var_idx,
             const remill::Register* stack_pointer_reg) {
             unsigned num_available_vars = available_vars.size();
             for (size_t i = 0; i < num_available_vars; ++i) {
                 auto arg  = func.getArg(i + first_var_idx);
                 auto& var = available_vars[i];
-                if ((var.param.oredered_locs.size() != 1
-                     || var.param.oredered_locs[0].mem_reg != stack_pointer_reg)
+                if ((var.oredered_locs.size() != 1
+                     || var.oredered_locs[0].mem_reg != stack_pointer_reg)
                     && (arg->getNumUses() != 0 || this->should_preserve_unused_decls)) {
-                    auto type = type_decoder.Decode(ctx, spec, var.param.spec_type, arg->getType());
+                    auto type  = type_decoder.Decode(ctx, spec, var.spec_type, var.type, false);
                     auto& decl = ctx.value_decls[arg];
                     auto name  = arg->getName().str();
                     decl       = ctx.ast.CreateVarDecl(fdecl, type, name);
@@ -178,7 +178,7 @@ namespace irene3
         std::vector< StackVar > PopulateStackStruct(
             llvm::Function& func,
             clang::FunctionDecl* fdecl,
-            const std::vector< anvill::BasicBlockVariable >& available_vars,
+            const std::vector< anvill::ParameterDecl >& available_vars,
             unsigned first_var_idx,
             const remill::Register* stack_pointer_reg,
             anvill::AbstractStack& stk,
@@ -193,10 +193,9 @@ namespace irene3
                 auto& var = available_vars[i];
                 // we should do a better job of baking this assumption into the type...
                 // we only allow memory to be contigous
-                if (var.param.oredered_locs.size() == 1
-                    && var.param.oredered_locs[0].mem_reg == stack_pointer_reg) {
-                    auto offset
-                        = stk.StackOffsetFromStackPointer(var.param.oredered_locs[0].mem_offset);
+                if (var.oredered_locs.size() == 1
+                    && var.oredered_locs[0].mem_reg == stack_pointer_reg) {
+                    auto offset = stk.StackOffsetFromStackPointer(var.oredered_locs[0].mem_offset);
                     // A declared local *must* be contained in the stack
                     CHECK(offset.has_value());
                     stack_vars.push_back({ arg, *offset });
@@ -215,7 +214,7 @@ namespace irene3
             for (auto [var, var_offset] : stack_vars) {
                 auto& var_spec = available_vars[var->getArgNo() - first_var_idx];
                 auto type
-                    = type_decoder.Decode(ctx, spec, var_spec.param.spec_type, var->getType());
+                    = type_decoder.Decode(ctx, spec, var_spec.spec_type, var->getType(), false);
                 auto name = var->getName().str();
 
                 if (var_offset > current_offset) {
@@ -269,19 +268,16 @@ namespace irene3
 
         bool HasStackUses(
             llvm::Function& func,
+            const std::vector< anvill::ParameterDecl >& available_vars,
             const anvill::BasicBlockContext& block_ctx,
             const remill::Register* sp) {
             auto stack_arg = func.getArg(remill::kStatePointerArgNum);
 
-            auto available_vars = block_ctx.LiveParamsAtEntryAndExit();
-
             auto used_stack_local = std::any_of(
                 available_vars.begin(), available_vars.end(),
-                [&func, &block_ctx, sp](const anvill::BasicBlockVariable& bbvar) {
-                    return bbvar.param.oredered_locs.size() == 1
-                           && bbvar.param.oredered_locs[0].mem_reg == sp
-                           && block_ctx.ProvidePointerFromFunctionArgs(&func, bbvar.param)
-                                      ->getNumUses()
+                [&func, &block_ctx, sp](const anvill::ParameterDecl& bbvar) {
+                    return bbvar.oredered_locs.size() == 1 && bbvar.oredered_locs[0].mem_reg == sp
+                           && block_ctx.ProvidePointerFromFunctionArgs(&func, bbvar)->getNumUses()
                                   != 0;
                 });
 
@@ -297,8 +293,10 @@ namespace irene3
                     continue;
                 }
 
-                auto var  = spec.VariableAt(*maybe_addr);
-                auto type = type_decoder.Decode(ctx, spec, var->spec_type, gv->getType());
+                auto var = spec.VariableAt(*maybe_addr);
+
+                auto type
+                    = type_decoder.Decode(ctx, spec, var->spec_type, gv->getValueType(), false);
                 if (!type.isNull()) {
                     auto& decl = ctx.value_decls[gv];
                     auto name  = std::string(gv->getName());
@@ -317,8 +315,8 @@ namespace irene3
             const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
             this->DeclUsedGlobals(func, fdecl, spec);
-            auto available_vars     = block_ctx.LiveParamsAtEntryAndExit();
-            auto num_available_vars = available_vars.size();
+            const auto& available_vars = fspec->in_scope_variables;
+            auto num_available_vars    = available_vars.size();
             auto stack_pointer_reg
                 = spec.Arch()->RegisterByName(spec.Arch()->StackPointerRegisterName());
             auto stack_arg = func.getArg(remill::kStatePointerArgNum);
@@ -330,7 +328,7 @@ namespace irene3
             this->PopulateRegisterDecls(
                 func, fdecl, available_vars, first_var_idx, stack_pointer_reg);
 
-            if (HasStackUses(func, block_ctx, stack_pointer_reg)) {
+            if (HasStackUses(func, available_vars, block_ctx, stack_pointer_reg)) {
                 DLOG(INFO) << "has stack uses";
                 auto [locals_struct, stack_union, locals_field, stack_var, raw_stack_var]
                     = CreateStackLayout(fdecl, *fspec);
@@ -384,12 +382,11 @@ namespace irene3
             auto block_contexts  = spec.GetBlockContexts();
             auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
             CHECK(maybe_block_ctx.has_value());
-            const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
-            auto available_vars     = block_ctx.LiveParamsAtEntryAndExit();
-            auto num_available_vars = available_vars.size();
-            auto first_var_idx      = func.arg_size() - num_available_vars;
-            auto arg                = llvm::dyn_cast< llvm::Argument >(&value);
+            const auto& available_vars = fspec->in_scope_variables;
+            auto num_available_vars    = available_vars.size();
+            auto first_var_idx         = func.arg_size() - num_available_vars;
+            auto arg                   = llvm::dyn_cast< llvm::Argument >(&value);
             return arg && arg->getArgNo() >= first_var_idx;
         }
     };

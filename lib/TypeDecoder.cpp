@@ -11,6 +11,7 @@
 #include <clang/AST/PrettyPrinter.h>
 #include <clang/AST/Type.h>
 #include <irene3/TypeDecoder.h>
+#include <llvm/ADT/APInt.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <rellic/AST/DecompilationContext.h>
 #include <unordered_map>
@@ -42,7 +43,8 @@ namespace irene3
         DecompilationContext& ctx,
         anvill::Specification& spec,
         anvill::TypeSpec type_spec,
-        llvm::Type* ir_type) {
+        llvm::Type* ir_type,
+        bool should_wrap_arrays_in_struct) {
         auto& type = impl->types[type_spec];
         if (!type.isNull()) {
             return type;
@@ -111,35 +113,43 @@ namespace irene3
                 // NOTE(frabert): Consider this just as a sanity check, it should really _never
                 // ever_ fail at this point in the process.
                 CHECK(spec_pointee.Succeeded());
-                auto pointee = Decode(ctx, spec, ptr_pointee, spec_pointee.Value());
+                auto pointee = Decode(ctx, spec, ptr_pointee, spec_pointee.Value(), false);
                 type         = ctx.ast_ctx.getPointerType(pointee);
             }
         } else if (std::holds_alternative< std::shared_ptr< anvill::VectorType > >(type_spec)) {
             auto vec = std::get< std::shared_ptr< anvill::VectorType > >(type_spec);
             type     = ctx.ast_ctx.getVectorType(
                     Decode(
-                        ctx, spec, vec->base,
-                        llvm::cast< llvm::VectorType >(ir_type)->getElementType()),
+                        ctx, spec, vec->base, llvm::cast< llvm::VectorType >(ir_type)->getElementType(),
+                        false),
                     vec->size, clang::VectorType::VectorKind::GenericVector);
         } else if (std::holds_alternative< std::shared_ptr< anvill::ArrayType > >(type_spec)) {
             // CHECK(type.isNull());
             auto strct   = std::get< std::shared_ptr< anvill::ArrayType > >(type_spec);
             auto arr     = llvm::cast< llvm::ArrayType >(ir_type);
-            auto elem_ty = Decode(ctx, spec, strct->base, arr->getElementType());
-            auto tudecl  = ctx.ast_ctx.getTranslationUnitDecl();
-            auto name    = "arr" + std::to_string(ctx.num_declared_structs++);
-            auto sdecl   = ctx.ast.CreateStructDecl(tudecl, name);
+            auto elem_ty = Decode(ctx, spec, strct->base, arr->getElementType(), false);
 
             if (elem_ty.isNull()) {
                 elem_ty = ctx.GetQualType(arr->getElementType());
             }
-            for (unsigned i = 0; i < strct->size; i++) {
-                sdecl->addDecl(
-                    ctx.ast.CreateFieldDecl(sdecl, elem_ty, "field" + std::to_string(i++)));
+            if (should_wrap_arrays_in_struct) {
+                auto tudecl = ctx.ast_ctx.getTranslationUnitDecl();
+                auto name   = "arr" + std::to_string(ctx.num_declared_structs++);
+                auto sdecl  = ctx.ast.CreateStructDecl(tudecl, name);
+
+                for (unsigned i = 0; i < strct->size; i++) {
+                    sdecl->addDecl(
+                        ctx.ast.CreateFieldDecl(sdecl, elem_ty, "field" + std::to_string(i++)));
+                }
+                sdecl->completeDefinition();
+                tudecl->addDecl(sdecl);
+                type = ctx.ast_ctx.getRecordType(sdecl);
+            } else {
+                type = ctx.ast_ctx.getConstantArrayType(
+                    elem_ty, llvm::APInt(32, strct->size), nullptr,
+                    clang::ArrayType::ArraySizeModifier::Normal, 0);
             }
-            sdecl->completeDefinition();
-            tudecl->addDecl(sdecl);
-            type = ctx.ast_ctx.getRecordType(sdecl);
+
         } else if (std::holds_alternative< std::shared_ptr< anvill::StructType > >(type_spec)) {
             auto& tdecl = ctx.type_decls[ir_type];
             if (tdecl) {
@@ -154,7 +164,7 @@ namespace irene3
                 auto strct_ty = llvm::cast< llvm::StructType >(ir_type);
                 for (auto member : strct->members) {
                     auto elem_ty     = strct_ty->getElementType(i);
-                    auto member_type = Decode(ctx, spec, member, elem_ty);
+                    auto member_type = Decode(ctx, spec, member, elem_ty, false);
                     if (member_type.isNull()) {
                         member_type = ctx.GetQualType(elem_ty);
                     }
@@ -168,11 +178,11 @@ namespace irene3
         } else if (std::holds_alternative< std::shared_ptr< anvill::FunctionType > >(type_spec)) {
             auto func    = std::get< std::shared_ptr< anvill::FunctionType > >(type_spec);
             auto func_ty = llvm::cast< llvm::FunctionType >(ir_type);
-            auto ret     = Decode(ctx, spec, func->return_type, func_ty->getReturnType());
+            auto ret     = Decode(ctx, spec, func->return_type, func_ty->getReturnType(), false);
             std::vector< clang::QualType > params;
             unsigned i = 0;
             for (auto param : func->arguments) {
-                params.push_back(Decode(ctx, spec, param, func_ty->getParamType(i++)));
+                params.push_back(Decode(ctx, spec, param, func_ty->getParamType(i++), false));
             }
             clang::FunctionProtoType::ExtProtoInfo epi;
             epi.Variadic = func->is_variadic;

@@ -332,13 +332,19 @@ namespace irene3
                 insts.push_back(&inst);
             }
 
+            auto addr_type = spec.Arch().get()->AddressType();
             for (auto inst : insts) {
                 if (auto call = llvm::dyn_cast< llvm::CallInst >(inst)) {
                     auto block_addr = anvill::GetBasicBlockAddr(call->getCalledFunction());
                     if (!block_addr.has_value()) {
                         continue;
                     }
-                    call->replaceAllUsesWith(call->getArgOperand(2));
+                    call->replaceAllUsesWith(llvm::UndefValue::get(call->getType()));
+                    auto intrinsic = GetOrCreateGotoInstrinsic(&*module, addr_type);
+
+                    llvm::CallInst::Create(
+                        intrinsic, { llvm::ConstantInt::get(addr_type, *block_addr) }, "", call);
+
                     call->eraseFromParent();
                 }
             }

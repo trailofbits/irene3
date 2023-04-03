@@ -1,3 +1,4 @@
+#include <anvill/ABI.h>
 #include <filesystem>
 #include <iostream>
 #include <irene3/DecompileSpec.h>
@@ -11,6 +12,17 @@
 
 namespace irene3
 {
+
+    llvm::Function* GetOrCreateGotoInstrinsic(llvm::Module* mod, llvm::IntegerType* addr_ty) {
+        auto fun = mod->getFunction(anvill::kAnvillGoto);
+        if (fun) {
+            return fun;
+        }
+        auto tgt_type
+            = llvm::FunctionType::get(llvm::Type::getVoidTy(mod->getContext()), { addr_ty }, false);
+        return llvm::Function::Create(
+            tgt_type, llvm::GlobalValue::ExternalLinkage, anvill::kAnvillGoto, mod);
+    }
 
     std::vector< llvm::GlobalVariable* > UsedGlobalVars(llvm::Function* func) {
         std::vector< llvm::GlobalVariable* > vars;

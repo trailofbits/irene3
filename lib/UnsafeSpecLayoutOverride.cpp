@@ -26,6 +26,7 @@
 #include <rellic/AST/FunctionLayoutOverride.h>
 #include <remill/Arch/Arch.h>
 #include <remill/BC/ABI.h>
+#include <remill/BC/Util.h>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -109,9 +110,11 @@ namespace irene3
             auto block_contexts  = spec.GetBlockContexts();
             auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
             CHECK(maybe_block_ctx.has_value());
-            const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
-            auto available_vars                        = block_ctx.LiveParamsAtEntryAndExit();
-            auto num_available_vars                    = available_vars.size();
+            // const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
+            auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
+
+            auto available_vars     = fspec->in_scope_variables;
+            auto num_available_vars = available_vars.size();
 
             auto first_var_idx = func.arg_size() - num_available_vars;
 
@@ -136,8 +139,9 @@ namespace irene3
                     continue;
                 }
 
-                auto var  = spec.VariableAt(*maybe_addr);
-                auto type = type_decoder.Decode(ctx, spec, var->spec_type, gv->getType());
+                auto var = spec.VariableAt(*maybe_addr);
+                auto type
+                    = type_decoder.Decode(ctx, spec, var->spec_type, gv->getValueType(), false);
                 if (!type.isNull()) {
                     auto& decl = ctx.value_decls[gv];
                     auto name  = std::string(gv->getName());
@@ -153,11 +157,11 @@ namespace irene3
             auto block_contexts  = spec.GetBlockContexts();
             auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
             CHECK(maybe_block_ctx.has_value());
-            const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
+            // const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
             this->DeclUsedGlobals(func, fdecl, spec);
-            auto available_vars     = block_ctx.LiveParamsAtEntryAndExit();
-            auto num_available_vars = available_vars.size();
+            auto available_vars     = fspec->in_scope_variables;
+            auto num_available_vars = fspec->in_scope_variables.size();
 
             auto first_var_idx = func.arg_size() - num_available_vars;
 
@@ -181,11 +185,10 @@ namespace irene3
             for (unsigned i = 0; i < num_available_vars; ++i) {
                 auto arg = func.getArg(i + first_var_idx);
                 auto var = available_vars[i];
-                auto ty  = type_decoder.Decode(ctx, spec, var.param.spec_type, var.param.type);
+                auto ty  = type_decoder.Decode(ctx, spec, var.spec_type, var.type, false);
 
-                LOG_IF(ERROR, ty.isNull())
-                    << "Expected to be able to decode type for param " << var.param.name << " in "
-                    << std::string(func.getName());
+                LOG_IF(ERROR, ty.isNull()) << "Expected to be able to decode type for param "
+                                           << var.name << " in " << std::string(func.getName());
                 if (!ty.isNull()) {
                     add_arg_to_local_override(arg, ty);
                 }
@@ -208,9 +211,8 @@ namespace irene3
             auto block_contexts  = spec.GetBlockContexts();
             auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
             CHECK(maybe_block_ctx.has_value());
-            const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
-            auto available_vars     = block_ctx.LiveParamsAtEntryAndExit();
+            auto available_vars = fspec->in_scope_variables;
             auto num_available_vars = available_vars.size();
             auto first_var_idx      = func.arg_size() - num_available_vars;
             auto arg                = llvm::dyn_cast< llvm::Argument >(&value);

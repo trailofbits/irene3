@@ -18,4 +18,6 @@ namespace irene3
     std::optional< uint64_t > GetPCMetadata(const llvm::Value* value);
 
     std::vector< llvm::GlobalVariable* > UsedGlobalVars(llvm::Function* func);
+
+    llvm::Function* GetOrCreateGotoInstrinsic(llvm::Module* mod, llvm::IntegerType* addr_ty);
 } // namespace irene3
