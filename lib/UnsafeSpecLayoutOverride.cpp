@@ -212,13 +212,16 @@ namespace irene3
             auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
             CHECK(maybe_block_ctx.has_value());
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
-            auto available_vars = fspec->in_scope_variables;
+            const auto& available_vars = fspec->in_scope_variables;
             auto num_available_vars = available_vars.size();
             auto first_var_idx      = func.arg_size() - num_available_vars;
             auto arg                = llvm::dyn_cast< llvm::Argument >(&value);
-            return arg
-                   && (arg->getArgNo() >= first_var_idx
-                       || arg->getArgNo() == remill::kStatePointerArgNum);
+            if (arg && arg->getArgNo() >= first_var_idx) {
+                auto decl = this->ctx.value_decls[arg];
+                // Ghidra considers array arguments as passed by value
+                return !decl->getType()->isArrayType();
+            }
+            return arg && arg->getArgNo() == remill::kStatePointerArgNum;
         }
     };
 

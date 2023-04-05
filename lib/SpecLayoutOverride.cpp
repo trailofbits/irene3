@@ -45,6 +45,13 @@ namespace irene3
         bool stack_grows_down;
         bool should_preserve_unused_decls;
 
+        bool IsStackVariable(const anvill::ParameterDecl& var) {
+            auto stack_pointer_reg
+                = spec.Arch()->RegisterByName(spec.Arch()->StackPointerRegisterName());
+            return var.oredered_locs.size() == 1
+                   && var.oredered_locs[0].mem_reg == stack_pointer_reg;
+        }
+
         Impl(
             DecompilationContext& ctx,
             anvill::Specification& spec,
@@ -163,8 +170,7 @@ namespace irene3
             for (size_t i = 0; i < num_available_vars; ++i) {
                 auto arg  = func.getArg(i + first_var_idx);
                 auto& var = available_vars[i];
-                if ((var.oredered_locs.size() != 1
-                     || var.oredered_locs[0].mem_reg != stack_pointer_reg)
+                if (!IsStackVariable(var)
                     && (arg->getNumUses() != 0 || this->should_preserve_unused_decls)) {
                     auto type  = type_decoder.Decode(ctx, spec, var.spec_type, var.type, false);
                     auto& decl = ctx.value_decls[arg];
@@ -387,7 +393,16 @@ namespace irene3
             auto num_available_vars    = available_vars.size();
             auto first_var_idx         = func.arg_size() - num_available_vars;
             auto arg                   = llvm::dyn_cast< llvm::Argument >(&value);
-            return arg && arg->getArgNo() >= first_var_idx;
+            if (arg && arg->getArgNo() >= first_var_idx) {
+                auto& param = available_vars[arg->getArgNo() - first_var_idx];
+                if (IsStackVariable(param)) {
+                    return false;
+                }
+                auto decl = this->ctx.value_decls[arg];
+                // Ghidra considers array arguments as passed by value
+                return !decl->getType()->isArrayType();
+            }
+            return false;
         }
     };
 
