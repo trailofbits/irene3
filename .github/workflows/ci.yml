@@ -263,70 +263,11 @@ jobs:
           cmake --build irene3_build \
                 --target install
           echo "PATH=${DESTDIR}" >> ${GITHUB_OUTPUT}
-      - name: Create the packages
-        shell: bash
-        working-directory: ${{ steps.build_paths.outputs.BUILD }}
-        run: |
-          irene3_tag=$(cd "${{ steps.build_paths.outputs.SOURCE }}/irene3" && git describe --tags --abbrev=0 || echo "v0")
-          irene3_commit=$(cd "${{ steps.build_paths.outputs.SOURCE }}/irene3" && git rev-parse HEAD | cut -c1-7)
-          irene3_version="${irene3_tag:1}.${irene3_commit}"
-          echo "IRENE3 Version: ${irene3_version}"
-          cpack -D IRENE3_DATA_PATH="${{ steps.irene3_installer.outputs.PATH }}" \
-                -R ${irene3_version} \
-                --config "${{ steps.build_paths.outputs.SOURCE }}/irene3/packaging/main.cmake"
-
-          remill_tag=$(cd "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/remill" && git describe --tags --abbrev=0 || echo "0")
-          remill_commit=$(cd "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/remill" && git rev-parse HEAD | cut -c1-7)
-          remill_version="${remill_tag:1}.${remill_commit}"
-          echo "Remill Version: ${remill_version}"
-          cpack -D REMILL_DATA_PATH="${{ steps.remill_installer.outputs.PATH }}" \
-                -R ${remill_version} \
-                --config "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/remill/packaging/main.cmake" \
-
-          anvill_tag=$(cd "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/anvill" && git describe --tags --abbrev=0 || echo "0")
-          anvill_commit=$(cd "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/anvill" && git rev-parse HEAD | cut -c1-7)
-          anvill_version="${anvill_tag:1}.${anvill_commit}"
-          echo "Anvill Version: ${anvill_version}"
-          cpack -D ANVILL_DATA_PATH="${{ steps.anvill_installer.outputs.PATH }}" \
-                -R ${anvill_version} \
-                --config "${{ steps.build_paths.outputs.SOURCE }}/irene3/vendor/anvill/packaging/main.cmake"
-      - name: Locate the packages
-        id: package_names
-        shell: bash
-        run: |
-          echo "DEB_PACKAGE_PATH=${{ steps.build_paths.outputs.REL_BUILD }}/*.deb" >> ${GITHUB_OUTPUT}
-          echo "RPM_PACKAGE_PATH=${{ steps.build_paths.outputs.REL_BUILD }}/*.rpm" >> ${GITHUB_OUTPUT}
-          echo "TGZ_PACKAGE_PATH=${{ steps.build_paths.outputs.REL_BUILD }}/*.tar.gz" >> ${GITHUB_OUTPUT}
-      - name: Install the DEB package
-        run: |
-          dpkg -i ${{ steps.package_names.outputs.DEB_PACKAGE_PATH }}
       - name: Test irene3
         shell: bash
-        env:
-          BN_LICENSE: ${{ secrets.BINJA_AMP_LICENSE }}
         working-directory: ${{ steps.build_paths.outputs.BUILD }}
         run: |
           env CTEST_OUTPUT_ON_FAILURE=1 cmake --build irene3_build --target test
-      - name: Store the DEB package
-        uses: actions/upload-artifact@v3
-        if: github.event.release
-        with:
-          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_deb_package
-          path: ${{ steps.package_names.outputs.DEB_PACKAGE_PATH }}
-
-      - name: Store the RPM package
-        uses: actions/upload-artifact@v3
-        if: github.event.release
-        with:
-          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_rpm_package
-          path: ${{ steps.package_names.outputs.RPM_PACKAGE_PATH }}
-
-      - name: Store the TGZ package
-        uses: actions/upload-artifact@v3
-        if: github.event.release
-        with:
-          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_tgz_package
-          path: ${{ steps.package_names.outputs.TGZ_PACKAGE_PATH }}
   build_docker:
     runs-on:
       labels: gha-ubuntu-32
