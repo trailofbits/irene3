@@ -65,17 +65,14 @@ class TestCase:
     def __init__(self, conf: Config, wdir: str, id: int, logging_level) -> None:
         self.conf = conf
         self.tc_name = f"test-case{id}"
-        self.logger = logging.getLogger(self.tc_name)
-        self.logger.setLevel(logging_level)
+        self.log_level = logging_level
 
         self.tdir = os.path.join(wdir, self.tc_name)
         os.makedirs(self.tdir, exist_ok=False)
         self.logfile_path = os.path.join(self.tdir, f"{self.tc_name}.log")
         self.stderr_path = os.path.join(self.tdir, "stderr")
         self.stdout_path = os.path.join(self.tdir, "stdout")
-        self.logger.handlers.clear()
-        self.logger.addHandler(logging.FileHandler(
-            self.logfile_path))
+
 
         self.c_file_path = os.path.join(self.tdir, "test.c")
         self.binary_path = os.path.join(self.tdir, "test-bin")
@@ -93,6 +90,13 @@ class TestCase:
         os.makedirs(self.fail_dir, exist_ok=True)
         self.invalid_dir = os.path.join(wdir, "invalid")
         os.makedirs(self.invalid_dir, exist_ok=True)
+
+    def init_logging(self):
+        self.logger = logging.getLogger(self.tc_name)
+        self.logger.setLevel(self.log_level)
+        self.fh = logging.FileHandler(self.logfile_path)
+        self.logger.handlers.clear()
+        self.logger.addHandler(self.fh)
 
     def generate_c_file(self):
         csmith_bin = os.path.join(self.conf.csmith_path, "src", "csmith")
@@ -223,10 +227,15 @@ class TestCase:
             return TestCaseRes.FAILED
 
     def run(self):
+        self.init_logging()
         try:
             self.save_tc(self.run_task())
         except TimeoutError:
-            self.save_tc(TestCaseRes.FAILED)
+            self.logger.error("Timed out while running task")
+            self.save_tc(TestCaseRes.INVALID)
+        finally:
+            for handler in self.logger.handlers[:]:
+                handler.close()
 
 
 def rtc(tc):

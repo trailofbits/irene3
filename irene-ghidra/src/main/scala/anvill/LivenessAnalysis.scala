@@ -76,7 +76,7 @@ class LivenessAnalysis(
 
   def local_paramspecs(): Set[ParamSpec] = {
     func
-      .getLocalVariables()
+      .getAllVariables()
       .toSeq
       .flatMap(v =>
         if (v.isStackVariable()) then {
@@ -188,11 +188,14 @@ class LivenessAnalysis(
   }
 
   def gen(op: PcodeOp, insn: Instruction): Set[ParamSpec] = {
-    gen_call_live(insn, op) ++ gen_stack_vars(op) ++ gen_registers(op)
+    val svars = gen_stack_vars(op)
+    gen_call_live(insn, op) ++ svars ++ gen_registers(op)
   }
 
   def kill(op: PcodeOp, insn: Instruction): Set[ParamSpec] = {
-    kill_registers(op) ++ kill_stack_vars(op) ++ kill_call_live(insn, op)
+    val killed =
+      kill_registers(op) ++ kill_stack_vars(op) ++ kill_call_live(insn, op)
+    killed
   }
 
   def transfer(

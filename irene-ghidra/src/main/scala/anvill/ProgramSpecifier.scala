@@ -591,7 +591,11 @@ object ProgramSpecifier {
       prog: Program,
       cfg: Map[Long, BlockContextSpec]
   ): Set[ParamSpec] = {
-    cfg.flatMap((_, bspec) => bspec.liveAtEntries ++ bspec.liveAtExits).toSet
+    val in_scope: Set[ParamSpec] =
+      cfg.flatMap((_, bspec) => bspec.liveAtEntries ++ bspec.liveAtExits).toSet
+    in_scope.foreach(p => Msg.info(ProgramSpecifier, p.name))
+
+    in_scope
   }
 
   def specifyFunction(
