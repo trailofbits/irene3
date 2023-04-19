@@ -33,7 +33,7 @@ public interface AnvillGraphLayoutOptions {
   public void registerOptions(Options options);
 
   /**
-   * Called when the given {@link Options} object has changed. This class will update its options
+   * Called when the given {@link Options} object has changed.  This class will update its options
    * with the values from the given options object.
    *
    * @param options the tool options

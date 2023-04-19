@@ -32,9 +32,9 @@ public interface BasicBlockEdge extends VisualEdge<BasicBlockVertex> {
    * Set this edge's base alpha, which determines how much of the edge is visible/see through. 0 is
    * completely transparent.
    *
-   * <p>This differs from {@link #setAlpha(double)} in that the latter is used for temporary display
-   * effects. This method is used to set the alpha value for the edge when it is not part of a
-   * temporary display effect.
+   * <P>This differs from {@link #setAlpha(double)} in that the latter is used for
+   * temporary display effects.   This method is used to set the alpha value for the edge when it is
+   * not part of a temporary display effect.
    *
    * @param alpha the alpha value
    */
@@ -44,9 +44,9 @@ public interface BasicBlockEdge extends VisualEdge<BasicBlockVertex> {
    * Get this edge's base alpha, which determines how much of the edge is visible/see through. 0 is
    * completely transparent.
    *
-   * <p>This differs from {@link #getAlpha()} in that the latter is used for temporary display
-   * effects. This method is used to set the alpha value for the edge when it is not part of a
-   * temporary display effect.
+   * <P>This differs from {@link #getAlpha()} in that the latter is used for
+   * temporary display effects.   This method is used to set the alpha value for the edge when it is
+   * not part of a temporary display effect.
    *
    * @return the alpha value
    */

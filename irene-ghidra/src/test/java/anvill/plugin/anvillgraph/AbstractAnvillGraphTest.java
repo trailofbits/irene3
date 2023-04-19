@@ -44,7 +44,7 @@ public abstract class AbstractAnvillGraphTest extends AbstractGhidraHeadedIntegr
   protected TestEnv env;
   protected AnvillGraphProvider graphProvider;
   protected CodeBrowserPlugin codeBrowser;
-  protected String startAddressString = "0100415a"; // sscanf
+  protected String startAddressString = "0100415a";// sscanf
   protected List<String> functionAddrs = new ArrayList<>();
 
   @Before
@@ -76,39 +76,39 @@ public abstract class AbstractAnvillGraphTest extends AbstractGhidraHeadedIntegr
 
     showAnvillGraphProvider();
 
-    setInstanceField(
-        "relayoutOption", graphPlugin.getGraphOptions(), RelayoutOption.VERTEX_GROUPING_CHANGES);
+    setInstanceField("relayoutOption", graphPlugin.getGraphOptions(),
+        RelayoutOption.VERTEX_GROUPING_CHANGES);
   }
 
   protected void openProgram() throws Exception {
     ClassicSampleX86ProgramBuilder builder = new ClassicSampleX86ProgramBuilder("sample", true);
     // TODO: Toy sleigh files are not installed
-    //    ToyProgramBuilder builder = new ToyProgramBuilder("sample", true);
-    //    builder.createMemory("sscanf", "0x0100415a", 80);
-    //
-    //    functionAddrs.add("0x0100415a");
-    //
-    //    build_sscanf(builder);
-    //
+//    ToyProgramBuilder builder = new ToyProgramBuilder("sample", true);
+//    builder.createMemory("sscanf", "0x0100415a", 80);
+//
+//    functionAddrs.add("0x0100415a");
+//
+//    build_sscanf(builder);
+//
     program = builder.getProgram();
   }
 
   private void build_sscanf(ToyProgramBuilder builder) throws MemoryAccessException {
-    /*
-    Originally from notepad 'sscanf'
+		/*
+		 Originally from notepad 'sscanf'
 
-    	A
-    	|->	B
-    	|
-    	C
-    	|-> D
-    	|	|-> E
-    	|
-    	F
-    	|
-    	G
+		 	A
+		 	|->	B
+		 	|
+		 	C
+		 	|-> D
+		 	|	|-> E
+		 	|
+		 	F
+		 	|
+		 	G
 
-    */
+		 */
 
     // A - 9 code units
     builder.addBytesNOP("0x0100415a", 1);
@@ -119,7 +119,7 @@ public abstract class AbstractAnvillGraphTest extends AbstractGhidraHeadedIntegr
     builder.addBytesNOP("0x01004169", 3);
     builder.addBytesNOP("0x0100416c", 3);
     builder.addBytesNOP("0x0100416f", 7);
-    builder.addBytesBranchConditional("0x01004176", "0x01004192"); // jump to C
+    builder.addBytesBranchConditional("0x01004176", "0x01004192");// jump to C
 
     // B - 10 code units (fallthrough from A)
     // 0x01004178
@@ -132,22 +132,22 @@ public abstract class AbstractAnvillGraphTest extends AbstractGhidraHeadedIntegr
     builder.addBytesNOP("0x01004184", 2);
     builder.addBytesNOP("0x01004186", 3);
     builder.addBytesNOP("0x01004189", 3);
-    builder.addBytesNOP("0x0100418c", 6); // was a call
+    builder.addBytesNOP("0x0100418c", 6);// was a call
 
     // C - 2 code units
     // 0x01004192
     builder.addBytesNOP("0x01004192", 2);
-    builder.addBytesBranchConditional("0x01004194", "0x0100419c"); // jump to F
+    builder.addBytesBranchConditional("0x01004194", "0x0100419c");// jump to F
 
     // D - 2 code units (fallthrough from C)
     // 0x01004196
     builder.addBytesNOP("0x01004196", 4);
-    builder.addBytesBranchConditional("0x0100419a", "0x010041a1"); // jump to E
+    builder.addBytesBranchConditional("0x0100419a", "0x010041a1");// jump to E
 
     // F - 2 code unit
     // 0x0100419c
     builder.addBytesNOP("0x0100419c", 3);
-    builder.addBytesBranch("0x0100419f", "0x010041a4"); // jump to G
+    builder.addBytesBranch("0x0100419f", "0x010041a4");// jump to G
 
     // E - 1 code units
     // 0x010041a1
@@ -172,8 +172,8 @@ public abstract class AbstractAnvillGraphTest extends AbstractGhidraHeadedIntegr
   }
 
   protected void showAnvillGraphProvider() {
-    AnvillGraphProvider provider =
-        (AnvillGraphProvider) tool.getComponentProvider(AnvillGraphPlugin.GRAPH_NAME);
+    AnvillGraphProvider provider = (AnvillGraphProvider) tool.getComponentProvider(
+        AnvillGraphPlugin.GRAPH_NAME);
     tool.showComponentProvider(provider, true);
 
     graphProvider = waitForComponentProvider(AnvillGraphProvider.class);
@@ -209,7 +209,7 @@ public abstract class AbstractAnvillGraphTest extends AbstractGhidraHeadedIntegr
     codeBrowser.goTo(location, true);
 
     waitForSwing();
-    //    waitForBusyGraph();
+//    waitForBusyGraph();
   }
 
   protected BasicBlockGraph getBasicBlockGraph() {

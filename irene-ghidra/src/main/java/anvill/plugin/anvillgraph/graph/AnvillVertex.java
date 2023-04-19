@@ -63,7 +63,9 @@ public class AnvillVertex extends DockingVisualVertex implements BasicBlockVerte
     setupActions();
   }
 
-  /** Set the necessary things to make this properly viewable */
+  /**
+   * Set the necessary things to make this properly viewable
+   */
   public void init() {
     // High number to prevent horizontal text cutoff
     setMaxWidth(5000);
@@ -82,16 +84,15 @@ public class AnvillVertex extends DockingVisualVertex implements BasicBlockVerte
     // This is always the header
     GenericHeader header = (GenericHeader) getComponent().getComponent(0);
 
-    DockingAction editLockAction =
-        new DockingAction("Edit", header.getClass().getName()) {
-          @Override
-          public void actionPerformed(ActionContext context) {
-            editable = !editable;
-            getTextArea().setEditable(editable);
-            setDescription(editable ? "Lock Editing" : "Unlock Editing");
-            getToolBarData().setIcon(editable ? UNLOCK_IMAGE : LOCK_IMAGE);
-          }
-        };
+    DockingAction editLockAction = new DockingAction("Edit", header.getClass().getName()) {
+      @Override
+      public void actionPerformed(ActionContext context) {
+        editable = !editable;
+        getTextArea().setEditable(editable);
+        setDescription(editable ? "Lock Editing" : "Unlock Editing");
+        getToolBarData().setIcon(editable ? UNLOCK_IMAGE : LOCK_IMAGE);
+      }
+    };
     editLockAction.setDescription(editable ? "Lock Editing" : "Unlock Editing");
     editLockAction.setToolBarData(new ToolBarData(editable ? UNLOCK_IMAGE : LOCK_IMAGE));
 

@@ -62,8 +62,8 @@ import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 import resources.Icons;
 import resources.ResourceManager;
 
-public class AnvillGraphProvider
-    extends VisualGraphComponentProvider<BasicBlockVertex, BasicBlockEdge, BasicBlockGraph> {
+public class AnvillGraphProvider extends
+    VisualGraphComponentProvider<BasicBlockVertex, BasicBlockEdge, BasicBlockGraph> {
 
   public static final String LAST_IMPORTFILE_PREFERENCE_KEY = "AnvillGraphProvider.ImportFile";
   public static final String LAST_SAVEFILE_PREFERENCE_KEY = "AnvillGraphProvider.SaveFile";
@@ -143,7 +143,9 @@ public class AnvillGraphProvider
     isConnected = newValue;
   }
 
-  /** Install/build the graph, rebuilding when necessary */
+  /**
+   * Install/build the graph, rebuilding when necessary
+   */
   private void installGraph() {
     installGraph(false);
   }
@@ -182,22 +184,22 @@ public class AnvillGraphProvider
     view.setGraph(graph);
 
     // TODO: This appears in FGComponent.java in 'createPrimaryGraphViewer'
-    RenderContext<BasicBlockVertex, BasicBlockEdge> renderContext =
-        view.getPrimaryGraphViewer().getRenderContext();
-    AnvillEdgePaintTransformer edgePaintTransformer =
-        new AnvillEdgePaintTransformer(getAnvillGraphOptions());
+    RenderContext<BasicBlockVertex, BasicBlockEdge> renderContext = view.getPrimaryGraphViewer()
+        .getRenderContext();
+    AnvillEdgePaintTransformer edgePaintTransformer = new AnvillEdgePaintTransformer(
+        getAnvillGraphOptions());
     renderContext.setEdgeDrawPaintTransformer(edgePaintTransformer);
     renderContext.setArrowDrawPaintTransformer(edgePaintTransformer);
     renderContext.setArrowFillPaintTransformer(edgePaintTransformer);
 
     // edge label rendering
-    com.google.common.base.Function<BasicBlockEdge, String> edgeLabelTransformer =
-        BasicBlockEdge::getLabel;
+    com.google.common.base.Function<BasicBlockEdge, String> edgeLabelTransformer = BasicBlockEdge::getLabel;
     renderContext.setEdgeLabelTransformer(edgeLabelTransformer);
 
     // note: this label renderer is the stamp for the label; we use another edge label
     //       renderer inside of the VisualGraphRenderer
-    VisualGraphEdgeLabelRenderer edgeLabelRenderer = new VisualGraphEdgeLabelRenderer(Color.BLACK);
+    VisualGraphEdgeLabelRenderer edgeLabelRenderer =
+        new VisualGraphEdgeLabelRenderer(Color.BLACK);
     edgeLabelRenderer.setNonPickedForegroundColor(Color.LIGHT_GRAY);
     edgeLabelRenderer.setRotateEdgeLabels(false);
     renderContext.setEdgeLabelRenderer(edgeLabelRenderer);
@@ -208,10 +210,8 @@ public class AnvillGraphProvider
   }
 
   public void goTo(ProgramLocation newLocation) {
-    if (graph != null
-        && graph
-            .getVertexAtAddr(currentLocation.getAddress())
-            .equals(graph.getVertexAtAddr(newLocation.getAddress()))) {
+    if (graph != null && graph.getVertexAtAddr(currentLocation.getAddress())
+        .equals(graph.getVertexAtAddr(newLocation.getAddress()))) {
       // Already at a location in this vertex. Don't do anything else
       return;
     }
@@ -284,8 +284,8 @@ public class AnvillGraphProvider
   }
 
   private void buildGraph() throws CancelledException {
-    Function function =
-        currentProgram.getFunctionManager().getFunctionContaining(currentLocation.getAddress());
+    Function function = currentProgram.getFunctionManager()
+        .getFunctionContaining(currentLocation.getAddress());
     if (function == null) {
       Msg.info(getClass(), "No function at current location: " + currentLocation);
       graph = null;
@@ -317,8 +317,7 @@ public class AnvillGraphProvider
       Address startingAddr = codeBlock.getFirstStartAddress();
       Patch patch = patches.get(startingAddr);
       if (patch == null) {
-        Msg.info(
-            this,
+        Msg.info(this,
             "This function contains a basic block address that has no corresponding patch: "
                 + startingAddr);
         graph = null;
@@ -343,7 +342,7 @@ public class AnvillGraphProvider
         CodeBlock destinationBlock = reference.getDestinationBlock();
         BasicBlockVertex destinationVertex = vertices.get(destinationBlock);
         if (destinationVertex == null) {
-          continue; // no vertex means the code block is not in our function
+          continue;  // no vertex means the code block is not in our function
         }
 
         edges.add(new AnvillEdge(startVertex, destinationVertex, reference.getFlowType()));
@@ -405,25 +404,24 @@ public class AnvillGraphProvider
   }
 
   private void createActions() {
-    DockingAction loadPatches =
-        new DockingAction(LOAD_PATCHES_ACTION_NAME, plugin.getName()) {
-          @Override
-          public void actionPerformed(ActionContext context) {
-            importPatchesAction();
-          }
-        };
+    DockingAction loadPatches = new DockingAction(LOAD_PATCHES_ACTION_NAME, plugin.getName()) {
+      @Override
+      public void actionPerformed(ActionContext context) {
+        importPatchesAction();
+      }
+    };
     loadPatches.setToolBarData(new ToolBarData(Icons.ADD_ICON, null));
     loadPatches.setEnabled(true);
     loadPatches.markHelpUnnecessary();
     addLocalAction(loadPatches);
 
-    DockingAction savePatchesAction =
-        new DockingAction(SAVE_PATCHES_ACTION_NAME, plugin.getName()) {
-          @Override
-          public void actionPerformed(ActionContext context) {
-            savePatches();
-          }
-        };
+    DockingAction savePatchesAction = new DockingAction(SAVE_PATCHES_ACTION_NAME,
+        plugin.getName()) {
+      @Override
+      public void actionPerformed(ActionContext context) {
+        savePatches();
+      }
+    };
     savePatchesAction.setToolBarData(
         new ToolBarData(ResourceManager.loadImage("images/disk_save_as.png"), null));
     // TODO: Only enable if something is loaded
@@ -436,17 +434,14 @@ public class AnvillGraphProvider
 
   private void savePatches() {
     if (anvillPatchInfo == null) {
-      Msg.showError(
-          this, view.getPrimaryGraphViewer(), "Nothing to Save", "There is no patch data to save.");
+      Msg.showError(this, view.getPrimaryGraphViewer(), "Nothing to Save",
+          "There is no patch data to save.");
       return;
     }
 
     updatePatchModel();
     if (!anvillPatchInfo.isModified()) {
-      Msg.showError(
-          this,
-          view.getPrimaryGraphViewer(),
-          "No Changes",
+      Msg.showError(this, view.getPrimaryGraphViewer(), "No Changes",
           "Patch data has not changed. Nothing to save.");
       return;
     }
@@ -469,11 +464,8 @@ public class AnvillGraphProvider
     }
     boolean exists = saveAsFile.exists();
     if (exists) {
-      int result =
-          OptionDialog.showYesNoDialog(
-              view.getPrimaryGraphViewer(),
-              getName(),
-              "Do you want to OVERWRITE the following file:\n" + saveAsFile.getName());
+      int result = OptionDialog.showYesNoDialog(view.getPrimaryGraphViewer(), getName(),
+          "Do you want to OVERWRITE the following file:\n" + saveAsFile.getName());
       if (result != OptionDialog.OPTION_ONE) {
         return;
       }
@@ -493,7 +485,9 @@ public class AnvillGraphProvider
     }
   }
 
-  /** Update patch models with potentially user-changed text in the graph vertices. */
+  /**
+   * Update patch models with potentially user-changed text in the graph vertices.
+   */
   public void updatePatchModel() {
     if (graph == null || anvillPatchInfo == null) {
       return;
@@ -515,10 +509,7 @@ public class AnvillGraphProvider
     if (file == null) {
       Msg.showInfo(this, tool.getActiveWindow(), "No file selected", "No file will be imported");
     } else if (!file.exists()) {
-      Msg.showInfo(
-          this,
-          tool.getActiveWindow(),
-          "File does not exist.",
+      Msg.showInfo(this, tool.getActiveWindow(), "File does not exist.",
           "File does not exist: " + file.getAbsolutePath());
     } else {
       importPatchesFile(file);
@@ -536,8 +527,8 @@ public class AnvillGraphProvider
     try {
       anvillPatchInfo = new AnvillPatchInfo(fileContent);
     } catch (InstantiationException e) {
-      Msg.showError(
-          this, tool.getActiveWindow(), "Bad Patch", "Could not import patch: " + e.getMessage());
+      Msg.showError(this, tool.getActiveWindow(), "Bad Patch",
+          "Could not import patch: " + e.getMessage());
       anvillPatchInfo = null;
       return;
     }
@@ -579,7 +570,8 @@ public class AnvillGraphProvider
 
           @Override
           public void actionStateChanged(
-              ActionState<AnvillGraphLayoutProvider> newActionState, EventTrigger trigger) {
+              ActionState<AnvillGraphLayoutProvider> newActionState,
+              EventTrigger trigger) {
             changeLayout(newActionState.getUserData());
             if (trigger != EventTrigger.API_CALL) {
               tool.setConfigChanged(true);
@@ -603,7 +595,8 @@ public class AnvillGraphProvider
     notifyContextChanged();
   }
 
-  private void addLayoutProviders(MultiStateDockingAction<AnvillGraphLayoutProvider> layoutAction) {
+  private void addLayoutProviders(
+      MultiStateDockingAction<AnvillGraphLayoutProvider> layoutAction) {
     for (AnvillGraphLayoutProvider l : plugin.getLayoutProviders()) {
       layoutAction.addActionState(new ActionState<>(l.getLayoutName(), l.getActionIcon(), l));
     }

@@ -125,10 +125,9 @@ public class AnvillPatchInfo {
         return false;
       }
       Patch patch = (Patch) o;
-      return modified == patch.modified
-          && Objects.equals(code, patch.code)
-          && Objects.equals(address, patch.address)
-          && Objects.equals(orig, patch.orig);
+      return modified == patch.modified && Objects.equals(code, patch.code)
+          && Objects.equals(address, patch.address) && Objects.equals(orig,
+          patch.orig);
     }
 
     @Override
