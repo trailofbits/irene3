@@ -21,9 +21,7 @@ import ghidra.graph.viewer.VisualVertex;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 
-/**
- * A vertex that represents a Basic Block in a control-flow graph
- */
+/** A vertex that represents a Basic Block in a control-flow graph */
 public interface BasicBlockVertex extends VisualVertex {
 
   public abstract Program getProgram();
