@@ -26,12 +26,11 @@ import ghidra.graph.viewer.layout.VisualGraphLayout;
 import ghidra.program.model.listing.Function;
 
 /**
- * An abstract class that is the root for Function Graph layouts.  It changes the type of the graph
+ * An abstract class that is the root for Function Graph layouts. It changes the type of the graph
  * returned to {@link BasicBlockGraph} and defines a clone method that takes in a Function Graph.
  */
-public abstract class AbstractBBGraphLayout extends
-    AbstractVisualGraphLayout<BasicBlockVertex, BasicBlockEdge>
-    implements BBGraphLayout {
+public abstract class AbstractBBGraphLayout
+    extends AbstractVisualGraphLayout<BasicBlockVertex, BasicBlockEdge> implements BBGraphLayout {
 
   protected Function function;
   protected BBGraphOptions options;
@@ -42,8 +41,8 @@ public abstract class AbstractBBGraphLayout extends
     this.options = graph.getOptions();
   }
 
-  protected abstract AbstractVisualGraphLayout<BasicBlockVertex, BasicBlockEdge> createClonedBBGraphLayout(
-      BasicBlockGraph newGraph);
+  protected abstract AbstractVisualGraphLayout<BasicBlockVertex, BasicBlockEdge>
+      createClonedBBGraphLayout(BasicBlockGraph newGraph);
 
   @Override
   public BasicBlockGraph getVisualGraph() {

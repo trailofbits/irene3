@@ -48,48 +48,38 @@ import org.apache.commons.collections4.map.LazyMap;
 /**
  * A layout that uses the decompiler to show code nesting based upon conditional logic.
  *
- * <p>Edges returning to the default code flow are painted lighter to de-emphasize them.  This
- * could be made into an option.
+ * <p>Edges returning to the default code flow are painted lighter to de-emphasize them. This could
+ * be made into an option.
  *
- * <p>Edge routing herein defaults to 'simple routing'; 'complex routing' is a user option.
- * Simple routing will reduce edge noise as much as possible by combining/overlapping edges that
- * flow towards the bottom of the function (returning code flow).  Also, edges may fall behind
- * vertices for some functions.   Complex routing allows the user to visually follow the flow of an
- * individual edge.  Complex routing will prevent edges from overlapping and will route edges around
- * vertices.    Simple routing is better when the layout of the vertices is important to the user;
- * complex routing is better when edges/relationships are more important to the user.
- * <p>
- * TODO ideas:
- * -paint fallthrough differently for all, or just for those returning to the baseline
+ * <p>Edge routing herein defaults to 'simple routing'; 'complex routing' is a user option. Simple
+ * routing will reduce edge noise as much as possible by combining/overlapping edges that flow
+ * towards the bottom of the function (returning code flow). Also, edges may fall behind vertices
+ * for some functions. Complex routing allows the user to visually follow the flow of an individual
+ * edge. Complex routing will prevent edges from overlapping and will route edges around vertices.
+ * Simple routing is better when the layout of the vertices is important to the user; complex
+ * routing is better when edges/relationships are more important to the user.
+ *
+ * <p>TODO ideas: -paint fallthrough differently for all, or just for those returning to the
+ * baseline
  */
 public class DecompilerNestedLayout extends AbstractBBGraphLayout {
 
-  /**
-   * Amount of visual buffer between edges and other things used to show separation
-   */
+  /** Amount of visual buffer between edges and other things used to show separation */
   private static final int EDGE_SPACING = 5;
 
-  /**
-   * The space between an articulation point and its vertex
-   */
+  /** The space between an articulation point and its vertex */
   private static final int VERTEX_TO_EDGE_ARTICULATION_PADDING = 20;
 
   private static final int VERTEX_TO_EDGE_AVOIDANCE_PADDING =
       VERTEX_TO_EDGE_ARTICULATION_PADDING - EDGE_SPACING;
 
-  /**
-   * Multiplier used to grow spacing as distance between two edge endpoints grows
-   */
+  /** Multiplier used to grow spacing as distance between two edge endpoints grows */
   private static final int EDGE_ENDPOINT_DISTANCE_MULTIPLIER = 20;
 
-  /**
-   * Amount to keep an edge away from the bounding box of a vertex
-   */
+  /** Amount to keep an edge away from the bounding box of a vertex */
   private static final int VERTEX_BORDER_THICKNESS = EDGE_SPACING;
 
-  /**
-   * An amount by which edges entering a vertex from the left are offset to avoid overlapping
-   */
+  /** An amount by which edges entering a vertex from the left are offset to avoid overlapping */
   private static final int EDGE_OFFSET_INCOMING_FROM_LEFT = EDGE_SPACING;
 
   private DecompilerBlockGraph blockGraphRoot;
@@ -111,8 +101,11 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
   }
 
   @Override
-  protected void condenseEdges(List<Row<BasicBlockVertex>> rows,
-      Map<BasicBlockEdge, List<Point2D>> newEdgeArticulations, double centerX, double centerY) {
+  protected void condenseEdges(
+      List<Row<BasicBlockVertex>> rows,
+      Map<BasicBlockEdge, List<Point2D>> newEdgeArticulations,
+      double centerX,
+      double centerY) {
     // do not condense, as we route our edges at the preferred positions
   }
 
@@ -185,8 +178,10 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     return gridLocations;
   }
 
-  private void labelEdges(VisualGraph<BasicBlockVertex, BasicBlockEdge> jungGraph,
-      GridLocationMap<BasicBlockVertex, BasicBlockEdge> gridLocations, DecompilerBlockGraph root) {
+  private void labelEdges(
+      VisualGraph<BasicBlockVertex, BasicBlockEdge> jungGraph,
+      GridLocationMap<BasicBlockVertex, BasicBlockEdge> gridLocations,
+      DecompilerBlockGraph root) {
 
     Collection<BasicBlockEdge> edges = jungGraph.getEdges();
     for (BasicBlockEdge e : edges) {
@@ -230,7 +225,8 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
   @Override
   protected Map<BasicBlockEdge, List<Point2D>> positionEdgeArticulationsInLayoutSpace(
       VisualGraphVertexShapeTransformer<BasicBlockVertex> transformer,
-      Map<BasicBlockVertex, Point2D> vertexLayoutLocations, Collection<BasicBlockEdge> edges,
+      Map<BasicBlockVertex, Point2D> vertexLayoutLocations,
+      Collection<BasicBlockEdge> edges,
       LayoutLocationMap<BasicBlockVertex, BasicBlockEdge> layoutToGridMap)
       throws CancelledException {
 
@@ -241,9 +237,10 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     // To prevent the edges from moving to far behind the vertices, we will compensate a
     // bit for that effect using this offset value.   The getEdgeOffset() method below is
     // updated for the condense factor.
-    int edgeOffset = isCondensedLayout()
-        ? (int) (VERTEX_TO_EDGE_ARTICULATION_PADDING * (1 - getCondenseFactor()))
-        : VERTEX_TO_EDGE_ARTICULATION_PADDING;
+    int edgeOffset =
+        isCondensedLayout()
+            ? (int) (VERTEX_TO_EDGE_ARTICULATION_PADDING * (1 - getCondenseFactor()))
+            : VERTEX_TO_EDGE_ARTICULATION_PADDING;
     Vertex2dFactory vertex2dFactory =
         new Vertex2dFactory(transformer, vertexLayoutLocations, layoutToGridMap, edgeOffset);
 
@@ -316,7 +313,7 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
         } else {
           routeToTheRightGoingUpwards(start, end, vertex2dFactory, articulations);
         }
-      } else {  // going down; no nesting; flow return
+      } else { // going down; no nesting; flow return
 
         routeDownward(start, end, e, vertex2dFactory, articulations);
       }
@@ -330,7 +327,10 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
 
   private List<Point2D> routeUpwardLoop(
       LayoutLocationMap<BasicBlockVertex, BasicBlockEdge> layoutToGridMap,
-      Vertex2dFactory vertex2dFactory, Vertex2d start, Vertex2d end, DecompilerBlock loop) {
+      Vertex2dFactory vertex2dFactory,
+      Vertex2d start,
+      Vertex2d end,
+      DecompilerBlock loop) {
     Set<BasicBlockVertex> loopVertices = loop.getVertices();
     BasicBlockVertex rightmostLoopVertex =
         getRightmostVertex(layoutToGridMap, vertex2dFactory, loopVertices);
@@ -359,16 +359,15 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
 
     // the padding used for these two lines is somewhat arbitrary and may be changed
     double rightSide = rightmostV2d.getRight() + GraphViewerUtils.EXTRA_LAYOUT_COLUMN_SPACING;
-    double x = Math.min(rightSide,
-        nextColumn.x - GraphViewerUtils.EXTRA_LAYOUT_COLUMN_SPACING_CONDENSED);
+    double x =
+        Math.min(rightSide, nextColumn.x - GraphViewerUtils.EXTRA_LAYOUT_COLUMN_SPACING_CONDENSED);
 
     List<Point2D> articulations = routeLoopEdge(start, end, x);
     return articulations;
   }
 
   private List<Vertex2d> getVerticesInBounds(
-      Vertex2dFactory vertex2dFactory, int startRow,
-      int endRow, int startColumn, int endColumn) {
+      Vertex2dFactory vertex2dFactory, int startRow, int endRow, int startColumn, int endColumn) {
 
     if (startRow > endRow) { // going upwards
       int temp = endRow;
@@ -395,8 +394,7 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
   }
 
   private void routeToTheRightGoingUpwards(
-      Vertex2d start, Vertex2d end,
-      Vertex2dFactory vertex2dFactory, List<Point2D> articulations) {
+      Vertex2d start, Vertex2d end, Vertex2dFactory vertex2dFactory, List<Point2D> articulations) {
 
     //
     // For routing to the right and back up we will leave the start vertex from the right side
@@ -468,8 +466,11 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
   }
 
   private void routeDownward(
-      Vertex2d start, Vertex2d end, BasicBlockEdge e,
-      Vertex2dFactory vertex2dFactory, List<Point2D> articulations) {
+      Vertex2d start,
+      Vertex2d end,
+      BasicBlockEdge e,
+      Vertex2dFactory vertex2dFactory,
+      List<Point2D> articulations) {
 
     lighten(e);
 
@@ -494,12 +495,14 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     double x4 = end.getX();
     double y4 = y3;
     articulations.add(new Point2D.Double(x4, y4)); // point is hidden behind the vertex
-
   }
 
   private void routeToTheLeft(
-      Vertex2d start, Vertex2d end, BasicBlockEdge e,
-      Vertex2dFactory vertex2dFactory, List<Point2D> articulations) {
+      Vertex2d start,
+      Vertex2d end,
+      BasicBlockEdge e,
+      Vertex2dFactory vertex2dFactory,
+      List<Point2D> articulations) {
 
     lighten(e);
 
@@ -563,8 +566,7 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
   }
 
   private void routeToTheRight(
-      Vertex2d start, Vertex2d end, Vertex2dFactory vertex2dFactory,
-      List<Point2D> articulations) {
+      Vertex2d start, Vertex2d end, Vertex2dFactory vertex2dFactory, List<Point2D> articulations) {
 
     //
     // For routing to the right we will leave the start vertex from the right side and
@@ -626,8 +628,11 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
   }
 
   private void routeAroundColumnVertices(
-      Vertex2d start, Vertex2d end,
-      Vertex2dFactory vertex2dFactory, List<Point2D> articulations, double edgeX) {
+      Vertex2d start,
+      Vertex2d end,
+      Vertex2dFactory vertex2dFactory,
+      List<Point2D> articulations,
+      double edgeX) {
 
     if (useSimpleRouting()) {
       return;
@@ -713,21 +718,21 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
       // no need to check the 'y' value, as the end vertex is above/below this one
       if (vertexClipper.isClippingX(otherVertex, edgeX)) {
 
-				/*
-					 Must route around this vertex - new points:
-					 -p1 - just above the intersection point
-					 -p2 - just past the left edge
-					 -p3 - just past the bottom of the vertex
-					 -p4 - back at the original x value
+        /*
+        	 Must route around this vertex - new points:
+        	 -p1 - just above the intersection point
+        	 -p2 - just past the left edge
+        	 -p3 - just past the bottom of the vertex
+        	 -p4 - back at the original x value
 
-					 	   |
-					   .___|
-					   | .-----.
-					   | |     |
-					   | '-----'
-					   '---.
-					   	   |
-				*/
+        	 	   |
+        	   .___|
+        	   | .-----.
+        	   | |     |
+        	   | '-----'
+        	   '---.
+        	   	   |
+        */
 
         // p1 - same x; y just above vertex
         double x = edgeX;
@@ -740,14 +745,14 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
         // smooth out the edges.
         if (articulations.size() > 2) {
 
-					/*
-						The last articulation is the one added before this method was called, which
-						lies just below the intersecting vertex.   The articulation before that is
-						the one that is the one that is sending the x value straight into the
-						intersecting vertex.  Delete that point as well so that the entire edge is
-						shifted to the outside of the intersecting vertex.  This will get repeated
-						for each vertex that is intersecting.
-					*/
+          /*
+          	The last articulation is the one added before this method was called, which
+          	lies just below the intersecting vertex.   The articulation before that is
+          	the one that is the one that is sending the x value straight into the
+          	intersecting vertex.  Delete that point as well so that the entire edge is
+          	shifted to the outside of the intersecting vertex.  This will get repeated
+          	for each vertex that is intersecting.
+          */
           Point2D previousArticulation = articulations.get(articulations.size() - 2);
           int closenessHeight = 50;
           double previousY = previousArticulation.getY();
@@ -780,8 +785,7 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     return !getLayoutOptions().useEdgeRoutingAroundVertices();
   }
 
-  private List<Point2D> routeLoopEdge(
-      Vertex2d start, Vertex2d end, double x) {
+  private List<Point2D> routeLoopEdge(Vertex2d start, Vertex2d end, double x) {
 
     // going backwards
     List<Point2D> articulations = new ArrayList<>();
@@ -826,7 +830,8 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
 
   private BasicBlockVertex getRightmostVertex(
       LayoutLocationMap<BasicBlockVertex, BasicBlockEdge> layoutLocations,
-      Vertex2dFactory vertex2dFactory, Set<BasicBlockVertex> vertices) {
+      Vertex2dFactory vertex2dFactory,
+      Set<BasicBlockVertex> vertices) {
 
     List<Vertex2d> points = new ArrayList<>();
     for (BasicBlockVertex v : vertices) {
@@ -863,8 +868,8 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
   }
 
   @Override
-  protected Point2D getVertexLocation(BasicBlockVertex v, Column col, Row<BasicBlockVertex> row,
-      Rectangle bounds) {
+  protected Point2D getVertexLocation(
+      BasicBlockVertex v, Column col, Row<BasicBlockVertex> row, Rectangle bounds) {
     return getCenteredVertexLocation(v, col, row, bounds);
   }
 
@@ -875,8 +880,14 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
   private void printParts(int depth, BlockGraph block) {
     int blockSize = block.getSize();
 
-    debug(printDepth(0, depth) + PcodeBlock.typeToName(block.getType()) + "  - (" +
-        block.getStart() + "->" + block.getStop() + ") ");
+    debug(
+        printDepth(0, depth)
+            + PcodeBlock.typeToName(block.getType())
+            + "  - ("
+            + block.getStart()
+            + "->"
+            + block.getStop()
+            + ") ");
 
     for (int i = 0; i < blockSize; i++) {
       PcodeBlock child = block.getBlock(i);
@@ -923,9 +934,18 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
   }
 
   private void printBlock(AtomicInteger parentID, int depth, BlockGraph block) {
-    debug(parentID + " " + printDepth(depth, depth) + +(parentID.get() - 1) + " " +
-        PcodeBlock.typeToName(block.getType()) + "  - (" + block.getStart() + "->" +
-        block.getStop() + ") ");
+    debug(
+        parentID
+            + " "
+            + printDepth(depth, depth)
+            + +(parentID.get() - 1)
+            + " "
+            + PcodeBlock.typeToName(block.getType())
+            + "  - ("
+            + block.getStart()
+            + "->"
+            + block.getStop()
+            + ") ");
 
     int blockSize = block.getSize();
     int ID = parentID.getAndIncrement();
@@ -940,7 +960,8 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
       BlockCopy copy = (BlockCopy) child;
 
       StringBuilder buffy = new StringBuilder();
-      buffy.append(printDepth(depth, depth + 1))
+      buffy
+          .append(printDepth(depth, depth + 1))
           .append(' ')
           .append(ID)
           .append(" plain - ")
@@ -968,7 +989,7 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
       VisualGraph<BasicBlockVertex, BasicBlockEdge> jungGraph, DecompilerBlockGraph root) {
     GridLocationMap<BasicBlockVertex, BasicBlockEdge> gridLocations = new GridLocationMap<>();
 
-    root.setCol(0);  // recursive
+    root.setCol(0); // recursive
     debug("\n\n");
     root.setRows(0); // recursive
 
@@ -983,8 +1004,8 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     return gridLocations;
   }
 
-  private BasicBlockVertex getVertex(VisualGraph<BasicBlockVertex, BasicBlockEdge> jungGraph,
-      Address address) {
+  private BasicBlockVertex getVertex(
+      VisualGraph<BasicBlockVertex, BasicBlockEdge> jungGraph, Address address) {
     Collection<BasicBlockVertex> vertices = jungGraph.getVertices();
     for (BasicBlockVertex v : vertices) {
       if (v.containsAddress(address)) {
@@ -998,8 +1019,10 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     return null;
   }
 
-  private BlockGraph buildCurrentBBGraph(Program program,
-      VisualGraph<BasicBlockVertex, BasicBlockEdge> jungGraph, TaskMonitor taskMonitor)
+  private BlockGraph buildCurrentBBGraph(
+      Program program,
+      VisualGraph<BasicBlockVertex, BasicBlockEdge> jungGraph,
+      TaskMonitor taskMonitor)
       throws CancelledException {
 
     CodeBlockModel blockModel = new BasicBlockModel(program);
@@ -1060,9 +1083,9 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     return new DecompilerNestedLayout(newGraph, getLayoutName(), false);
   }
 
-//==================================================================================================
-// Inner Classes
-//==================================================================================================
+  // ==================================================================================================
+  // Inner Classes
+  // ==================================================================================================
 
   /**
    * Encapsulates knowledge of edge direction (up/down, left/right) and uses that knowledge to
@@ -1078,23 +1101,19 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
       this.goingDown = isBottom;
     }
 
-    private double getSide(
-        Vertex2d v) {
+    private double getSide(Vertex2d v) {
       return goingLeft ? v.getLeft() : v.getRight();
     }
 
-    double getTopOffset(
-        Vertex2d v, int offset) {
+    double getTopOffset(Vertex2d v, int offset) {
       return goingDown ? v.getTop() - offset : v.getBottom() + offset;
     }
 
-    double getBottomOffset(
-        Vertex2d v, int offset) {
+    double getBottomOffset(Vertex2d v, int offset) {
       return goingDown ? v.getBottom() + offset : v.getTop() - offset;
     }
 
-    double getSideOffset(
-        Vertex2d v, int offset) {
+    double getSideOffset(Vertex2d v, int offset) {
 
       double side = getSide(v);
       if (goingLeft) {
@@ -1108,8 +1127,7 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
       return delta < threshold;
     }
 
-    boolean isClippingX(
-        Vertex2d v, double x) {
+    boolean isClippingX(Vertex2d v, double x) {
 
       double side = getSide(v);
       if (goingLeft) {
@@ -1119,9 +1137,7 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     }
   }
 
-  /**
-   * Factory for creating and caching {@link Vertex2d} objects
-   */
+  /** Factory for creating and caching {@link Vertex2d} objects */
   private class Vertex2dFactory {
 
     private VisualGraphVertexShapeTransformer<BasicBlockVertex> vertexShaper;
@@ -1129,12 +1145,17 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     private LayoutLocationMap<BasicBlockVertex, BasicBlockEdge> layoutToGridMap;
     private int edgeOffset;
     private Map<BasicBlockVertex, Vertex2d> cache =
-        LazyMap.lazyMap(new HashMap<>(), v -> new Vertex2d(v, vertexShaper,
-            vertexLayoutLocations, layoutToGridMap, getEdgeOffset()));
+        LazyMap.lazyMap(
+            new HashMap<>(),
+            v ->
+                new Vertex2d(
+                    v, vertexShaper, vertexLayoutLocations, layoutToGridMap, getEdgeOffset()));
 
-    Vertex2dFactory(VisualGraphVertexShapeTransformer<BasicBlockVertex> transformer,
+    Vertex2dFactory(
+        VisualGraphVertexShapeTransformer<BasicBlockVertex> transformer,
         Map<BasicBlockVertex, Point2D> vertexLayoutLocations,
-        LayoutLocationMap<BasicBlockVertex, BasicBlockEdge> layoutToGridMap, int edgeOffset) {
+        LayoutLocationMap<BasicBlockVertex, BasicBlockEdge> layoutToGridMap,
+        int edgeOffset) {
       this.vertexShaper = transformer;
       this.vertexLayoutLocations = vertexLayoutLocations;
       this.layoutToGridMap = layoutToGridMap;
@@ -1184,9 +1205,12 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     private Rectangle bounds; // centered over the 'location'
     private int edgeOffset;
 
-    Vertex2d(BasicBlockVertex v, VisualGraphVertexShapeTransformer<BasicBlockVertex> transformer,
+    Vertex2d(
+        BasicBlockVertex v,
+        VisualGraphVertexShapeTransformer<BasicBlockVertex> transformer,
         Map<BasicBlockVertex, Point2D> vertexLayoutLocations,
-        LayoutLocationMap<BasicBlockVertex, BasicBlockEdge> layoutLocations, int edgeOffset) {
+        LayoutLocationMap<BasicBlockVertex, BasicBlockEdge> layoutLocations,
+        int edgeOffset) {
 
       this.v = v;
       this.row = layoutLocations.row(v);
@@ -1239,21 +1263,18 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     }
   }
 
-  private class DecompilerBlockGraph extends
-      DecompilerBlock {
+  private class DecompilerBlockGraph extends DecompilerBlock {
 
     protected List<DecompilerBlock> allChildren = new ArrayList<>();
 
-    DecompilerBlockGraph(
-        DecompilerBlockGraph parent, BlockGraph blockGraph) {
+    DecompilerBlockGraph(DecompilerBlockGraph parent, BlockGraph blockGraph) {
       super(parent, blockGraph);
 
       int childCount = blockGraph.getSize();
       for (int i = 0; i < childCount; i++) {
         PcodeBlock block = blockGraph.getBlock(i);
         if (block instanceof BlockGraph) {
-          DecompilerBlockGraph decompilerBlock =
-              getDecompilerBlock(this, (BlockGraph) block);
+          DecompilerBlockGraph decompilerBlock = getDecompilerBlock(this, (BlockGraph) block);
           allChildren.add(decompilerBlock);
         }
 
@@ -1349,11 +1370,10 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
               buffy.append('\n');
             }
             buffy.append(printDepth(depth, depth));
-//						buffy.append(childCount).append(' ');
+            //						buffy.append(childCount).append(' ');
             buffy.append(' ');
             buffy.append(blockName);
           }
-
         }
       }
 
@@ -1368,8 +1388,7 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     private int row;
     private int col;
 
-    DecompilerBlock(
-        DecompilerBlock parent, PcodeBlock pcodeBlock) {
+    DecompilerBlock(DecompilerBlock parent, PcodeBlock pcodeBlock) {
       this.parent = parent;
       this.pcodeBlock = pcodeBlock;
     }
@@ -1402,19 +1421,20 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
 
     @Override
     public String toString() {
-      return PcodeBlock.typeToName(pcodeBlock.getType()) + " - " + getName() + " - " +
-          pcodeBlock.getStart();
+      return PcodeBlock.typeToName(pcodeBlock.getType())
+          + " - "
+          + getName()
+          + " - "
+          + pcodeBlock.getStart();
     }
   }
 
-  private class DecompilerCopy extends
-      DecompilerBlock {
+  private class DecompilerCopy extends DecompilerBlock {
 
     private BlockCopy copy;
     private Set<BasicBlockVertex> vertexSet = new HashSet<>();
 
-    DecompilerCopy(
-        DecompilerBlockGraph parent, BlockCopy copy) {
+    DecompilerCopy(DecompilerBlockGraph parent, BlockCopy copy) {
       super(parent, copy);
       this.copy = copy;
       vertexSet.add((BasicBlockVertex) copy.getRef());
@@ -1432,16 +1452,16 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
       //       we have to check each vertex inside of the given group *and* each vertex
       //       inside of the vertex that belongs to this decompiler block.
       //
-//      if (vertex instanceof GroupedAnvillGraphVertex) {
-//        Set vertices = ((GroupedAnvillGraphVertex) vertex).getVertices();
-//        for (BasicBlockVertex collapsedVertex : vertices) {
-//          // note: the group may itself contain other groups--it's recursive
-//          DecompilerBlock block = getBlock(collapsedVertex);
-//          if (block != null) {
-//            return block;
-//          }
-//        }
-//      }
+      //      if (vertex instanceof GroupedAnvillGraphVertex) {
+      //        Set vertices = ((GroupedAnvillGraphVertex) vertex).getVertices();
+      //        for (BasicBlockVertex collapsedVertex : vertices) {
+      //          // note: the group may itself contain other groups--it's recursive
+      //          DecompilerBlock block = getBlock(collapsedVertex);
+      //          if (block != null) {
+      //            return block;
+      //          }
+      //        }
+      //      }
 
       BasicBlockVertex myVertex = getVertex();
       DecompilerBlock block = compareToMyVertex(myVertex, vertex);
@@ -1449,15 +1469,16 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     }
 
     private DecompilerBlock compareToMyVertex(BasicBlockVertex myVertex, BasicBlockVertex vertex) {
-//      if (myVertex instanceof GroupedAnvillGraphVertex) {
-//        Set<BasicBlockVertex> vertices = ((GroupedAnvillGraphVertex) myVertex).getVertices();
-//        for (BasicBlockVertex myCollapsedVertex : vertices) {
-//          DecompilerBlock block = compareToMyVertex(myCollapsedVertex, vertex);
-//          if (block != null) {
-//            return block;
-//          }
-//        }
-//      }
+      //      if (myVertex instanceof GroupedAnvillGraphVertex) {
+      //        Set<BasicBlockVertex> vertices = ((GroupedAnvillGraphVertex)
+      // myVertex).getVertices();
+      //        for (BasicBlockVertex myCollapsedVertex : vertices) {
+      //          DecompilerBlock block = compareToMyVertex(myCollapsedVertex, vertex);
+      //          if (block != null) {
+      //            return block;
+      //          }
+      //        }
+      //      }
 
       if (myVertex.equals(vertex)) {
         return this;
@@ -1486,8 +1507,7 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     }
   }
 
-  private DecompilerBlockGraph getDecompilerBlock(
-      DecompilerBlockGraph parent, BlockGraph block) {
+  private DecompilerBlockGraph getDecompilerBlock(DecompilerBlockGraph parent, BlockGraph block) {
 
     switch (block.getType()) {
       case PLAIN:
@@ -1526,11 +1546,9 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
         "Unhandled Decompiler Type: " + PcodeBlock.typeToName(block.getType()));
   }
 
-  private abstract class DecompilerLoop extends
-      DecompilerBlockGraph {
+  private abstract class DecompilerLoop extends DecompilerBlockGraph {
 
-    DecompilerLoop(
-        DecompilerBlockGraph parent, BlockGraph block) {
+    DecompilerLoop(DecompilerBlockGraph parent, BlockGraph block) {
       super(parent, block);
     }
 
@@ -1540,11 +1558,9 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     }
   }
 
-  private class PlainBlock extends
-      DecompilerBlockGraph {
+  private class PlainBlock extends DecompilerBlockGraph {
 
-    PlainBlock(
-        DecompilerBlockGraph parent, BlockGraph block) {
+    PlainBlock(DecompilerBlockGraph parent, BlockGraph block) {
       super(parent, block);
     }
 
@@ -1554,11 +1570,9 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     }
   }
 
-  private class ListBlock extends
-      DecompilerBlockGraph {
+  private class ListBlock extends DecompilerBlockGraph {
 
-    ListBlock(
-        DecompilerBlockGraph parent, BlockGraph block) {
+    ListBlock(DecompilerBlockGraph parent, BlockGraph block) {
       super(parent, block);
     }
 
@@ -1583,11 +1597,9 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     }
   }
 
-  private class ConditionBlock extends
-      DecompilerBlockGraph {
+  private class ConditionBlock extends DecompilerBlockGraph {
 
-    ConditionBlock(
-        DecompilerBlockGraph parent, BlockGraph blockGraph) {
+    ConditionBlock(DecompilerBlockGraph parent, BlockGraph blockGraph) {
       super(parent, blockGraph);
     }
 
@@ -1614,11 +1626,9 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     }
   }
 
-  private class WhileLoopBlock extends
-      DecompilerLoop {
+  private class WhileLoopBlock extends DecompilerLoop {
 
-    WhileLoopBlock(
-        DecompilerBlockGraph parent, BlockGraph blockGraph) {
+    WhileLoopBlock(DecompilerBlockGraph parent, BlockGraph blockGraph) {
       super(parent, blockGraph);
     }
 
@@ -1628,11 +1638,9 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     }
   }
 
-  private class DoLoopBlock extends
-      DecompilerLoop {
+  private class DoLoopBlock extends DecompilerLoop {
 
-    DoLoopBlock(
-        DecompilerBlockGraph parent, BlockGraph blockGraph) {
+    DoLoopBlock(DecompilerBlockGraph parent, BlockGraph blockGraph) {
       super(parent, blockGraph);
     }
 
@@ -1657,11 +1665,9 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     }
   }
 
-  private class IfBlock extends
-      DecompilerBlockGraph {
+  private class IfBlock extends DecompilerBlockGraph {
 
-    IfBlock(
-        DecompilerBlockGraph parent, BlockGraph blockGraph) {
+    IfBlock(DecompilerBlockGraph parent, BlockGraph blockGraph) {
       super(parent, blockGraph);
     }
 
@@ -1671,11 +1677,9 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     }
   }
 
-  private class IfElseBlock extends
-      DecompilerBlockGraph {
+  private class IfElseBlock extends DecompilerBlockGraph {
 
-    IfElseBlock(
-        DecompilerBlockGraph parent, BlockGraph blockGraph) {
+    IfElseBlock(DecompilerBlockGraph parent, BlockGraph blockGraph) {
       super(parent, blockGraph);
     }
 
@@ -1685,11 +1689,9 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     }
   }
 
-  private class SwitchBlock extends
-      DecompilerBlockGraph {
+  private class SwitchBlock extends DecompilerBlockGraph {
 
-    SwitchBlock(
-        DecompilerBlockGraph parent, BlockGraph blockGraph) {
+    SwitchBlock(DecompilerBlockGraph parent, BlockGraph blockGraph) {
       super(parent, blockGraph);
     }
 
@@ -1698,5 +1700,4 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
       return "Switch";
     }
   }
-
 }

@@ -45,10 +45,14 @@ import resources.ResourceManager;
     packageName = GraphPluginPackage.NAME,
     category = PluginCategoryNames.GRAPH,
     shortDescription = AnvillGraphPlugin.GRAPH_NAME,
-    description = "Plugin to show a graphical representation of the Anvill code blocks for a function",
-    servicesRequired = {GoToService.class, BlockModelService.class, CodeViewerService.class,
-        ProgramManager.class}
-)
+    description =
+        "Plugin to show a graphical representation of the Anvill code blocks for a function",
+    servicesRequired = {
+      GoToService.class,
+      BlockModelService.class,
+      CodeViewerService.class,
+      ProgramManager.class
+    })
 public class AnvillGraphPlugin extends ProgramPlugin {
 
   public static final String GRAPH_NAME = "Anvill Graph";
@@ -56,8 +60,8 @@ public class AnvillGraphPlugin extends ProgramPlugin {
   public static final String SHOW_PROVIDER_ACTION_NAME = "Display Anvill Graph";
 
   static final ImageIcon ICON = ResourceManager.loadImage("images/function_graph.png");
-  static final HelpLocation DEFAULT_HELP = new HelpLocation("AnvillGraphPlugin",
-      "AnvillGraphPlugin");
+  static final HelpLocation DEFAULT_HELP =
+      new HelpLocation("AnvillGraphPlugin", "AnvillGraphPlugin");
   private AnvillGraphProvider connectedProvider;
   private List<AnvillGraphProvider> disconnectedProviders = new ArrayList<>();
   private List<AnvillGraphLayoutProvider> layoutProviders;
@@ -89,10 +93,10 @@ public class AnvillGraphPlugin extends ProgramPlugin {
     for (AnvillGraphLayoutProvider layoutProvider : layoutProviders) {
       String layoutName = layoutProvider.getLayoutName();
       Options layoutToolOptions = anvillOptions.getOptions(layoutName);
-      AnvillGraphLayoutOptions layoutOptions = layoutProvider.createLayoutOptions(
-          layoutToolOptions);
+      AnvillGraphLayoutOptions layoutOptions =
+          layoutProvider.createLayoutOptions(layoutToolOptions);
       if (layoutOptions == null) {
-        continue;  // many layouts do not have options
+        continue; // many layouts do not have options
       }
 
       layoutOptions.registerOptions(layoutToolOptions);
@@ -103,8 +107,8 @@ public class AnvillGraphPlugin extends ProgramPlugin {
 
   private List<AnvillGraphLayoutProvider> loadLayoutProviders() {
     // add discovered layouts
-    List<AnvillGraphLayoutProvider> layouts = ClassSearcher.getInstances(
-        AnvillGraphLayoutProvider.class);
+    List<AnvillGraphLayoutProvider> layouts =
+        ClassSearcher.getInstances(AnvillGraphLayoutProvider.class);
 
     // add hand-picked, generated layout providers
     List<String> jgtLayoutNames = JgtLayoutFactory.getSupportedLayoutNames();
@@ -113,8 +117,8 @@ public class AnvillGraphPlugin extends ProgramPlugin {
     }
 
     if (layouts.isEmpty()) {
-      throw new AssertException("Could not find any layout providers. You project may not " +
-          "be configured properly.");
+      throw new AssertException(
+          "Could not find any layout providers. You project may not " + "be configured properly.");
     }
     layouts.sort((o1, o2) -> -o1.getPriorityLevel() + o2.getPriorityLevel());
     return layouts;
