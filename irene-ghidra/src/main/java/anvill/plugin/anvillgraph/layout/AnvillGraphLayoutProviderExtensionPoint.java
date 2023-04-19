@@ -20,5 +20,8 @@ package anvill.plugin.anvillgraph.layout;
 import anvill.plugin.anvillgraph.graph.*;
 import ghidra.graph.viewer.layout.LayoutProviderExtensionPoint;
 
-public abstract class AnvillGraphLayoutProviderExtensionPoint extends AnvillGraphLayoutProvider
-    implements LayoutProviderExtensionPoint<BasicBlockVertex, BasicBlockEdge, BasicBlockGraph> {}
+public abstract class AnvillGraphLayoutProviderExtensionPoint
+    extends AnvillGraphLayoutProvider
+    implements LayoutProviderExtensionPoint<BasicBlockVertex, BasicBlockEdge, BasicBlockGraph> {
+
+}

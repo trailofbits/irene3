@@ -42,25 +42,24 @@ import org.jungrapht.visualization.layout.model.Rectangle;
  */
 public class JgtLayoutFactory<V extends BasicBlockVertex, E extends BasicBlockEdge> {
 
-  private static final List<String> layoutNames =
-      List.of(
-          COMPACT_HIERARCHICAL,
-          HIERACHICAL,
-          MIN_CROSS_TOP_DOWN,
-          MIN_CROSS_LONGEST_PATH,
-          MIN_CROSS_NETWORK_SIMPLEX,
-          MIN_CROSS_COFFMAN_GRAHAM,
-          VERT_MIN_CROSS_TOP_DOWN,
-          VERT_MIN_CROSS_LONGEST_PATH,
-          VERT_MIN_CROSS_NETWORK_SIMPLEX,
-          VERT_MIN_CROSS_COFFMAN_GRAHAM);
+  private static final List<String> layoutNames = List.of(
+      COMPACT_HIERARCHICAL,
+      HIERACHICAL,
+      MIN_CROSS_TOP_DOWN,
+      MIN_CROSS_LONGEST_PATH,
+      MIN_CROSS_NETWORK_SIMPLEX,
+      MIN_CROSS_COFFMAN_GRAHAM,
+      VERT_MIN_CROSS_TOP_DOWN,
+      VERT_MIN_CROSS_LONGEST_PATH,
+      VERT_MIN_CROSS_NETWORK_SIMPLEX,
+      VERT_MIN_CROSS_COFFMAN_GRAHAM);
 
   private final Predicate<E> favoredEdgePredicate;
   private final Comparator<E> edgeTypeComparator;
   private final Predicate<V> rootPredicate;
 
-  public JgtLayoutFactory(
-      Comparator<E> comparator, Predicate<E> favoredEdgePredicate, Predicate<V> rootPredicate) {
+  public JgtLayoutFactory(Comparator<E> comparator, Predicate<E> favoredEdgePredicate,
+      Predicate<V> rootPredicate) {
     this.edgeTypeComparator = comparator;
     this.favoredEdgePredicate = favoredEdgePredicate;
     this.rootPredicate = rootPredicate;
@@ -83,8 +82,7 @@ public class JgtLayoutFactory<V extends BasicBlockVertex, E extends BasicBlockEd
       @SuppressWarnings("unchecked")
       VertexBoundsFunctionConsumer<BasicBlockVertex> boundsLayout =
           (VertexBoundsFunctionConsumer<BasicBlockVertex>) layout;
-      Function<BasicBlockVertex, Rectangle> vertexBoundsFunction =
-          new BasicBlockVertexShapeFunction();
+      Function<BasicBlockVertex, Rectangle> vertexBoundsFunction = new BasicBlockVertexShapeFunction();
       boundsLayout.setVertexBoundsFunction(vertexBoundsFunction);
     }
 
@@ -97,50 +95,60 @@ public class JgtLayoutFactory<V extends BasicBlockVertex, E extends BasicBlockEd
   private LayoutAlgorithm.Builder<V, ?, ?> doGetLayout(String name) {
     switch (name) {
       case COMPACT_HIERARCHICAL:
-        return TidierTreeLayoutAlgorithm.<V, E>edgeAwareBuilder()
+        return TidierTreeLayoutAlgorithm
+            .<V, E>edgeAwareBuilder()
             .edgeComparator(edgeTypeComparator);
       case HIERACHICAL:
-        return EdgeAwareTreeLayoutAlgorithm.<V, E>edgeAwareBuilder();
+        return EdgeAwareTreeLayoutAlgorithm
+            .<V, E>edgeAwareBuilder();
       case MIN_CROSS_TOP_DOWN:
-        return EiglspergerLayoutAlgorithm.<V, E>edgeAwareBuilder()
+        return EiglspergerLayoutAlgorithm
+            .<V, E>edgeAwareBuilder()
             .edgeComparator(edgeTypeComparator)
             .layering(Layering.TOP_DOWN)
             .threaded(false);
       case MIN_CROSS_LONGEST_PATH:
-        return EiglspergerLayoutAlgorithm.<V, E>edgeAwareBuilder()
+        return EiglspergerLayoutAlgorithm
+            .<V, E>edgeAwareBuilder()
             .edgeComparator(edgeTypeComparator)
             .layering(Layering.LONGEST_PATH)
             .threaded(false);
       case MIN_CROSS_NETWORK_SIMPLEX:
-        return EiglspergerLayoutAlgorithm.<V, E>edgeAwareBuilder()
+        return EiglspergerLayoutAlgorithm
+            .<V, E>edgeAwareBuilder()
             .edgeComparator(edgeTypeComparator)
             .layering(Layering.NETWORK_SIMPLEX)
             .threaded(false);
       case MIN_CROSS_COFFMAN_GRAHAM:
-        return EiglspergerLayoutAlgorithm.<V, E>edgeAwareBuilder()
+        return EiglspergerLayoutAlgorithm
+            .<V, E>edgeAwareBuilder()
             .edgeComparator(edgeTypeComparator)
             .layering(Layering.COFFMAN_GRAHAM)
             .threaded(false);
       case VERT_MIN_CROSS_TOP_DOWN:
-        return EiglspergerLayoutAlgorithm.<V, E>edgeAwareBuilder()
+        return EiglspergerLayoutAlgorithm
+            .<V, E>edgeAwareBuilder()
             .edgeComparator(edgeTypeComparator)
             .favoredEdgePredicate(favoredEdgePredicate)
             .layering(Layering.TOP_DOWN)
             .threaded(false);
       case VERT_MIN_CROSS_LONGEST_PATH:
-        return EiglspergerLayoutAlgorithm.<V, E>edgeAwareBuilder()
+        return EiglspergerLayoutAlgorithm
+            .<V, E>edgeAwareBuilder()
             .edgeComparator(edgeTypeComparator)
             .favoredEdgePredicate(favoredEdgePredicate)
             .layering(Layering.LONGEST_PATH)
             .threaded(false);
       case VERT_MIN_CROSS_NETWORK_SIMPLEX:
-        return EiglspergerLayoutAlgorithm.<V, E>edgeAwareBuilder()
+        return EiglspergerLayoutAlgorithm
+            .<V, E>edgeAwareBuilder()
             .edgeComparator(edgeTypeComparator)
             .favoredEdgePredicate(favoredEdgePredicate)
             .layering(Layering.NETWORK_SIMPLEX)
             .threaded(false);
       case VERT_MIN_CROSS_COFFMAN_GRAHAM:
-        return EiglspergerLayoutAlgorithm.<V, E>edgeAwareBuilder()
+        return EiglspergerLayoutAlgorithm
+            .<V, E>edgeAwareBuilder()
             .edgeComparator(edgeTypeComparator)
             .favoredEdgePredicate(favoredEdgePredicate)
             .layering(Layering.COFFMAN_GRAHAM)

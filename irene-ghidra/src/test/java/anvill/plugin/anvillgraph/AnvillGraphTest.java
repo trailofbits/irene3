@@ -24,12 +24,8 @@ public class AnvillGraphTest extends AbstractAnvillGraphTest {
 
   @Test
   public void testGraphSmoketest() {
-    runSwing(
-        () ->
-            graphProvider.importPatchesFile(
-                new File(
-                    Objects.requireNonNull(classLoader.getResource("patch-files/fake_sscanf.json"))
-                        .getFile())));
+    runSwing(() -> graphProvider.importPatchesFile(new File(
+        Objects.requireNonNull(classLoader.getResource("patch-files/fake_sscanf.json")).getFile())));
     BasicBlockGraph graph = getBasicBlockGraph();
     assertNotNull(graph);
     assertEquals(7, graph.getVertexCount());
@@ -37,25 +33,18 @@ public class AnvillGraphTest extends AbstractAnvillGraphTest {
 
   @Test
   public void testBadPatch() {
-    runSwing(
-        () ->
-            graphProvider.importPatchesFile(
-                new File(
-                    Objects.requireNonNull(classLoader.getResource("patch-files/bad_sscanf.json"))
-                        .getFile())));
+    runSwing(() -> graphProvider.importPatchesFile(new File(
+        Objects.requireNonNull(classLoader.getResource("patch-files/bad_sscanf.json"))
+            .getFile())));
     BasicBlockGraph graph = getBasicBlockGraph();
     assertNull(graph);
   }
 
   // NOTE: Remember to comment this so that tests don't take forever
-  //  @Test
+//  @Test
   public void testGraphInteractive() {
-    runSwing(
-        () ->
-            graphProvider.importPatchesFile(
-                new File(
-                    Objects.requireNonNull(classLoader.getResource("patch-files/fake_sscanf.json"))
-                        .getFile())));
+    runSwing(() -> graphProvider.importPatchesFile(new File(
+        Objects.requireNonNull(classLoader.getResource("patch-files/fake_sscanf.json")).getFile())));
     try {
       Thread.sleep(5 * 60 * 1000);
     } catch (InterruptedException e) {

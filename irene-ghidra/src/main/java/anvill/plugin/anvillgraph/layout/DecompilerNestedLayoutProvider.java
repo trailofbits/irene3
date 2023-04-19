@@ -25,7 +25,8 @@ import resources.ResourceManager;
 
 public class DecompilerNestedLayoutProvider extends AnvillGraphLayoutProviderExtensionPoint {
 
-  private static final Icon ICON = ResourceManager.loadImage("images/function_graph_code_flow.png");
+  private static final Icon ICON =
+      ResourceManager.loadImage("images/function_graph_code_flow.png");
   static final String LAYOUT_NAME = "Nested Code Layout";
 
   @Override
@@ -54,6 +55,6 @@ public class DecompilerNestedLayoutProvider extends AnvillGraphLayoutProviderExt
 
   @Override
   public int getPriorityLevel() {
-    return 200; // Above the others
+    return 200;  // Above the others
   }
 }

@@ -24,11 +24,11 @@ public class DNLayoutOptions implements AnvillGraphLayoutOptions {
 
   private static final String HELP_ANCHOR =
       DecompilerNestedLayoutProvider.LAYOUT_NAME + "_Layout_Options";
-  private static final String USE_EDGE_ROUTING_AROUND_VERTICES_KEY = "Route Edges Around Vertices";
-  private static final String USE_EDGE_ROUTING_AROUND_VERTICES_DESCRIPTION =
-      "Signals that "
-          + "edges should be routed around any intersecting vertex.  When toggled off, edges will "
-          + "pass through any intersecting vertices.";
+  private static final String USE_EDGE_ROUTING_AROUND_VERTICES_KEY =
+      "Route Edges Around Vertices";
+  private static final String USE_EDGE_ROUTING_AROUND_VERTICES_DESCRIPTION = "Signals that " +
+      "edges should be routed around any intersecting vertex.  When toggled off, edges will " +
+      "pass through any intersecting vertices.";
 
   private static final String DIM_RETURN_EDGES_KEY = "Use Dim Return Edges";
   private static final String DIM_RETURN_EDGES_DESCRIPTION =
@@ -42,14 +42,11 @@ public class DNLayoutOptions implements AnvillGraphLayoutOptions {
 
     HelpLocation help = new HelpLocation(OWNER, HELP_ANCHOR);
 
-    options.registerOption(
-        USE_EDGE_ROUTING_AROUND_VERTICES_KEY,
-        useEdgeRoutingAroundVertices,
-        help,
-        USE_EDGE_ROUTING_AROUND_VERTICES_DESCRIPTION);
+    options.registerOption(USE_EDGE_ROUTING_AROUND_VERTICES_KEY, useEdgeRoutingAroundVertices,
+        help, USE_EDGE_ROUTING_AROUND_VERTICES_DESCRIPTION);
 
-    options.registerOption(
-        DIM_RETURN_EDGES_KEY, useDimmedReturnEdges, help, DIM_RETURN_EDGES_DESCRIPTION);
+    options.registerOption(DIM_RETURN_EDGES_KEY, useDimmedReturnEdges, help,
+        DIM_RETURN_EDGES_DESCRIPTION);
   }
 
   @Override
@@ -58,6 +55,7 @@ public class DNLayoutOptions implements AnvillGraphLayoutOptions {
         options.getBoolean(USE_EDGE_ROUTING_AROUND_VERTICES_KEY, useEdgeRoutingAroundVertices);
 
     useDimmedReturnEdges = options.getBoolean(DIM_RETURN_EDGES_KEY, useDimmedReturnEdges);
+
   }
 
   public boolean useEdgeRoutingAroundVertices() {
@@ -71,7 +69,7 @@ public class DNLayoutOptions implements AnvillGraphLayoutOptions {
   @Override
   public boolean optionChangeRequiresRelayout(String optionName) {
     // format: 'Nested Code Layout.Route Edges....'
-    return optionName.endsWith(USE_EDGE_ROUTING_AROUND_VERTICES_KEY)
-        || optionName.endsWith(DIM_RETURN_EDGES_KEY);
+    return optionName.endsWith(USE_EDGE_ROUTING_AROUND_VERTICES_KEY) ||
+        optionName.endsWith(DIM_RETURN_EDGES_KEY);
   }
 }

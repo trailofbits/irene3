@@ -17,6 +17,7 @@
  */
 package anvill.plugin.anvillgraph.graph.jung.renderer;
 
+
 import anvill.plugin.anvillgraph.BBGraphOptions;
 import anvill.plugin.anvillgraph.graph.*;
 import edu.uci.ics.jung.graph.Graph;
@@ -27,8 +28,8 @@ import java.awt.Color;
  * A renderer used by the Function Graph API to provide additional edge coloring, as determined by
  * the {@link BBGraphOptions}.
  */
-public class BasicBlockEdgeRenderer
-    extends ArticulatedEdgeRenderer<BasicBlockVertex, BasicBlockEdge> {
+public class BasicBlockEdgeRenderer extends
+    ArticulatedEdgeRenderer<BasicBlockVertex, BasicBlockEdge> {
 
   @Override
   public Color getBaseColor(Graph<BasicBlockVertex, BasicBlockEdge> g, BasicBlockEdge e) {
