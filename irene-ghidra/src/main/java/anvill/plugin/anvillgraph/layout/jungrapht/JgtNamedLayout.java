@@ -36,12 +36,11 @@ import org.jungrapht.visualization.layout.algorithms.util.EdgeArticulationFuncti
 import org.jungrapht.visualization.layout.model.LayoutModel;
 import org.jungrapht.visualization.layout.model.Point;
 
-/**
- * A layout that delegates work to the Jung layout specified in the constructor.
- */
+/** A layout that delegates work to the Jung layout specified in the constructor. */
 public class JgtNamedLayout extends AbstractBBGraphLayout {
 
-  private static Function<BasicBlockEdge, List<Point>> DUMMY_ARTICULATOR = e -> Collections.emptyList();
+  private static Function<BasicBlockEdge, List<Point>> DUMMY_ARTICULATOR =
+      e -> Collections.emptyList();
 
   JgtNamedLayout(BasicBlockGraph graph, String layoutName) {
     super(graph, layoutName);
@@ -54,8 +53,8 @@ public class JgtNamedLayout extends AbstractBBGraphLayout {
   }
 
   @Override
-  protected Point2D getVertexLocation(BasicBlockVertex v, Column col, Row<BasicBlockVertex> row,
-      java.awt.Rectangle bounds) {
+  protected Point2D getVertexLocation(
+      BasicBlockVertex v, Column col, Row<BasicBlockVertex> row, java.awt.Rectangle bounds) {
     return getCenteredVertexLocation(v, col, row, bounds);
   }
 
@@ -85,8 +84,8 @@ public class JgtNamedLayout extends AbstractBBGraphLayout {
 
     layoutModel.accept(layout);
 
-    GridLocationMap<BasicBlockVertex, BasicBlockEdge> grid = convertToGrid(jGraph, layoutModel,
-        layout);
+    GridLocationMap<BasicBlockVertex, BasicBlockEdge> grid =
+        convertToGrid(jGraph, layoutModel, layout);
 
     return grid;
   }
@@ -159,7 +158,8 @@ public class JgtNamedLayout extends AbstractBBGraphLayout {
       }
 
       // The jung layout will provide articulations at the vertex points.   We do not want to
-      // use these values, since we may move the vertices during layout.  Our BasicBlockEdgeRenderer will
+      // use these values, since we may move the vertices during layout.  Our BasicBlockEdgeRenderer
+      // will
       // connect the articulation endpoints to the vertices when drawing, so we do not need
       // these points provided by jung.
       if (!articulations.isEmpty()) {
@@ -212,7 +212,6 @@ public class JgtNamedLayout extends AbstractBBGraphLayout {
     protected AnvillTempGraph() {
       super(null, null, DefaultGraphType.directedPseudograph());
     }
-
   }
 
   private class BasicBlockEdgeComparator implements Comparator<BasicBlockEdge> {
@@ -224,23 +223,23 @@ public class JgtNamedLayout extends AbstractBBGraphLayout {
 
     public BasicBlockEdgeComparator() {
 
-			/*
+      /*
 
-			 // populate map with RefType values; defined in priority order
+      // populate map with RefType values; defined in priority order
 
-			 int priority = 0;
-			 edgePriorityMap.put("Fall-Through", priority++);
-			 edgePriorityMap.put("Conditional-Return", priority++);
-			 edgePriorityMap.put("Unconditional-Jump", priority++);
-			 edgePriorityMap.put("Conditional-Jump", priority++);
-			 edgePriorityMap.put("Unconditional-Call", priority++);
-			 edgePriorityMap.put("Conditional-Call", priority++);
-			 edgePriorityMap.put("Terminator", priority++);
-			 edgePriorityMap.put("Computed", priority++);
-			 edgePriorityMap.put("Indirection", priority++);
-			 edgePriorityMap.put("Entry", priority++);
+      int priority = 0;
+      edgePriorityMap.put("Fall-Through", priority++);
+      edgePriorityMap.put("Conditional-Return", priority++);
+      edgePriorityMap.put("Unconditional-Jump", priority++);
+      edgePriorityMap.put("Conditional-Jump", priority++);
+      edgePriorityMap.put("Unconditional-Call", priority++);
+      edgePriorityMap.put("Conditional-Call", priority++);
+      edgePriorityMap.put("Terminator", priority++);
+      edgePriorityMap.put("Computed", priority++);
+      edgePriorityMap.put("Indirection", priority++);
+      edgePriorityMap.put("Entry", priority++);
 
-			 */
+      */
     }
 
     @Override
@@ -251,7 +250,7 @@ public class JgtNamedLayout extends AbstractBBGraphLayout {
     private Integer priority(BasicBlockEdge e) {
       FlowType type = e.getFlowType();
       if (type == RefType.FALL_THROUGH) {
-        return 1;  // lower is more preferred
+        return 1; // lower is more preferred
       }
       return 10;
     }

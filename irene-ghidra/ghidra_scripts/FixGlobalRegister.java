@@ -1,15 +1,14 @@
-//TODO write a description for this script
-//@author 
-//@category _NEW_
-//@keybinding 
-//@menupath 
-//@toolbar 
+// TODO write a description for this script
+// @author
+// @category _NEW_
+// @keybinding
+// @menupath
+// @toolbar
 
 import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.lang.RegisterValue;
-
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
@@ -22,34 +21,38 @@ public class FixGlobalRegister extends GhidraScript {
     if (!this.currentProgram.getLanguageID().getIdAsString().equals("PowerPC:BE:64:VLE-32addr")) {
       return;
     }
-    var listing =  this.currentProgram.getListing();
+    var listing = this.currentProgram.getListing();
     var instrs = listing.getInstructions(true);
     List<String> globalRegNames = List.of("r2", "r13");
     var globalVals = new HashMap<Register, Long>();
     for (var instr : instrs) {
       switch (instr.getMnemonicString()) {
         case "e_lis":
-        case "lis": {
-          // get the first half of pointer
-          var reg = instr.getRegister(0);
-          if (globalRegNames.contains(reg.toString())) {
-            globalVals.put(reg, instr.getScalar(1).getUnsignedValue() << 16);
-          }
-          break;
-        }
-        case "e_or2i":
-        case "ori": {
-          // get second half of pointer
-          var reg = instr.getRegister(0);
-          if (globalRegNames.contains(reg.toString())) {
-            var pointer_part = Optional.ofNullable(globalVals.get(reg));
-            if (pointer_part.isPresent()) {
-              long upper_half = pointer_part.get();
-              globalVals.put(reg, upper_half | instr.getScalar(instr.getNumOperands() - 1).getUnsignedValue());
+        case "lis":
+          {
+            // get the first half of pointer
+            var reg = instr.getRegister(0);
+            if (globalRegNames.contains(reg.toString())) {
+              globalVals.put(reg, instr.getScalar(1).getUnsignedValue() << 16);
             }
+            break;
           }
-          break;
-        }
+        case "e_or2i":
+        case "ori":
+          {
+            // get second half of pointer
+            var reg = instr.getRegister(0);
+            if (globalRegNames.contains(reg.toString())) {
+              var pointer_part = Optional.ofNullable(globalVals.get(reg));
+              if (pointer_part.isPresent()) {
+                long upper_half = pointer_part.get();
+                globalVals.put(
+                    reg,
+                    upper_half | instr.getScalar(instr.getNumOperands() - 1).getUnsignedValue());
+              }
+            }
+            break;
+          }
       }
 
       if (globalVals.size() > globalRegNames.size()) {

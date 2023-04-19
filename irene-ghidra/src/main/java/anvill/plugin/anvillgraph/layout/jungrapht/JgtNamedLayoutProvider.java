@@ -24,9 +24,7 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 import javax.swing.Icon;
 
-/**
- * A layout provider that allows us to specify a Jung layout by name.
- */
+/** A layout provider that allows us to specify a Jung layout by name. */
 public class JgtNamedLayoutProvider extends AnvillGraphLayoutProvider {
 
   private String layoutName;

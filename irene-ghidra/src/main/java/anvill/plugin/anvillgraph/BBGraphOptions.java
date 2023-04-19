@@ -42,35 +42,36 @@ public class BBGraphOptions extends VisualGraphOptions {
       "Edge Color - Unconditional Jump ";
   private static final String EDGE_COLOR_CONDITIONAL_JUMP_KEY = "Edge Color - Conditional Jump ";
 
-  //@formatter:off
+  // @formatter:off
   private static final String NAVIGATION_HISTORY_KEY = "Navigation History";
   private static final String NAVIGATION_HISTORY_DESCRIPTION =
-      "Determines how the navigation history will be updated when using the Function Graph. " +
-          "The basic options are:" +
-          "<ul>" +
-          "<li><b>Navigation Events</b> - save a history entry when a navigation takes place " +
-          "(e.g., double-click or Go To event)</li>" +
-          "<li><b>Vertex Changes</b> - save a history entry each time a new vertex is selected</li>"
-          +
-          "</ul>" +
-          "<b><i>See help for more</i></b>";
-  //@formatter:on
+      "Determines how the navigation history will be updated when using the Function Graph. "
+          + "The basic options are:"
+          + "<ul>"
+          + "<li><b>Navigation Events</b> - save a history entry when a navigation takes place "
+          + "(e.g., double-click or Go To event)</li>"
+          + "<li><b>Vertex Changes</b> - save a history entry each time a new vertex is selected</li>"
+          + "</ul>"
+          + "<b><i>See help for more</i></b>";
+  // @formatter:on
 
   private static final String USE_FULL_SIZE_TOOLTIP_KEY = "Use Full-size Tooltip";
-  private static final String USE_FULL_SIZE_TOOLTIP_DESCRIPTION = "Signals to use the " +
-      "full-size vertex inside of the tooltip popup.  When enabled the tooltip vertex will " +
-      "use the same format size as the Listing.  When disabled, the vertex will use the " +
-      "same format size as in the Function Graph.";
+  private static final String USE_FULL_SIZE_TOOLTIP_DESCRIPTION =
+      "Signals to use the "
+          + "full-size vertex inside of the tooltip popup.  When enabled the tooltip vertex will "
+          + "use the same format size as the Listing.  When disabled, the vertex will use the "
+          + "same format size as in the Function Graph.";
 
   public static final String RELAYOUT_OPTIONS_KEY = "Automatic Graph Relayout";
-  public static final String RELAYOUT_OPTIONS_DESCRIPTION = "Signals to the Function Graph " +
-      "when an automatic relayout of the graph should take place.  The  basic options are:<ul>" +
-      "<li><b>Always</b> - always relayout the graph when the block model changes</li>" +
-      "<li><b>Block Model Changes Only</b> - relayout the graph when the block model changes " +
-      "(like when a label has been added to the program in the currently graphed function)</li>" +
-      "<li><b>Vertex Grouping Changes Only</b> - when vertices are grouped or ungrouped</li>" +
-      "<li><b>Never</b> - do not automatically relayout the graph</li></ul><br><br>" +
-      "<b><i>See help for more</i></b>";
+  public static final String RELAYOUT_OPTIONS_DESCRIPTION =
+      "Signals to the Function Graph "
+          + "when an automatic relayout of the graph should take place.  The  basic options are:<ul>"
+          + "<li><b>Always</b> - always relayout the graph when the block model changes</li>"
+          + "<li><b>Block Model Changes Only</b> - relayout the graph when the block model changes "
+          + "(like when a label has been added to the program in the currently graphed function)</li>"
+          + "<li><b>Vertex Grouping Changes Only</b> - when vertices are grouped or ungrouped</li>"
+          + "<li><b>Never</b> - do not automatically relayout the graph</li></ul><br><br>"
+          + "<b><i>See help for more</i></b>";
 
   private static final String DEFAULT_VERTEX_BACKGROUND_COLOR_KEY = "Default Vertex Color";
   private static final String DEFAULT_VERTEX_BACKGROUND_COLOR_DESCRPTION =
@@ -83,8 +84,8 @@ public class BBGraphOptions extends VisualGraphOptions {
   private static final String UPDATE_GROUP_AND_UNGROUP_COLORS =
       "Update Vertex Colors When Grouping";
   private static final String UPDATE_GROUP_AND_UNGROUP_COLORS_DESCRIPTION =
-      "Signals that any user color changes to a group vertex will apply that same color to " +
-          "all grouped vertices as well.";
+      "Signals that any user color changes to a group vertex will apply that same color to "
+          + "all grouped vertices as well.";
 
   public static final Color DEFAULT_VERTEX_BACKGROUND_COLOR = Color.WHITE;
   public static final Color DEFAULT_GROUP_BACKGROUND_COLOR = new Color(226, 255, 155);
@@ -116,47 +117,71 @@ public class BBGraphOptions extends VisualGraphOptions {
     HelpLocation help = new HelpLocation(OWNER, "Options");
     super.registerOptions(options, help);
 
-    options.registerOption(RELAYOUT_OPTIONS_KEY, relayoutOption, help,
-        RELAYOUT_OPTIONS_DESCRIPTION);
+    options.registerOption(
+        RELAYOUT_OPTIONS_KEY, relayoutOption, help, RELAYOUT_OPTIONS_DESCRIPTION);
 
-//    options.registerOption(NAVIGATION_HISTORY_KEY, navigationHistoryChoice, help,
-//        NAVIGATION_HISTORY_DESCRIPTION);
+    //    options.registerOption(NAVIGATION_HISTORY_KEY, navigationHistoryChoice, help,
+    //        NAVIGATION_HISTORY_DESCRIPTION);
 
-    options.registerOption(USE_CONDENSED_LAYOUT_KEY, useCondensedLayout(),
-        new HelpLocation(OWNER, "Layout_Compressing"), USE_CONDENSED_LAYOUT_DESCRIPTION);
+    options.registerOption(
+        USE_CONDENSED_LAYOUT_KEY,
+        useCondensedLayout(),
+        new HelpLocation(OWNER, "Layout_Compressing"),
+        USE_CONDENSED_LAYOUT_DESCRIPTION);
 
-    options.registerOption(DEFAULT_VERTEX_BACKGROUND_COLOR_KEY, DEFAULT_VERTEX_BACKGROUND_COLOR,
-        help, DEFAULT_VERTEX_BACKGROUND_COLOR_DESCRPTION);
+    options.registerOption(
+        DEFAULT_VERTEX_BACKGROUND_COLOR_KEY,
+        DEFAULT_VERTEX_BACKGROUND_COLOR,
+        help,
+        DEFAULT_VERTEX_BACKGROUND_COLOR_DESCRPTION);
 
-    options.registerOption(DEFAULT_GROUP_BACKGROUND_COLOR_KEY, DEFAULT_GROUP_BACKGROUND_COLOR,
-        help, DEFAULT_GROUP_BACKGROUND_COLOR_DESCRPTION);
+    options.registerOption(
+        DEFAULT_GROUP_BACKGROUND_COLOR_KEY,
+        DEFAULT_GROUP_BACKGROUND_COLOR,
+        help,
+        DEFAULT_GROUP_BACKGROUND_COLOR_DESCRPTION);
 
-    options.registerOption(UPDATE_GROUP_AND_UNGROUP_COLORS, updateGroupColorsAutomatically,
-        help, UPDATE_GROUP_AND_UNGROUP_COLORS_DESCRIPTION);
+    options.registerOption(
+        UPDATE_GROUP_AND_UNGROUP_COLORS,
+        updateGroupColorsAutomatically,
+        help,
+        UPDATE_GROUP_AND_UNGROUP_COLORS_DESCRIPTION);
 
-    options.registerOption(USE_FULL_SIZE_TOOLTIP_KEY, useFullSizeTooltip, help,
-        USE_FULL_SIZE_TOOLTIP_DESCRIPTION);
+    options.registerOption(
+        USE_FULL_SIZE_TOOLTIP_KEY, useFullSizeTooltip, help, USE_FULL_SIZE_TOOLTIP_DESCRIPTION);
 
-    options.registerOption(EDGE_COLOR_CONDITIONAL_JUMP_KEY, conditionalJumpEdgeColor, help,
+    options.registerOption(
+        EDGE_COLOR_CONDITIONAL_JUMP_KEY,
+        conditionalJumpEdgeColor,
+        help,
         "Conditional jump edge color");
 
-    options.registerOption(EDGE_UNCONDITIONAL_JUMP_COLOR_KEY, unconditionalJumpEdgeColor, help,
+    options.registerOption(
+        EDGE_UNCONDITIONAL_JUMP_COLOR_KEY,
+        unconditionalJumpEdgeColor,
+        help,
         "Unconditional jump edge color");
 
-    options.registerOption(EDGE_FALLTHROUGH_COLOR_KEY, fallthroughEdgeColor, help,
-        "Fallthrough edge color");
+    options.registerOption(
+        EDGE_FALLTHROUGH_COLOR_KEY, fallthroughEdgeColor, help, "Fallthrough edge color");
 
-    options.registerOption(EDGE_CONDITIONAL_JUMP_HIGHLIGHT_COLOR_KEY,
-        conditionalJumpEdgeHighlightColor, help,
+    options.registerOption(
+        EDGE_CONDITIONAL_JUMP_HIGHLIGHT_COLOR_KEY,
+        conditionalJumpEdgeHighlightColor,
+        help,
         "Conditional jump edge color when highlighting the reachablity of a vertex");
 
-    options.registerOption(EDGE_UNCONDITIONAL_JUMP_HIGHLIGHT_COLOR_KEY,
-        unconditionalJumpEdgeHighlightColor, help,
+    options.registerOption(
+        EDGE_UNCONDITIONAL_JUMP_HIGHLIGHT_COLOR_KEY,
+        unconditionalJumpEdgeHighlightColor,
+        help,
         "Unconditional jump edge color when highlighting the reachablity of a vertex");
 
-    options.registerOption(EDGE_FALLTHROUGH_HIGHLIGHT_COLOR_KEY, fallthroughEdgeHighlightColor,
-        help, "Fallthrough edge color when highlighting the reachablity of a vertex");
-
+    options.registerOption(
+        EDGE_FALLTHROUGH_HIGHLIGHT_COLOR_KEY,
+        fallthroughEdgeHighlightColor,
+        help,
+        "Fallthrough edge color when highlighting the reachablity of a vertex");
   }
 
   public Color getColor(FlowType flowType) {

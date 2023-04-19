@@ -23,8 +23,8 @@ import ghidra.graph.viewer.layout.LayoutProvider;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
-public abstract class AnvillGraphLayoutProvider implements
-    LayoutProvider<BasicBlockVertex, BasicBlockEdge, BasicBlockGraph> {
+public abstract class AnvillGraphLayoutProvider
+    implements LayoutProvider<BasicBlockVertex, BasicBlockEdge, BasicBlockGraph> {
 
   public abstract BBGraphLayout getAnvillGraphLayout(BasicBlockGraph graph, TaskMonitor monitor)
       throws CancelledException;

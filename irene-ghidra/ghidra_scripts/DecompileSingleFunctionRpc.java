@@ -6,9 +6,7 @@ import io.grpc.*;
 import java.util.concurrent.TimeUnit;
 import specification.specification.Specification;
 
-/**
- * Script that does on-demand decompilation of a single function.
- */
+/** Script that does on-demand decompilation of a single function. */
 public class DecompileSingleFunctionRpc extends GhidraScript {
 
   public void run() throws Exception {
@@ -18,17 +16,22 @@ public class DecompileSingleFunctionRpc extends GhidraScript {
       return;
     }
     String target = "localhost:" + port;
-    ManagedChannel channel = Grpc.newChannelBuilder(target, InsecureChannelCredentials.create())
-        .build();
+    ManagedChannel channel =
+        Grpc.newChannelBuilder(target, InsecureChannelCredentials.create()).build();
     try {
       CodegenGrpcClient client = new CodegenGrpcClient(channel);
-      var func = this.currentProgram.getFunctionManager()
-          .getFunctionContaining(currentLocation.getAddress());
+      var func =
+          this.currentProgram
+              .getFunctionManager()
+              .getFunctionContaining(currentLocation.getAddress());
       var spec = ProgramSpecifier.specifySingleFunction(func);
-      client.processSpec(Specification.toJavaProto(spec)).ifPresent(codegen -> {
-        println("Got codegen back!");
-        println(codegen.getJson());
-      });
+      client
+          .processSpec(Specification.toJavaProto(spec))
+          .ifPresent(
+              codegen -> {
+                println("Got codegen back!");
+                println(codegen.getJson());
+              });
     } finally {
       channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
     }
