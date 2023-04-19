@@ -62,8 +62,8 @@ public class DNLEdgeLabelRenderer<V extends BasicBlockVertex, E extends BasicBlo
     V endv = endpoints.getSecond();
 
     Predicate<Context<Graph<V, E>, V>> includeVertex = rc.getVertexIncludePredicate();
-    if (!includeVertex.apply(Context.getInstance(jungGraph, startv)) ||
-        !includeVertex.apply(Context.getInstance(jungGraph, endv))) {
+    if (!includeVertex.apply(Context.getInstance(jungGraph, startv))
+        || !includeVertex.apply(Context.getInstance(jungGraph, endv))) {
       return;
     }
 
@@ -84,14 +84,15 @@ public class DNLEdgeLabelRenderer<V extends BasicBlockVertex, E extends BasicBlo
     EdgeLabelRenderer labelRenderer = rc.getEdgeLabelRenderer();
     Font font = rc.getEdgeFontTransformer().apply(e);
     boolean isSelected = rc.getPickedEdgeState().isPicked(e);
-    Component component = labelRenderer.getEdgeLabelRendererComponent(rc.getScreenDevice(),
-        text, font, isSelected, e);
+    Component component =
+        labelRenderer.getEdgeLabelRendererComponent(
+            rc.getScreenDevice(), text, font, isSelected, e);
     int labelWidth = component.getPreferredSize().width;
 
     java.util.List<Point2D> articulationPoints = e.getArticulationPoints();
     if (articulationPoints.isEmpty()) {
       double vertexBottom = start.getY() + (vertexBounds.height >> 1); // location is centered
-      double textY = (int) (vertexBottom + edgeOffset); // below the vertex; above the bend 
+      double textY = (int) (vertexBottom + edgeOffset); // below the vertex; above the bend
       double textX = (int) (start.getX() + xDisplacement); // right of the edge
       labelPointOffset.setLocation(textX, textY);
     } else if (articulationPoints.size() == 1) {
@@ -114,12 +115,12 @@ public class DNLEdgeLabelRenderer<V extends BasicBlockVertex, E extends BasicBlo
 
       if (articulationPoints.size() == 2) {
 
-        double textX = (int) (vertexSide + edgeOffset); // right of the vertex 
-        double textY = (int) (cy + edgeOffset); // above the edge 
+        double textX = (int) (vertexSide + edgeOffset); // right of the vertex
+        double textY = (int) (cy + edgeOffset); // above the edge
         labelPointOffset.setLocation(textX, textY);
       } else { // 3 or 4 articulations
 
-        double textY = (int) (vertexBottom + edgeOffset); // below the vertex; above the bend 
+        double textY = (int) (vertexBottom + edgeOffset); // below the vertex; above the bend
         double textX = (int) (bx1 + xDisplacement); // right of the edge
         if (!isRight) {
           textX = bx1 - xDisplacement - labelWidth;
@@ -141,12 +142,12 @@ public class DNLEdgeLabelRenderer<V extends BasicBlockVertex, E extends BasicBlo
     g.setTransform(old);
 
     // debug
-    //labelArticulations(component, g, rc, e);
+    // labelArticulations(component, g, rc, e);
   }
 
   @SuppressWarnings("unused") // used during debug
-  private void labelArticulations(Component component, GraphicsDecorator g,
-      RenderContext<V, E> rc, E e) {
+  private void labelArticulations(
+      Component component, GraphicsDecorator g, RenderContext<V, E> rc, E e) {
 
     int offset = 5;
     int counter = 1;
@@ -159,8 +160,9 @@ public class DNLEdgeLabelRenderer<V extends BasicBlockVertex, E extends BasicBlo
       EdgeLabelRenderer labelRenderer = rc.getEdgeLabelRenderer();
       Font font = rc.getEdgeFontTransformer().apply(e);
       boolean isSelected = rc.getPickedEdgeState().isPicked(e);
-      component = labelRenderer.getEdgeLabelRendererComponent(rc.getScreenDevice(),
-          "p" + counter++, font, isSelected, e);
+      component =
+          labelRenderer.getEdgeLabelRendererComponent(
+              rc.getScreenDevice(), "p" + counter++, font, isSelected, e);
 
       Dimension d = component.getPreferredSize();
       AffineTransform old = g.getTransform();

@@ -43,6 +43,12 @@ run-ghidra: install-irene3-ghidra
 build-docker:
     {{DOCKER_CMD}} build -t irene3 {{justfile_directory()}} -f Dockerfile
 
+lint-irene3-ghidra:
+    ./gradlew spotlessCheck
+
+format-irene3-ghidra:
+    ./gradlew spotlessApply
+
 test-irene3-ghidra:
     ./gradlew test
 

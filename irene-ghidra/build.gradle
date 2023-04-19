@@ -33,6 +33,7 @@ plugins  {
   id "com.google.protobuf" version "0.9.2"
   id 'scala'
   id 'java'
+  id "com.diffplug.spotless" version "6.18.0"
 }
 
 //----------------------START "DO NOT MODIFY" SECTION------------------------------
@@ -204,6 +205,21 @@ test {
     jvmArgs '--add-exports=java.desktop/sun.awt=ALL-UNNAMED' // Required for Java 17 compatibility
 }
 
+
+spotless {
+  java {
+    target 'src/*/java/**/*.java', 'ghidra_scripts/*.java'
+    importOrder()
+    removeUnusedImports()
+    googleJavaFormat('1.16.0')
+    formatAnnotations() 
+  }
+
+  scala {
+    target 'src/*/scala/**/*.scala'
+    scalafmt('3.5.3').configFile('.scalafmt.conf')
+  }
+}
 
 sourceSets {
   main {
