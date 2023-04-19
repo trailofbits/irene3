@@ -32,6 +32,8 @@ import ghidra.program.model.listing.Program
 import ghidra.program.model.listing.Instruction
 import specification.specification.{CodeBlock => CodeBlockSpec}
 import anvill.ProgramSpecifier.specifyContextAssignments
+import ghidra.program.model.block.CodeBlockModel
+import aQute.bnd.service.progress.ProgressPlugin.Task
 
 object Util {
 
@@ -187,18 +189,20 @@ object Util {
     res.toSeq
   }
 
+  def getBodyCFG(func: Function): Iterator[CodeBlock] = {
+    val model = BasicBlockModel(func.getProgram())
+    val blks = model.getCodeBlocksContaining(func.getBody(), TaskMonitor.DUMMY)
+    blks.iterator().asScala
+  }
+
   def getCfgAsGraph(func: Function): CFG = {
-    val model = BasicBlockModel(func.getProgram)
-    val blks = getReachableCodeBlocks(func).iterator
 
     val edge_buff: ListBuffer[DiEdge[CodeBlock]] = ListBuffer()
     val nodes: ListBuffer[CodeBlock] = ListBuffer()
-
-    while (blks.hasNext) {
-      val curr = blks.next()
+    getBodyCFG(func).foreach(curr => {
       edge_buff.addAll(blkToEdges(func, curr))
       nodes += curr
-    }
+    })
 
     Graph.from(nodes.toList, edge_buff.toList)
   }

@@ -580,7 +580,7 @@ object ProgramSpecifier {
 
   def getCFG(func: Function): Map[Long, CodeBlockSpec] = {
     Util
-      .getReachableCodeBlocks(func)
+      .getBodyCFG(func)
       .map(blk =>
         (blk.getFirstStartAddress().getOffset(), specifyBlock(func, blk))
       )
@@ -1178,15 +1178,51 @@ object ProgramSpecifier {
       .toSet
   }
 
+  def already_overlaps_func(
+      target_function: Function,
+      blk: CodeBlock
+  ): Boolean = {
+    val res = blk
+      .getAddressRanges()
+      .iterator()
+      .asScala
+      .exists(range =>
+        target_function
+          .getProgram()
+          .getFunctionManager()
+          .getFunctionsOverlapping(AddressSet(range))
+          .asScala
+          .exists(f => {
+            val res = f != target_function
+            if (res) {
+              Msg.info(this, "Overlaps: " + f.getName())
+            }
+            res
+          })
+      )
+
+    Msg.info(this, "Filtering block: " + blk)
+
+    res
+  }
+
   def makeFunctionsPermissive(funcs: Seq[Function]) = {
     funcs.foreach(f => {
       val addrs = AddressSet()
       val reachable = getReachableCodeBlocks(f)
+      val prog = f.getProgram()
       if (!reachable.isEmpty) {
-        reachable.foreach(
-          _.getAddressRanges().iterator().asScala.foreach(addrs.add(_))
-        )
-        f.setBody(addrs)
+        reachable
+          .filter(!already_overlaps_func(f, _))
+          .foreach(
+            _.getAddressRanges()
+              .iterator()
+              .asScala
+              .foreach(addrs.add(_))
+          )
+        if (addrs.contains(f.getEntryPoint())) {
+          f.setBody(addrs)
+        }
       }
     })
   }
