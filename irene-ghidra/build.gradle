@@ -214,6 +214,11 @@ spotless {
     googleJavaFormat()
     formatAnnotations() 
   }
+
+  scala {
+    target 'src/*/scala/**/*.scala'
+    scalafmt('3.5.3').configFile('.scalafmt.conf')
+  }
 }
 
 sourceSets {
