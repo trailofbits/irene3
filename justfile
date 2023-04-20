@@ -1,11 +1,11 @@
 set dotenv-load
 LLVM_VERSION := "15"
-CXX_COMMON_VERSION := "0.2.19"
+CXX_COMMON_VERSION := "0.2.24"
 CXX_COMMON_ARCH := if "x86_64" == arch() { "amd64" } else { "arm64" }
 CXX_COMMON_NAME := if "macos" == os() {
       "vcpkg_macos-11_llvm-" + LLVM_VERSION + "_xcode-13.0_" + CXX_COMMON_ARCH
     } else {
-      "vcpkg_ubuntu-20.04_llvm-" + LLVM_VERSION + "_" + CXX_COMMON_ARCH
+      "vcpkg_ubuntu-22.04_llvm-" + LLVM_VERSION + "_" + CXX_COMMON_ARCH
     }
 CXX_COMMON_URL := "https://github.com/lifting-bits/cxx-common/releases/download/v" + CXX_COMMON_VERSION + "/" + CXX_COMMON_NAME + ".tar.xz"
 
@@ -127,10 +127,10 @@ install-ghidra:
          mkdir -p deps
          echo "Downloading Ghidra"
          curl -sL \
-         https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.1.5_build/ghidra_10.1.5_PUBLIC_20220726.zip \
+         https://github.com/trail-of-forks/ghidra/releases/download/amp-ghidra-v0.0.1-rc2/ghidra_10.3_DEV_20230420.zip \
          --output deps/ghidra.zip
          echo "Extracting Ghidra"
-         cd deps && unzip -qq ghidra.zip && mv ghidra_10.1.5_PUBLIC ghidra && cd ..
+         cd deps && unzip -qq ghidra.zip && mv ghidra_10.3_DEV ghidra && cd ..
     fi
     echo "GHIDRA_INSTALL_DIR={{justfile_directory()}}/deps/ghidra" >{{justfile_directory()}}/gradle.properties
 

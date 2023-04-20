@@ -34,6 +34,7 @@ import ghidra.program.util.ProgramLocation;
 import ghidra.test.*;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.After;
 import org.junit.Before;
 
 public abstract class AbstractAnvillGraphTest extends AbstractGhidraHeadedIntegrationTest {
@@ -56,6 +57,18 @@ public abstract class AbstractAnvillGraphTest extends AbstractGhidraHeadedIntegr
     tool = env.getTool();
 
     initializeTool();
+  }
+
+  @After
+  public void tearDown() {
+    if (program != null && env != null) {
+      env.release(program);
+    }
+    program = null;
+    if (env != null) {
+      env.dispose();
+    }
+    env = null;
   }
 
   protected TestEnv getEnv() throws Exception {

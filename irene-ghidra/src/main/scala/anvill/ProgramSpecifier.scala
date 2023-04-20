@@ -291,11 +291,9 @@ object ProgramSpecifier {
     reg.getName().toUpperCase()
   }
 
-  def specifySingleValue(func: Function, vnode: Varnode): ValueSpec = {
-    val program = func.getProgram()
+  def specifySingleValue(program: Program, vnode: Varnode): ValueSpec = {
     val cspec = program.getCompilerSpec()
     val addr = vnode.getAddress()
-    val param_size = func.getStackFrame().getParameterSize()
     val innerValue: InnerValue = if (addr.isRegisterAddress()) {
       val reg = program.getRegister(addr, vnode.getSize())
       Reg(RegSpec(getRegisterName(reg), Some(vnode.getSize())))
@@ -324,7 +322,7 @@ object ProgramSpecifier {
     var_storage
       .getVarnodes()
       .toSeq
-      .map(specifySingleValue(func, _))
+      .map(specifySingleValue(func.getProgram(), _))
   }
 
   def isVariableComposedOfHashVarnodes(tvar: Variable): Boolean =
@@ -352,85 +350,26 @@ object ProgramSpecifier {
   val returnAddressRegisterOverrides =
     Map(("ARM", "lr"), ("AARCH64", "x30"), ("PowerPC", "lr"))
 
-  def specifyDefaultReturnAddress(cspec: CompilerSpec): Option[ValueSpec] = {
+  def specifyDefaultReturnAddress(program: Program): Option[ValueSpec] = {
+    val cspec = program.getCompilerSpec()
     val procstr = cspec.getLanguage().getProcessor().toString()
 
     // TODO(Ian): use a trie
     for ((k, v) <- returnAddressRegisterOverrides) {
-      if (procstr.contains(k)) {
+      if (procstr.contains(k))
         return Some(
           ValueSpec(
-            Reg(RegSpec(getRegisterName(cspec.getLanguage().getRegister(v))))
-          )
-        )
-      }
-    }
-
-    // TODO(frabert): All of this should be deleted / redone as soon as we hear back from
-    //                https://github.com/NationalSecurityAgency/ghidra/issues/4611
-    if (!cspec.isInstanceOf[BasicCompilerSpec]) {
-      return None
-    }
-
-    val basicCspec = cspec.asInstanceOf[BasicCompilerSpec]
-    val factory = DocumentBuilderFactory.newInstance()
-    val builder = factory.newDocumentBuilder()
-    val is = InputSource(new StringReader(basicCspec.getXMLString()))
-    val doc = builder.parse(is).getDocumentElement()
-    doc.normalize()
-    val nodes = doc.getChildNodes()
-    val nodelist = doc.getElementsByTagName("returnaddress")
-    if (nodelist.getLength() == 0) {
-      // NOTE(alex): Ghidra 10.1.5 doesn't have have return address information in the x86_64:gcc
-      // cspec so we should explicitly check for it here. Subsequent releases will have this
-      // information so we only need to perform this check if no return address is found.
-      var langDesc = cspec.getLanguage.getLanguageDescription
-      return if (
-        langDesc.getProcessor.toString.equals(
-          "x86"
-        ) && langDesc.getSize == 64 &&
-        cspec.getCompilerSpecDescription.getCompilerSpecName.equals("gcc")
-      ) {
-        val sp = getRegisterName(cspec.getStackPointer)
-        Some(
-          ValueSpec(
-            Mem(
-              MemSpec(Some(sp), 0)
+            Reg(
+              RegSpec(getRegisterName(cspec.getLanguage().getRegister(v)))
             )
           )
         )
-      } else None
     }
 
-    // The cast to Element should always succeed.
-    // If the first node is not an Element (maybe text?) then the spec is malformed anyway
-    val retaddrChildren = nodelist.item(0).asInstanceOf[Element].getChildNodes()
-    for (i <- 0 until retaddrChildren.getLength()) {
-      val valNode = retaddrChildren.item(i)
-      if (valNode.getNodeType() == Node.ELEMENT_NODE) {
-        val valElem = valNode.asInstanceOf[Element]
-        val valName = valElem.getNodeName()
-        if (valName.equals("register")) {
-          return Some(ValueSpec(Reg(RegSpec(valElem.getAttribute("name")))))
-        } else if (
-          valName
-            .equals("varnode") && valElem.getAttribute("space").equals("stack")
-        ) {
-          val sp = getRegisterName(cspec.getStackPointer())
-          val offsetStringRaw = valElem.getAttribute("offset")
-          val (offsetString, base) =
-            if offsetStringRaw.startsWith("0x") then
-              (offsetStringRaw.substring(2), 16)
-            else (offsetStringRaw, 10)
-          return Some(
-            ValueSpec(
-              Mem(
-                MemSpec(Some(sp), java.lang.Long.parseLong(offsetString, base))
-              )
-            )
-          )
-        }
-      }
+    val raddr = cspec.getDefaultCallingConvention().getReturnAddress()
+    if (raddr.length == 1) {
+      val rvnode = raddr(0)
+      return Some(specifySingleValue(program, rvnode))
     }
 
     None
@@ -1107,7 +1046,7 @@ object ProgramSpecifier {
     val listing = prog.getListing()
     val memory = prog.getMemory()
     val funcmgr = prog.getFunctionManager()
-    val defaultRetAddr = specifyDefaultReturnAddress(prog.getCompilerSpec())
+    val defaultRetAddr = specifyDefaultReturnAddress(prog)
 
     val func_defs_redirected = applyThunkRedirections(prog, function_def_list)
     val func_decls_redirected =
@@ -1129,9 +1068,7 @@ object ProgramSpecifier {
     val mem_specs = memory
       .getBlocks()
       .toSeq
-      .filter(block =>
-        !MemoryBlock.isExternalBlockAddress(block.getStart(), prog)
-      )
+      .filter(block => !block.isExternalBlock())
       .filter(block => block.isLoaded())
       // Ignore blocks that are both empty and not writeable, since they would be useless anyway
       .filter(block => block.isWrite() || block.getSize() > 0)

@@ -203,6 +203,10 @@ test {
     // 'gradle/javaTestProject.gradle' and
     // 'Ghidra/Test/IntegrationTest/build.gradle'
     jvmArgs '--add-exports=java.desktop/sun.awt=ALL-UNNAMED' // Required for Java 17 compatibility
+
+    // Required due to global state that gets messed up if we don't use a new
+    // JVM for each test
+    forkEvery 1
 }
 
 

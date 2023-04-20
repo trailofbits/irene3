@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import anvill.plugin.anvillgraph.graph.BasicBlockGraph;
 import java.io.File;
 import java.util.Objects;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -14,6 +15,12 @@ public class AnvillGraphTest extends AbstractAnvillGraphTest {
 
   public AnvillGraphTest() {
     super();
+  }
+
+  @Override
+  @After
+  public void tearDown() {
+    super.tearDown();
   }
 
   @Override

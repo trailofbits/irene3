@@ -15,21 +15,20 @@ concurrency:
 
 jobs:
   build-and-test-ghidra:
-    strategy:
-      matrix:
-        ghidra:
-          - { version: "10.1.5", date: "20220726" }
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: true
       - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d # v1.6.0
+      - uses: actions/setup-java@v2
+        with:
+          distribution: "temurin"
+          java-version: "17"
       - name: "Setup Ghidra"
         run: |
-          wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_${{ matrix.ghidra.version }}_build/ghidra_${{ matrix.ghidra.version }}_PUBLIC_${{ matrix.ghidra.date }}.zip --output-document=ghidra.zip
-          unzip ghidra.zip
-          echo "GHIDRA_INSTALL_DIR=$(pwd)/ghidra_${{ matrix.ghidra.version }}_PUBLIC" >> $GITHUB_ENV
+          just install-ghidra
+          echo "GHIDRA_INSTALL_DIR=$(pwd)/deps/ghidra" >> $GITHUB_ENV
       - name: "Lint IRENE Ghidra"
         run: |
           just lint-irene3-ghidra
@@ -38,6 +37,16 @@ jobs:
           Xvfb :99 -nolisten tcp &
           export DISPLAY=:99
           just test-irene3-ghidra
+      - name: "Tar test logs"
+        if: ${{ failure() }}
+        run: |
+          tar -cvf test-report.tar.gz irene-ghidra/build/reports/tests/
+      - name: "Upload test logs"
+        uses: actions/upload-artifact@v3
+        if: ${{ failure() }}
+        with:
+          name: Test Report
+          path: test-report.tar.gz
       - name: "Build IRENE Ghidra"
         run: |
           just install-irene3-ghidra
@@ -45,17 +54,17 @@ jobs:
         if: github.event.release
         uses: actions/upload-artifact@v3
         with:
-          name: IRENE3 Ghidra ${{ matrix.ghidra.version }}
-          path: ./irene-ghidra/dist/ghidra_${{ matrix.ghidra.version }}_PUBLIC_*_irene-ghidra.zip
+          name: IRENE3 Ghidra Rel
+          path: ./irene-ghidra/dist/ghidra*irene-ghidra.zip
 
   build-decompiler:
     strategy:
       fail-fast: false
       matrix:
         image:
-          - { name: "ubuntu", tag: "20.04" }
+          - { name: "ubuntu", tag: "22.04" }
         llvm: ["15"]
-        cxxcommon_version: ["0.2.22"]
+        cxxcommon_version: ["0.2.24"]
 
     runs-on:
       labels: gha-ubuntu-32
@@ -276,7 +285,7 @@ jobs:
       labels: gha-ubuntu-32
     strategy:
       matrix:
-        ubuntu: ["20.04"]
+        ubuntu: ["22.04"]
     permissions:
       contents: read
       packages: write

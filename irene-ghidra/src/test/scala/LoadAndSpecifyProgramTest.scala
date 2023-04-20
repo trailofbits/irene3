@@ -163,7 +163,7 @@ class LoadAndSpecifyProgramTest extends AbstractGhidraHeadlessIntegrationTest { 
 
     val maybeRetAddr = func.callable.get.returnAddress
     assertFalse(
-      "stack-args-x86' memory range should not be empty",
+      "stack-args-x86' return addres should not be empty",
       maybeRetAddr.isEmpty
     )
 

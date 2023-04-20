@@ -571,7 +571,7 @@ public class AnvillGraphProvider
         new MultiStateDockingAction<>(RELAYOUT_GRAPH_ACTION_NAME, plugin.getName()) {
 
           @Override
-          protected void doActionPerformed(ActionContext context) {
+          public void actionPerformed(ActionContext context) {
             // this callback is when the user clicks the button
             AnvillGraphLayoutProvider currentUserData = getCurrentUserData();
             changeLayout(currentUserData);
