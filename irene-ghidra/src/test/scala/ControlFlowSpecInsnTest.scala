@@ -26,7 +26,8 @@ class ControlFlowSpecInsnTest extends AbstractGhidraHeadlessIntegrationTest {
   var assembler: Assembler = _
 
   @Before def buildenv(): Unit = {
-    val provider: SleighLanguageProvider = SleighLanguageProvider()
+    val provider: SleighLanguageProvider =
+      SleighLanguageProvider.getSleighLanguageProvider()
     archLang = provider
       .getLanguage(LanguageID("ARM:LE:32:v8"))
       .asInstanceOf[SleighLanguage]

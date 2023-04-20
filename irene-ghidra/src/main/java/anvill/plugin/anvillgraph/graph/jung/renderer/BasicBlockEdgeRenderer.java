@@ -31,13 +31,13 @@ public class BasicBlockEdgeRenderer
     extends ArticulatedEdgeRenderer<BasicBlockVertex, BasicBlockEdge> {
 
   @Override
-  public Color getBaseColor(Graph<BasicBlockVertex, BasicBlockEdge> g, BasicBlockEdge e) {
+  public Color getDrawColor(Graph<BasicBlockVertex, BasicBlockEdge> g, BasicBlockEdge e) {
     BBGraphOptions options = getOptions(g);
     return options.getColor(e.getFlowType());
   }
 
   @Override
-  public Color getHighlightColor(Graph<BasicBlockVertex, BasicBlockEdge> g, BasicBlockEdge e) {
+  public Color getFocusedColor(Graph<BasicBlockVertex, BasicBlockEdge> g, BasicBlockEdge e) {
     BBGraphOptions options = getOptions(g);
     return options.getHighlightColor(e.getFlowType());
   }

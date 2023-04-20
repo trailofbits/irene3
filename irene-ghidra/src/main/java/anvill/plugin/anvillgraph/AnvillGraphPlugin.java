@@ -22,7 +22,6 @@ import anvill.plugin.anvillgraph.layout.AnvillGraphLayoutProvider;
 import anvill.plugin.anvillgraph.layout.jungrapht.JgtLayoutFactory;
 import anvill.plugin.anvillgraph.layout.jungrapht.JgtNamedLayoutProvider;
 import docking.tool.ToolConstants;
-import ghidra.app.GraphPluginPackage;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
 import ghidra.app.services.*;
@@ -42,7 +41,7 @@ import resources.ResourceManager;
 
 @PluginInfo(
     status = PluginStatus.UNSTABLE,
-    packageName = GraphPluginPackage.NAME,
+    packageName = PluginCategoryNames.GRAPH,
     category = PluginCategoryNames.GRAPH,
     shortDescription = AnvillGraphPlugin.GRAPH_NAME,
     description =
@@ -68,7 +67,7 @@ public class AnvillGraphPlugin extends ProgramPlugin {
   private BBGraphOptions bbGraphOptions = new BBGraphOptions();
 
   public AnvillGraphPlugin(PluginTool tool) {
-    super(tool, true, false);
+    super(tool);
   }
 
   @Override
