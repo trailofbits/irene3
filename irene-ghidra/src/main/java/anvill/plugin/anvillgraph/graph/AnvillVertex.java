@@ -23,13 +23,13 @@ import docking.ActionContext;
 import docking.GenericHeader;
 import docking.action.DockingAction;
 import docking.action.ToolBarData;
+import generic.theme.GColor;
 import ghidra.graph.viewer.vertex.DockingVisualVertex;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.block.CodeBlock;
 import ghidra.program.model.listing.Program;
 import ghidra.program.util.ProgramLocation;
-import java.awt.Color;
 import java.awt.Component;
 import javax.swing.ImageIcon;
 import javax.swing.JTextArea;
@@ -73,8 +73,9 @@ public class AnvillVertex extends DockingVisualVertex implements BasicBlockVerte
     textArea.setEditable(editable);
     textArea.setPreferredSize(null);
     textArea.setLineWrap(false);
-    textArea.setBackground(Color.WHITE);
-    textArea.setCaretColor(Color.BLACK);
+    textArea.setBackground(new GColor("color.bg.decompiler"));
+    textArea.setCaretColor(new GColor("color.fg.decompiler"));
+    textArea.setForeground(new GColor("color.fg.decompiler"));
     textArea.setText(patch.getCode());
   }
 
