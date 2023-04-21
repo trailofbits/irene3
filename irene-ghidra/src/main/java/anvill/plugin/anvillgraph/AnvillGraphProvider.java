@@ -17,6 +17,8 @@
  */
 package anvill.plugin.anvillgraph;
 
+import anvill.CodegenGrpcClient;
+import anvill.ProgramSpecifier;
 import anvill.plugin.anvillgraph.AnvillPatchInfo.Patch;
 import anvill.plugin.anvillgraph.graph.*;
 import anvill.plugin.anvillgraph.graph.jung.renderer.AnvillEdgePaintTransformer;
@@ -52,15 +54,19 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.filechooser.ExtensionFileFilter;
 import ghidra.util.filechooser.GhidraFileFilter;
 import ghidra.util.task.*;
+import io.grpc.*;
+import irene.server.Service.Codegen;
 import java.awt.Color;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import javax.swing.JComponent;
 import org.apache.commons.collections4.BidiMap;
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 import resources.Icons;
 import resources.ResourceManager;
+import specification.specification.Specification;
 
 public class AnvillGraphProvider
     extends VisualGraphComponentProvider<BasicBlockVertex, BasicBlockEdge, BasicBlockGraph> {
@@ -70,6 +76,7 @@ public class AnvillGraphProvider
   public static final String RELAYOUT_GRAPH_ACTION_NAME = "Relayout Graph";
   public static final String LOAD_PATCHES_ACTION_NAME = "Load Patch File";
   public static final String SAVE_PATCHES_ACTION_NAME = "Save Patches";
+  public static final String DECOMPILE_ACTION_NAME = "Decompile Function";
   private final GhidraFileFilter JSON_FILE_FILTER =
       ExtensionFileFilter.forExtensions("JSON files", "json");
   private final PluginTool tool;
@@ -86,6 +93,8 @@ public class AnvillGraphProvider
   private AnvillPatchInfo anvillPatchInfo;
   private ProgramLocation pendingLocation;
   private SwingUpdateManager updateLocationUpdateManager;
+  private ManagedChannel grpcChannel;
+  private CodegenGrpcClient grpcClient;
 
   public AnvillGraphProvider(AnvillGraphPlugin anvillGraphPlugin, boolean isConnected) {
     super(anvillGraphPlugin.getTool(), AnvillGraphPlugin.GRAPH_NAME, anvillGraphPlugin.getName());
@@ -374,7 +383,17 @@ public class AnvillGraphProvider
     return viewer.getViewUpdater();
   }
 
+  @Override
   public void dispose() {
+    grpcClient = null;
+    if (grpcChannel != null) {
+      try {
+        grpcChannel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    super.dispose();
     removeFromTool();
   }
 
@@ -431,7 +450,89 @@ public class AnvillGraphProvider
     savePatchesAction.markHelpUnnecessary();
     addLocalAction(savePatchesAction);
 
+    DockingAction decompileAction =
+        new DockingAction(DECOMPILE_ACTION_NAME, plugin.getName()) {
+          @Override
+          public void actionPerformed(ActionContext actionContext) {
+            setupGrpcClient();
+
+            Function func =
+                currentProgram
+                    .getFunctionManager()
+                    .getFunctionContaining(currentLocation.getAddress());
+            if (func == null) {
+              Msg.showWarn(
+                  this,
+                  null,
+                  "No function",
+                  "IRENE cannot decompile null function at " + currentLocation);
+              return;
+            }
+            var id = currentProgram.startTransaction("Generating anvill patch");
+            Specification spec;
+            try {
+              spec = ProgramSpecifier.specifySingleFunction(func);
+            } finally {
+              currentProgram.endTransaction(id, true);
+            }
+            if (spec == null) {
+              Msg.showWarn(
+                  this,
+                  null,
+                  "Cannot create specification",
+                  "IRENE cannot create a specification for function " + func);
+              return;
+            }
+
+            Optional<Codegen> maybeCodegen =
+                grpcClient.processSpec(Specification.toJavaProto(spec));
+            if (maybeCodegen.isPresent()) {
+              try {
+                anvillPatchInfo = new AnvillPatchInfo(maybeCodegen.get().getJson());
+              } catch (InstantiationException e) {
+                Msg.showError(this, null, "Bad patch", "Could not import patch: " + e.getMessage());
+                anvillPatchInfo = null;
+              }
+            } else {
+              anvillPatchInfo = null;
+            }
+
+            installGraph(true);
+            displayLocation(currentLocation);
+            notifyContextChanged();
+          }
+        };
+    decompileAction.setToolBarData(
+        new ToolBarData(ResourceManager.loadImage("images/Browser.gif"), null));
+    // TODO: Only enable if on a function
+    decompileAction.setEnabled(true);
+    decompileAction.markHelpUnnecessary();
+    addLocalAction(decompileAction);
+
     addLayoutAction();
+  }
+
+  private void setupGrpcClient() {
+    if (grpcChannel == null) {
+      try {
+        grpcChannel =
+            Grpc.newChannelBuilder("localhost:50080", InsecureChannelCredentials.create()).build();
+      } catch (NoSuchMethodError e) {
+        // NOTE(ekilmer): We need this to gracefully handle the error and report it to the user.
+        //   Ghidra 10.3 should fix this when it's released.
+        if (e.getMessage().contains("com.google.common.base.Preconditions.checkArgument")) {
+          Msg.showError(
+              this,
+              null,
+              "Must patch Ghidra",
+              "Please patch Ghidra with a new version of Guava in 'Ghidra/Framework/Generic/lib'",
+              e);
+        }
+      }
+    }
+    if (grpcClient == null) {
+      grpcClient = new CodegenGrpcClient(grpcChannel);
+    }
   }
 
   private void savePatches() {

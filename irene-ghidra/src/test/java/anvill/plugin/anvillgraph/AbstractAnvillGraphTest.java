@@ -94,7 +94,7 @@ public abstract class AbstractAnvillGraphTest extends AbstractGhidraHeadedIntegr
   }
 
   protected void openProgram() throws Exception {
-    ClassicSampleX86ProgramBuilder builder = new ClassicSampleX86ProgramBuilder("sample", true);
+    ClassicSampleX86ProgramBuilder builder = new ClassicSampleX86ProgramBuilder("graph_test", true);
     // TODO: Toy sleigh files are not installed
     //    ToyProgramBuilder builder = new ToyProgramBuilder("sample", true);
     //    builder.createMemory("sscanf", "0x0100415a", 80);
