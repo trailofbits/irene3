@@ -84,10 +84,6 @@ std::string to_hex(T &&value) {
 
 std::string PrintBodyToString(clang::CompoundStmt *compound);
 std::string PrintStmtToString(clang::Stmt *st) {
-    if (clang::isa< clang::ReturnStmt >(st)) {
-        return "";
-    }
-
     if (auto comp = clang::dyn_cast< clang::CompoundStmt >(st)) {
         return PrintBodyToString(comp);
     }
@@ -149,6 +145,7 @@ std::string PrintBodyToString(clang::CompoundStmt *compound) {
     for (auto &stmt : compound->body()) {
         os << PrintStmtToString(stmt);
     }
+
     return code;
 }
 
