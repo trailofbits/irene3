@@ -3,6 +3,7 @@
 #include <iostream>
 #include <irene3/DecompileSpec.h>
 #include <irene3/TypeDecoder.h>
+#include <llvm/IR/Attributes.h>
 #include <llvm/Support/JSON.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <rellic/Result.h>
@@ -20,8 +21,10 @@ namespace irene3
         }
         auto tgt_type
             = llvm::FunctionType::get(llvm::Type::getVoidTy(mod->getContext()), { addr_ty }, false);
-        return llvm::Function::Create(
+        auto f = llvm::Function::Create(
             tgt_type, llvm::GlobalValue::ExternalLinkage, anvill::kAnvillGoto, mod);
+        f->addFnAttr(llvm::Attribute::NoReturn);
+        return f;
     }
 
     std::vector< llvm::GlobalVariable* > UsedGlobalVars(llvm::Function* func) {

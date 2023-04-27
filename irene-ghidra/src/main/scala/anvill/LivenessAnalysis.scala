@@ -208,8 +208,10 @@ class LivenessAnalysis(
 
   def get_initial_after_liveness(blk: CodeBlock): Set[ParamSpec] = {
     if (blk.getFlowType().isTerminal()) {
-      // If a block can return then the saves need to be live at that point,
-      // + returns
+      // If a block can return then the saves need to be live at that point
+      // Returns no longer need to be considered live with tail calling representations
+      // Native returns already lift the return value
+
       Option(
         func
           .getCallingConvention()
@@ -225,8 +227,7 @@ class LivenessAnalysis(
               .getRegister(r.getAddress(), r.getSize())
           )
         )
-        .toSet ++ get_live_reigsters(Option(func.getReturn()).toSeq)
-        .map(registerToParam)
+        .toSet
     } else {
       Set.empty
     }

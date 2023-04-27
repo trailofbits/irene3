@@ -21,9 +21,13 @@
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/IR/Value.h>
+#include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Scalar/SimplifyCFG.h>
 #include <memory>
 #include <optional>
 #include <rellic/Decompiler.h>
@@ -230,8 +234,9 @@ namespace irene3
 
         std::unordered_map< std::uint64_t, clang::CompoundStmt* > blocks;
         for (auto& [addr, func] : canonical_funcs) {
-            auto fdecl   = clang::cast< clang::FunctionDecl >(res.value_to_decl_map[func]);
-            auto body    = clang::cast< clang::CompoundStmt >(fdecl->getBody());
+            auto fdecl = clang::cast< clang::FunctionDecl >(res.value_to_decl_map[func]);
+            auto body  = clang::cast< clang::CompoundStmt >(fdecl->getBody());
+
             blocks[addr] = body;
         }
 
@@ -305,6 +310,13 @@ namespace irene3
 
         std::unordered_map< uint64_t, std::vector< GlobalVarInfo > > gvars;
 
+        llvm::FunctionPassManager fpm;
+        llvm::FunctionAnalysisManager fam;
+        llvm::PassBuilder pb;
+
+        pb.registerFunctionAnalyses(fam);
+        fpm.addPass(llvm::SimplifyCFGPass());
+
         for (auto& func : module->functions()) {
             auto block_addr = anvill::GetBasicBlockAddr(&func);
             if (!block_addr.has_value()) {
@@ -342,12 +354,14 @@ namespace irene3
                     call->replaceAllUsesWith(llvm::UndefValue::get(call->getType()));
                     auto intrinsic = GetOrCreateGotoInstrinsic(&*module, addr_type);
 
-                    llvm::CallInst::Create(
+                    auto cc = llvm::CallInst::Create(
                         intrinsic, { llvm::ConstantInt::get(addr_type, *block_addr) }, "", call);
-
+                    cc->setDoesNotReturn();
                     call->eraseFromParent();
                 }
             }
+
+            fpm.run(func, fam);
         }
 
         rellic::DecompilationOptions dec_opts;
