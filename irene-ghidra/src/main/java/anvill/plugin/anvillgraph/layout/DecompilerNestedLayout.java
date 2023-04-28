@@ -1030,47 +1030,30 @@ public class DecompilerNestedLayout extends AbstractBBGraphLayout {
     CodeBlockIterator iterator = blockModel.getCodeBlocksContaining(addresses, taskMonitor);
 
     BlockGraph blockGraph = new BlockGraph();
-    BidiMap<CodeBlock, PcodeBlock> bidiMap = new DualHashBidiMap<>();
-    for (; iterator.hasNext(); ) {
+    BidiMap<BasicBlockVertex, PcodeBlock> bidiMap = new DualHashBidiMap<>();
+    for (BasicBlockVertex vertex : jungGraph.getVertices()) {
       taskMonitor.checkCanceled();
 
-      CodeBlock codeBlock = iterator.next();
-      BasicBlockVertex vertex = getVertex(jungGraph, codeBlock.getMinAddress());
-      if (vertex == null) {
-        // this is unusual; can happen if the program is being changed while this is running
-        continue;
-      }
-
-      PcodeBlock pcodeBlock = new BlockCopy(vertex, codeBlock.getMinAddress());
-      bidiMap.put(codeBlock, pcodeBlock);
+      PcodeBlock pcodeBlock = new BlockCopy(vertex, vertex.getVertexAddress());
+      bidiMap.put(vertex, pcodeBlock);
       blockGraph.addBlock(pcodeBlock);
     }
 
-    for (CodeBlock block : bidiMap.keySet()) {
+    for (BasicBlockEdge edge : jungGraph.getEdges()) {
       taskMonitor.checkCanceled();
 
-      CodeBlockReferenceIterator destinations = block.getDestinations(taskMonitor);
-      while (destinations.hasNext()) {
-        taskMonitor.checkCanceled();
-
-        CodeBlockReference ref = destinations.next();
-        // We only want control flow that is internal to the function. Make sure to
-        // exclude the case where a function contains a (recursive) call to itself:
-        // The reference would be between addresses internal to the function, but the
-        // link doesn't represent internal flow. So we filter out ANY call reference.
-        if (ref.getFlowType().isCall()) {
-          continue;
-        }
-        CodeBlock destination = ref.getDestinationBlock();
-
-        PcodeBlock sourcePcodeBlock = bidiMap.get(block);
-        PcodeBlock destPcodeBlock = bidiMap.get(destination);
-        if (destPcodeBlock == null) {
-          continue;
-        }
-
-        blockGraph.addEdge(sourcePcodeBlock, destPcodeBlock);
+      // We only want control flow that is internal to the function. Make sure to
+      // exclude the case where a function contains a (recursive) call to itself:
+      // The reference would be between addresses internal to the function, but the
+      // link doesn't represent internal flow. So we filter out ANY call reference.
+      if (edge.getFlowType().isCall()) {
+        continue;
       }
+
+      PcodeBlock startBlock = bidiMap.get(edge.getStart());
+      PcodeBlock destBlock = bidiMap.get(edge.getEnd());
+
+      blockGraph.addEdge(startBlock, destBlock);
     }
 
     blockGraph.setIndices();

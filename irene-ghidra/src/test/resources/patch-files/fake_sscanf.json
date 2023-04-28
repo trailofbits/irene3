@@ -2,35 +2,43 @@
     "patches": [
         {
             "patch-addr": "0x100415a",
-            "patch-code": "0\nThis\nis\na\ntest."
+            "patch-code": "0\nThis\nis\na\ntest.",
+            "patch-size": "0x1c"
         },
         {
             "patch-addr": "0x1004178",
-            "patch-code": "1\nThis\nis\na\ntest."
+            "patch-code": "1\nThis\nis\na\ntest.",
+            "patch-size": "0x1a"
         },
         {
             "patch-addr": "0x1004192",
-            "patch-code": "2\nThis\nis\na\ntest."
+            "patch-code": "2\nThis\nis\na\ntest.",
+            "patch-size": "0x2"
         },
         {
             "patch-addr": "0x1004196",
-            "patch-code": "3\nThis\nis\na\ntest."
+            "patch-code": "3\nThis\nis\na\ntest.",
+            "patch-size": "0x4"
         },
         {
             "patch-addr": "0x100419c",
-            "patch-code": "4\nThis\nis\na\ntest."
+            "patch-code": "4\nThis\nis\na\ntest.",
+            "patch-size": "0x3"
         },
         {
             "patch-addr": "0x10041a1",
-            "patch-code": "5\nThis\nis\na\ntest."
+            "patch-code": "5\nThis\nis\na\ntest.",
+            "patch-size": "0x3"
         },
         {
             "patch-addr": "0x10041a4",
-            "patch-code": "6\nThis\nis\na\ntest."
+            "patch-code": "6\nThis\nis\na\ntest.",
+            "patch-size": "0x1"
         },
         {
             "patch-addr": "0x1004100",
-            "patch-code": "Is not in function"
+            "patch-code": "Is not in function",
+            "patch-size": "0x1"
         }
     ]
 }

@@ -61,15 +61,18 @@ public class AnvillPatchInfo {
 
     public static final String ADDR_FIELD_NAME = "patch-addr";
     public static final String CODE_FIELD_NAME = "patch-code";
+    public static final String SIZE_FIELD_NAME = "patch-size";
     private String code;
+    private long size;
     private final String address;
     private final JsonObject orig;
     private boolean modified;
 
-    Patch(String address, String code, JsonObject orig) {
+    Patch(String address, String code, long size, JsonObject orig) {
       this.orig = orig;
       this.address = address;
       this.code = code;
+      this.size = size;
       this.modified = false;
     }
 
@@ -84,7 +87,13 @@ public class AnvillPatchInfo {
         throw new InstantiationException("Cannot find " + CODE_FIELD_NAME + " in JSON");
       }
       String code = codeObj.getAsString();
-      return new Patch(address, code, object);
+      JsonElement sizeObj = object.get(SIZE_FIELD_NAME);
+      if (sizeObj == null) {
+        throw new InstantiationException("Cannot find " + SIZE_FIELD_NAME + " in JSON");
+      }
+      String sizeHexString = sizeObj.getAsString().substring(2);
+      long size = Long.parseLong(sizeHexString, 16);
+      return new Patch(address, code, size, object);
     }
 
     /**
@@ -114,6 +123,10 @@ public class AnvillPatchInfo {
       String originalCode = orig.get(CODE_FIELD_NAME).getAsString();
       code = newCode;
       modified = !originalCode.equals(code);
+    }
+
+    public long getSize() {
+      return size;
     }
 
     @Override

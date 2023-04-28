@@ -5,6 +5,7 @@ import ghidra.app.cmd.function.CallDepthChangeInfo
 import collection.JavaConverters._
 import ghidra.program.model.lang.Register
 import specification.specification.{BlockContext => BlockContextSpec}
+import specification.specification.{CodeBlock => CodeBlockSpec}
 import specification.specification.{Register => RegSpec}
 import specification.specification.{Value => ValueSpec}
 import specification.specification.{Variable => VariableSpec}
@@ -30,7 +31,8 @@ object BasicBlockContextProducer {
 class BasicBlockContextProducer(
     gfunc: Function,
     stack_depth_info: CallDepthChangeInfo,
-    val max_depth: Long
+    val max_depth: Long,
+    cfg: Map[Long, CodeBlockSpec]
 ) {
 
   val aliases: scala.collection.mutable.Map[Long, TypeSpec] =
@@ -41,11 +43,11 @@ class BasicBlockContextProducer(
       Util.getCfgAsGraph(gfunc),
       gfunc,
       stack_depth_info,
-      aliases
+      aliases,
+      cfg
     )
   val liveness_info = live_analysis
     .getBlockLiveness()
-    .map((k, v) => (k.getFirstStartAddress(), v))
 
   // The conditions under which getRegDepth can succeed...
   def hasPredecessorInsn(block_addr: Address): Boolean = {
@@ -89,8 +91,8 @@ class BasicBlockContextProducer(
       .toMap
   }
 
-  def liveness(block_addr: Address): BlockLiveness = {
-    liveness_info(block_addr)
+  def liveness(block: CodeBlockSpec): BlockLiveness = {
+    liveness_info(block)
   }
 
   def paramSpecToRegister(p: ParamSpec): Option[Register] = {
@@ -205,7 +207,8 @@ class BasicBlockContextProducer(
         produceSymvals(last_insn_addr, last_insn_disp)
       else Map.empty
     val stack_reg = gfunc.getProgram.getCompilerSpec().getStackPointer()
-    val live = this.liveness(block_addr)
+    val blk = this.cfg.get(block_addr.getOffset).get
+    val live = this.liveness(blk)
 
     BlockContextSpec(
       stack_depths_entry

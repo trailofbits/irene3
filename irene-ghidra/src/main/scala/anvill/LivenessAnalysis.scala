@@ -2,6 +2,7 @@ package anvill
 
 import java.util as ju
 import scala.collection.mutable
+import ghidra.program.model.address.AddressSet
 import ghidra.program.model.block.CodeBlock
 import ghidra.program.model.lang.Register
 import scala.collection.mutable.Stack
@@ -9,6 +10,7 @@ import ghidra.program.model.pcode.PcodeOp
 import ghidra.program.model.listing.Instruction
 import collection.JavaConverters._
 import ghidra.app.cmd.function.CallDepthChangeInfo
+import specification.specification.{CodeBlock => CodeBlockSpec}
 import specification.specification.{Value => ValueSpec}
 import specification.specification.{Memory => MemSpec}
 import specification.specification.{Register => RegSpec}
@@ -43,7 +45,8 @@ class LivenessAnalysis(
     val control_flow_graph: Util.CFG,
     val func: ghidra.program.model.listing.Function,
     val cdi: CallDepthChangeInfo,
-    val aliases: scala.collection.mutable.Map[Long, TypeSpec]
+    val aliases: scala.collection.mutable.Map[Long, TypeSpec],
+    var blks: Map[Long, CodeBlockSpec]
 ) {
 
   val lang = func.getProgram().getLanguage()
@@ -206,9 +209,10 @@ class LivenessAnalysis(
     (live_after -- kill(n, insn)) ++ gen(n, insn)
   }
 
-  def get_initial_after_liveness(blk: CodeBlock): Set[ParamSpec] = {
-    if (blk.getFlowType().isTerminal()) {
-      // If a block can return then the saves need to be live at that point
+  def get_initial_after_liveness(blk: CodeBlockSpec): Set[ParamSpec] = {
+    if (blk.outgoingBlocks.isEmpty) {
+      // If a block can return then the saves need to be live at that point,
+      // + returns
       // Returns no longer need to be considered live with tail calling representations
       // Native returns already lift the return value
 
@@ -234,13 +238,20 @@ class LivenessAnalysis(
   }
 
   def transfer_block(
-      blk: CodeBlock,
+      blk: CodeBlockSpec,
       live_after: Set[ParamSpec]
   ): Set[ParamSpec] = {
+    val blk_end_addr = blk.address + blk.size
+    val addr_factory = func.getProgram.getAddressFactory
+    val space_id = func.getEntryPoint.getAddressSpace.getSpaceID
+    val addr_range = new AddressSet(
+      addr_factory.getAddress(space_id, blk.address),
+      addr_factory.getAddress(space_id, blk_end_addr)
+    )
 
     // get instructions in reverse then iterate over pcode in reverse
     val insns_reverse: ju.Iterator[Instruction] =
-      func.getProgram().getListing().getInstructions(blk, false)
+      func.getProgram().getListing().getInstructions(addr_range, false)
     insns_reverse.asScala.toSeq.foldLeft(live_after)(
       (curr_liveness, curr_insn) =>
         curr_insn
@@ -252,18 +263,16 @@ class LivenessAnalysis(
   }
 
   def collectLiveOnExit(
-      n: CodeBlock,
-      curr_liveness: scala.collection.Map[CodeBlock, Set[ParamSpec]]
+      blk: CodeBlockSpec,
+      curr_liveness: scala.collection.Map[CodeBlockSpec, Set[ParamSpec]]
   ): Set[ParamSpec] = {
-    if (control_flow_graph.get(n).diSuccessors.isEmpty) {
-      return get_initial_after_liveness(n)
+    if (blk.outgoingBlocks.isEmpty) {
+      return get_initial_after_liveness(blk)
     }
 
-    val regs: Seq[Set[ParamSpec]] = control_flow_graph
-      .get(n)
-      .diSuccessors
-      .toSeq
-      .map(out => curr_liveness.get(out.toOuter).getOrElse(Set.empty))
+    val regs: Seq[Set[ParamSpec]] = blk.outgoingBlocks.toSeq
+      .flatMap(out => blks.get(out))
+      .map(out => curr_liveness.get(out).getOrElse(Set.empty))
 
     regs.fold(Set.empty)((x: Set[ParamSpec], y: Set[ParamSpec]) => x.union(y))
   }
@@ -282,9 +291,13 @@ class LivenessAnalysis(
     dpth != ghidra.program.model.listing.Function.UNKNOWN_STACK_DEPTH_CHANGE
       && dpth != ghidra.program.model.listing.Function.INVALID_STACK_DEPTH_CHANGE
 
-  def getDepthBeyondLocals(cb: CodeBlock): Int = {
-
-    val curr_depth = cdi.getDepth(cb.getFirstStartAddress())
+  def getDepthBeyondLocals(cb: CodeBlockSpec): Int = {
+    val addr_factory = func.getProgram.getAddressFactory
+    val cb_addr = addr_factory.getAddress(
+      func.getEntryPoint.getAddressSpace.getSpaceID,
+      cb.address
+    )
+    val curr_depth = cdi.getDepth(cb_addr)
     if (!validDepth(curr_depth)) {
       return 0;
     }
@@ -303,7 +316,7 @@ class LivenessAnalysis(
 
   // Determines based on stack info, a single variable representing the space beyond
   // the local variables in the stack that may currently have values
-  def injectLiveLocationsAtEntry(cb: CodeBlock): Option[ParamSpec] = {
+  def injectLiveLocationsAtEntry(cb: CodeBlockSpec): Option[ParamSpec] = {
     Msg.info(this, getNextLocalDepth());
     val overflow_size = getDepthBeyondLocals(cb)
     if (overflow_size > 0) {
@@ -317,7 +330,7 @@ class LivenessAnalysis(
                   ValueInner.Mem(
                     MemSpec(
                       Some(
-                        ProgramSpecifier.getStackRegister(func.getProgram())
+                        ProgramSpecifier.getStackRegisterName(func.getProgram())
                       ),
                       if (func.getStackFrame().growsNegative()) {
                         getNextLocalDepth() - overflow_size
@@ -337,30 +350,36 @@ class LivenessAnalysis(
     }
   }
 
-  def collectInjectLiveOnEntryExit(blk: CodeBlock): Option[ParamSpec] = {
-    (control_flow_graph
-      .get(blk)
-      .diSuccessors
-      .map(nd => nd.toOuter) + blk)
-      .maxByOption(blk => cdi.getDepth(blk.getFirstStartAddress()))(
+  def collectInjectLiveOnEntryExit(blk: CodeBlockSpec): Option[ParamSpec] = {
+    val addr_factory = func.getProgram.getAddressFactory
+    (blk.outgoingBlocks
+      .flatMap(nd => blks.get(nd)) :+ blk)
+      .maxByOption(blk =>
+        cdi.getDepth(
+          addr_factory.getAddress(
+            func.getEntryPoint.getAddressSpace.getSpaceID,
+            blk.address
+          )
+        )
+      )(
         if (func.getStackFrame().growsNegative()) then Ordering[Int].reverse
         else Ordering[Int]
       )
       .flatMap(nd => injectLiveLocationsAtEntry(nd))
   }
 
-  def hasStackBeyondLocalsAtEntry(blk: CodeBlock): Boolean = {
+  def hasStackBeyondLocalsAtEntry(blk: CodeBlockSpec): Boolean = {
     getDepthBeyondLocals(blk) > 0
   }
 
-  def hasStackBeyondLocalsAtExit(blk: CodeBlock): Boolean = control_flow_graph
-    .get(blk)
-    .diSuccessors
-    .exists(nd => getDepthBeyondLocals(nd.toOuter) > 0)
+  def hasStackBeyondLocalsAtExit(blk: CodeBlockSpec): Boolean =
+    blk.outgoingBlocks
+      .flatMap(nd => blks.get(nd))
+      .exists(nd => getDepthBeyondLocals(nd) > 0)
 
-  def getBlockLiveness(): Map[CodeBlock, BlockLiveness] = {
+  def getBlockLiveness(): Map[CodeBlockSpec, BlockLiveness] = {
     val analysisRes = this.analyze()
-    analysisRes.toMap.map((blk: CodeBlock, _) => {
+    analysisRes.toMap.map((blk: CodeBlockSpec, _) => {
       val live_past_stack = collectInjectLiveOnEntryExit(blk)
       val live_on_exit = collectLiveOnExit(blk, analysisRes)
       val live_on_entry = transfer_block(blk, live_on_exit)
@@ -378,14 +397,13 @@ class LivenessAnalysis(
     })
   }
 
-  def analyze(): mutable.Map[CodeBlock, Set[ParamSpec]] = {
-    val res: mutable.Map[CodeBlock, Set[ParamSpec]] = mutable.Map.from(
-      this.control_flow_graph.nodes.map(nd => (nd.toOuter, Set.empty))
+  def analyze(): mutable.Map[CodeBlockSpec, Set[ParamSpec]] = {
+    val res: mutable.Map[CodeBlockSpec, Set[ParamSpec]] = mutable.Map.from(
+      blks.map((blk_addr, blk) => (blk, Set.empty[ParamSpec]))
     )
 
-    val worklist: Stack[CodeBlock] = Stack.from(
-      this.control_flow_graph.nodes
-        .map(nd => nd.toOuter)
+    val worklist: Stack[CodeBlockSpec] = Stack.from(
+      blks.values
     )
 
     while (!worklist.isEmpty) {
@@ -400,10 +418,11 @@ class LivenessAnalysis(
       res.addOne((curr_block, live_before_block))
       if (live_before_block != curr_block_value) {
         for (
-          in_neighbor <- this.control_flow_graph.get(curr_block).diPredecessors
+          in_neighbor <- curr_block.incomingBlocks
+            .flatMap(nd => blks.get(nd))
         ) {
 
-          worklist.push(in_neighbor.toOuter)
+          worklist.push(in_neighbor)
         }
       }
     }

@@ -104,8 +104,11 @@ import specification.specification.StackFrame
 import ghidra.app.cmd.function.CallDepthChangeInfo
 import ghidra.util.task.TaskMonitor
 import scala.collection.mutable.{Map => MutableMap}
+import scala.collection.mutable.{Set => MutableSet}
 import anvill.Util.getReachableCodeBlocks
 import ghidra.program.model.address.AddressSet
+import ghidra.program.model.pcode.VarnodeTranslator
+import ghidra.program.model.pcode.SequenceNumber
 
 def pair[A, B](ma: Option[A], mb: Option[B]): Option[(A, B)] =
   ma.flatMap(a => mb.map(b => (a, b)))
@@ -283,8 +286,12 @@ object ProgramSpecifier {
     }
   }
 
-  def getStackRegister(program: Program): String = {
-    getRegisterName(program.getCompilerSpec().getStackPointer())
+  def getStackRegister(program: Program): Register = {
+    program.getCompilerSpec().getStackPointer()
+  }
+
+  def getStackRegisterName(program: Program): String = {
+    getRegisterName(getStackRegister(program))
   }
 
   def getRegisterName(reg: Register): String = {
@@ -300,7 +307,7 @@ object ProgramSpecifier {
     } else if (addr.isStackAddress()) {
       Mem(
         MemSpec(
-          Some(getStackRegister(program)),
+          Some(getStackRegisterName(program)),
           addr.getOffset(),
           vnode.getSize()
         )
@@ -397,7 +404,7 @@ object ProgramSpecifier {
       None,
       Some(
         ReturnStackPointer(
-          Some(RegSpec(getStackRegister(func.getProgram()))),
+          Some(RegSpec(getStackRegisterName(func.getProgram()))),
           Some(
             Option(func.getCallingConvention())
               .getOrElse(
@@ -518,12 +525,8 @@ object ProgramSpecifier {
   }
 
   def getCFG(func: Function): Map[Long, CodeBlockSpec] = {
-    Util
-      .getBodyCFG(func)
-      .map(blk =>
-        (blk.getFirstStartAddress().getOffset(), specifyBlock(func, blk))
-      )
-      .toMap
+    val body_cfg = Util.getBodyCFG(func)
+    BasicBlockSplit.splitBlocks(func, body_cfg)
   }
 
   def getInScopeVars(
@@ -555,7 +558,7 @@ object ProgramSpecifier {
     }
     val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
     val max_depth = maxDepth(func, cdi)
-    val bb_context_prod = BasicBlockContextProducer(func, cdi, max_depth)
+    val bb_context_prod = BasicBlockContextProducer(func, cdi, max_depth, cfg)
     val block_ctxts = cfg.map((addr, cb) => {
       val gaddr = func.getProgram
         .getAddressFactory()
@@ -573,6 +576,7 @@ object ProgramSpecifier {
         )
       )
     })
+
     FuncSpec(
       getThunkRedirection(func.getProgram(), func.getEntryPoint())
         .getOffset(),
