@@ -26,6 +26,8 @@ import docking.action.ToolBarData;
 import generic.theme.GColor;
 import ghidra.graph.viewer.vertex.DockingVisualVertex;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressFactory;
+import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.block.CodeBlock;
 import ghidra.program.model.listing.Program;
@@ -52,11 +54,15 @@ public class AnvillVertex extends DockingVisualVertex implements BasicBlockVerte
   }
 
   public AnvillVertex(AnvillGraphProvider provider, CodeBlock block, AnvillPatchInfo.Patch patch) {
-    super(block.getFirstStartAddress().toString());
+    super(patch.getAddress());
     this.provider = provider;
-    address = block.getFirstStartAddress();
-    addressSetView = block;
     program = block.getModel().getProgram();
+    AddressFactory addressFactory = program.getAddressFactory();
+    address = addressFactory.getAddress(patch.getAddress());
+    Address maxAddress =
+        addressFactory.getAddress(
+            address.getAddressSpace().getSpaceID(), address.getOffset() + patch.getSize());
+    addressSetView = new AddressSet(address, maxAddress);
     this.patch = patch;
 
     init();

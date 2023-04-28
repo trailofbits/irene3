@@ -47,6 +47,7 @@ import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.block.*;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.symbol.FlowType;
 import ghidra.program.util.ProgramLocation;
 import ghidra.util.Msg;
 import ghidra.util.SystemUtilities;
@@ -302,40 +303,65 @@ public class AnvillGraphProvider
     }
 
     AddressSetView addresses = function.getBody();
+    TaskMonitor monitor = new DummyCancellableTaskMonitor();
+    CodeBlockModel blockModel = new BasicBlockModel(currentProgram);
 
     // Prepare our patch info mappings
-    Map<Address, Patch> patches = new HashMap<>();
+    Map<CodeBlock, List<Patch>> blkToPatches = new HashMap<>();
     for (Patch patch : anvillPatchInfo.getPatches()) {
       Address patchAddr = currentProgram.getAddressFactory().getAddress(patch.getAddress());
-      patches.put(patchAddr, patch);
+      if (!addresses.contains((patchAddr))) {
+        // If the patch file contains blocks from another function, don't graph these.
+        continue;
+      }
+
+      CodeBlock[] blks = blockModel.getCodeBlocksContaining(patchAddr, monitor);
+      if (blks.length == 0) {
+        Msg.info(this, "No block found for patch addr: " + patchAddr.toString());
+        graph = null;
+        return;
+      } else if (blks.length > 1) {
+        Msg.info(this, "Multiple blocks found for patch addr: " + patchAddr.toString());
+        graph = null;
+        return;
+      }
+
+      CodeBlock blk = blks[0];
+      if (!blkToPatches.containsKey(blk)) {
+        blkToPatches.put(blk, new ArrayList<>());
+      }
+      List<Patch> blkPatches = blkToPatches.get(blk);
+      blkPatches.add(patch);
     }
     graph = new BasicBlockGraph(function);
 
-    TaskMonitor monitor = new DummyCancellableTaskMonitor();
-
     // TODO: See FunctionGraphFactory for more complete details
     // **** Vertices
-    BidiMap<CodeBlock, BasicBlockVertex> vertices = new DualHashBidiMap<>();
-    CodeBlockModel blockModel = new BasicBlockModel(currentProgram);
+    BidiMap<CodeBlock, List<BasicBlockVertex>> vertices = new DualHashBidiMap<>();
 
     CodeBlockIterator iterator = blockModel.getCodeBlocksContaining(addresses, monitor);
     monitor.initialize(addresses.getNumAddresses());
 
     while (iterator.hasNext()) {
       CodeBlock codeBlock = iterator.next();
-      Address startingAddr = codeBlock.getFirstStartAddress();
-      Patch patch = patches.get(startingAddr);
-      if (patch == null) {
+      List<Patch> blkPatches = blkToPatches.get(codeBlock);
+      if (blkToPatches == null || blkPatches.isEmpty()) {
         Msg.info(
             this,
             "This function contains a basic block address that has no corresponding patch: "
-                + startingAddr);
+                + codeBlock.getMinAddress());
         graph = null;
         return;
       }
 
-      BasicBlockVertex vertex = new AnvillVertex(this, codeBlock, patch);
-      vertices.put(codeBlock, vertex);
+      List<BasicBlockVertex> blockVertices = new ArrayList<>();
+      for (Patch patch : blkPatches) {
+        blockVertices.add(new AnvillVertex(this, codeBlock, patch));
+      }
+      // Make sure that blocks that correspond to the same Ghidra code block are in chronological
+      // order.
+      blockVertices.sort((lhs, rhs) -> lhs.getVertexAddress().compareTo(rhs.getVertexAddress()));
+      vertices.put(codeBlock, blockVertices);
 
       long blockAddressCount = codeBlock.getNumAddresses();
       long currentProgress = monitor.getProgress();
@@ -344,23 +370,42 @@ public class AnvillGraphProvider
 
     // **** Edges
     Collection<BasicBlockEdge> edges = new ArrayList<>();
-    for (BasicBlockVertex startVertex : vertices.values()) {
-      CodeBlock codeBlock = vertices.getKey(startVertex);
+    for (List<BasicBlockVertex> startVertices : vertices.values()) {
+      if (startVertices.size() > 1) {
+        // If we have a prologue and/or epilogue, it's possible to have multiple vertices for the
+        // same Ghidra code block.
+        // These will all map to the same Ghidra code block, however we know that the flow type
+        // should be "fall-through".
+        for (int i = 0; i < startVertices.size() - 1; ++i) {
+          BasicBlockVertex startVertex = startVertices.get(i);
+          BasicBlockVertex destinationVertex = startVertices.get(i + 1);
+          edges.add(new AnvillEdge(startVertex, destinationVertex, FlowType.FALL_THROUGH));
+        }
+      }
+      // Flows should all start from the last vertex for a given code block.
+      BasicBlockVertex startVertex = startVertices.get(startVertices.size() - 1);
+      CodeBlock codeBlock = vertices.getKey(startVertices);
       CodeBlockReferenceIterator destinations = codeBlock.getDestinations(monitor);
       while (destinations.hasNext()) {
         CodeBlockReference reference = destinations.next();
         CodeBlock destinationBlock = reference.getDestinationBlock();
-        BasicBlockVertex destinationVertex = vertices.get(destinationBlock);
-        if (destinationVertex == null) {
+        List<BasicBlockVertex> destinationVertices = vertices.get(destinationBlock);
+        if (destinationVertices == null) {
           continue; // no vertex means the code block is not in our function
         }
 
+        // If a destination has more than one vertex, we should choose the first one. For example,
+        // if a block has a flow
+        // to a terminating block, the edge should point at the block just before the epilogue block
+        // rather than the
+        // epilogue block itself.
+        BasicBlockVertex destinationVertex = destinationVertices.get(0);
         edges.add(new AnvillEdge(startVertex, destinationVertex, reference.getFlowType()));
       }
     }
 
     // **** Graph
-    vertices.values().forEach(v -> graph.addVertex(v));
+    vertices.values().forEach(vtxs -> vtxs.forEach(v -> graph.addVertex(v)));
     edges.forEach(e -> graph.addEdge(e));
 
     graph.setOptions(plugin.getGraphOptions());
