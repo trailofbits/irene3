@@ -241,7 +241,7 @@ class LivenessAnalysis(
       blk: CodeBlockSpec,
       live_after: Set[ParamSpec]
   ): Set[ParamSpec] = {
-    val blk_end_addr = blk.address + blk.size
+    val blk_end_addr = blk.address + blk.size - 1
     val addr_factory = func.getProgram.getAddressFactory
     val space_id = func.getEntryPoint.getAddressSpace.getSpaceID
     val addr_range = new AddressSet(

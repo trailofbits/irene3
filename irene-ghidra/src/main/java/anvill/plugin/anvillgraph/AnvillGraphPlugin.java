@@ -22,6 +22,7 @@ import anvill.plugin.anvillgraph.layout.AnvillGraphLayoutProvider;
 import anvill.plugin.anvillgraph.layout.jungrapht.JgtLayoutFactory;
 import anvill.plugin.anvillgraph.layout.jungrapht.JgtNamedLayoutProvider;
 import docking.tool.ToolConstants;
+import ghidra.app.decompiler.DecompilerHighlightService;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
 import ghidra.app.services.*;
@@ -50,6 +51,7 @@ import resources.ResourceManager;
       GoToService.class,
       BlockModelService.class,
       CodeViewerService.class,
+      DecompilerHighlightService.class,
       ProgramManager.class
     })
 public class AnvillGraphPlugin extends ProgramPlugin {

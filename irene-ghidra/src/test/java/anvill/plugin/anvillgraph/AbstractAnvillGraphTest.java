@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNotNull;
 
 import anvill.plugin.anvillgraph.graph.BasicBlockGraph;
 import ghidra.app.plugin.core.codebrowser.CodeBrowserPlugin;
+import ghidra.app.plugin.core.decompile.DecompilePlugin;
 import ghidra.app.services.ProgramManager;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.PluginException;
@@ -201,6 +202,7 @@ public abstract class AbstractAnvillGraphTest extends AbstractGhidraHeadedIntegr
 
   protected void installPlugins() throws PluginException {
     tool.addPlugin(CodeBrowserPlugin.class.getName());
+    tool.addPlugin(DecompilePlugin.class.getName());
     tool.addPlugin(AnvillGraphPlugin.class.getName());
 
     graphPlugin = env.getPlugin(AnvillGraphPlugin.class);
