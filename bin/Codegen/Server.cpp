@@ -6,7 +6,9 @@
  * the LICENSE file found in the root directory of this source tree.
  */
 
+#include "anvill/data_specifications/specification.pb.h"
 #include "bin/Codegen/service.grpc.pb.h"
+#include "bin/Codegen/service.pb.h"
 #include "codegen_common.h"
 
 #include <gflags/gflags.h>
@@ -16,12 +18,14 @@
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 #include <grpcpp/server_context.h>
+#include <grpcpp/support/sync_stream.h>
 #include <iostream>
 #include <llvm/Support/JSON.h>
 #include <llvm/Support/raw_ostream.h>
 #include <sstream>
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 // Similar options as the CLI-only program
 DEFINE_int32(port, 50080, "server port <65536");
@@ -52,11 +56,23 @@ class IreneImpl final : public Irene::Service {
         , add_edges(add_edges) {}
 
     Status ProcessSpecification(
-        ServerContext *context, const Specification *request, Codegen *response) override {
+        ServerContext *context,
+        ::grpc::ServerReader< ::irene::server::SpecChunk > *reader,
+        Codegen *response) override {
         LOG(INFO) << "Processing specification.";
         std::unordered_set< uint64_t > target_funcs;
+        irene::server::SpecChunk chunk;
+        std::vector< uint8_t > bytes;
+        while (reader->Read(&chunk)) {
+            for (auto byte : chunk.chunk()) {
+                bytes.push_back(byte);
+            }
+        }
+
+        specification::Specification spec;
+        spec.ParseFromArray(bytes.data(), bytes.size());
         auto maybe_result = ::ProcessSpecification(
-            request->SerializeAsString(), target_funcs, propagate_types, args_as_locals,
+            spec.SerializeAsString(), target_funcs, propagate_types, args_as_locals,
             unsafe_stack_locations, add_edges);
         if (!maybe_result.Succeeded()) {
             LOG(ERROR) << "Error ocurred: " << maybe_result.TakeError();

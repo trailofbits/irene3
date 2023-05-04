@@ -11,6 +11,7 @@
 #include "bin/Codegen/service.pb.h"
 #include "codegen_common.h"
 
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <gflags/gflags.h>
@@ -47,7 +48,17 @@ class IreneClient {
 
     bool ProcessSpecification(const Specification& specification, Codegen* codegen) {
         ClientContext context;
-        Status status = stub_->ProcessSpecification(&context, specification, codegen);
+        auto writer  = stub_->ProcessSpecification(&context, codegen);
+        auto out_str = specification.SerializeAsString();
+        size_t ind   = 0;
+        while (ind < out_str.length()) {
+            irene::server::SpecChunk chunk;
+            auto cbytes = out_str.substr(ind, ind + CHUNK_SIZE);
+            chunk.set_allocated_chunk(&cbytes);
+            writer->Write(chunk);
+        }
+
+        auto status = writer->Finish();
         if (!status.ok()) {
             std::cout << "ProcessSpecification rpc failed with message:\n\""
                       << status.error_message() << "\"\nand details:\n\"" << status.error_details()
@@ -58,6 +69,7 @@ class IreneClient {
     }
 
   private:
+    static const size_t CHUNK_SIZE = 2000000;
     std::unique_ptr< Irene::Stub > stub_;
 };
 

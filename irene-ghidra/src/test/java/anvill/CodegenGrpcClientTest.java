@@ -13,6 +13,7 @@ import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.stub.StreamObserver;
 import io.grpc.testing.GrpcCleanupRule;
 import irene.server.IreneGrpc;
+import irene.server.Service;
 import irene.server.Service.Codegen;
 import java.io.IOException;
 import java.util.Optional;
@@ -58,11 +59,22 @@ public class CodegenGrpcClientTest extends AbstractGhidraHeadlessIntegrationTest
     IreneGrpc.IreneImplBase serviceImpl =
         new IreneGrpc.IreneImplBase() {
           @Override
-          public void processSpecification(
-              SpecificationOuterClass.Specification request,
-              StreamObserver<Codegen> responseObserver) {
-            responseObserver.onNext(Codegen.getDefaultInstance());
-            responseObserver.onCompleted();
+          public io.grpc.stub.StreamObserver<irene.server.Service.SpecChunk> processSpecification(
+              io.grpc.stub.StreamObserver<irene.server.Service.Codegen> responseObserver) {
+
+            return new StreamObserver<Service.SpecChunk>() {
+              @Override
+              public void onNext(Service.SpecChunk specChunk) {}
+
+              @Override
+              public void onError(Throwable throwable) {}
+
+              @Override
+              public void onCompleted() {
+                responseObserver.onNext(Codegen.getDefaultInstance());
+                responseObserver.onCompleted();
+              }
+            };
           }
         };
 
