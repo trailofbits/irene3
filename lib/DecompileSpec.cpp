@@ -347,6 +347,10 @@ namespace irene3
             auto addr_type = spec.Arch().get()->AddressType();
             for (auto inst : insts) {
                 if (auto call = llvm::dyn_cast< llvm::CallInst >(inst)) {
+                    if (call->getCalledFunction() == nullptr) {
+                        continue;
+                    }
+
                     auto block_addr = anvill::GetBasicBlockAddr(call->getCalledFunction());
                     if (!block_addr.has_value()) {
                         continue;

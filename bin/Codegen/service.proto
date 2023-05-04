@@ -9,8 +9,12 @@ message Codegen {
   string json = 1;
 }
 
+message SpecChunk {
+  bytes chunk = 1;
+} 
+
 service Irene {
-  rpc ProcessSpecification(specification.Specification)
+  rpc ProcessSpecification(stream SpecChunk)
       returns (Codegen)
   {}
 }
