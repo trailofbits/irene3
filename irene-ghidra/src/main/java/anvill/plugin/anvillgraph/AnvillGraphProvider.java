@@ -20,6 +20,7 @@ package anvill.plugin.anvillgraph;
 import anvill.CodegenGrpcClient;
 import anvill.ProgramSpecifier;
 import anvill.plugin.anvillgraph.AnvillPatchInfo.Patch;
+import anvill.plugin.anvillgraph.actions.AddToPatchSliceAction;
 import anvill.plugin.anvillgraph.graph.*;
 import anvill.plugin.anvillgraph.graph.jung.renderer.AnvillEdgePaintTransformer;
 import anvill.plugin.anvillgraph.layout.AnvillGraphLayoutProvider;
@@ -37,6 +38,7 @@ import docking.widgets.filechooser.GhidraFileChooserMode;
 import edu.uci.ics.jung.visualization.RenderContext;
 import ghidra.app.nav.DecoratorPanel;
 import ghidra.app.services.GoToService;
+import ghidra.app.util.PluginConstants;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.preferences.Preferences;
 import ghidra.graph.VisualGraphComponentProvider;
@@ -61,6 +63,7 @@ import java.awt.Color;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import javax.swing.JComponent;
 import org.apache.commons.collections4.BidiMap;
@@ -97,11 +100,14 @@ public class AnvillGraphProvider
   private ManagedChannel grpcChannel;
   private CodegenGrpcClient grpcClient;
 
+  private final Map<Function, Set<Address>> functionSlices;
+
   public AnvillGraphProvider(AnvillGraphPlugin anvillGraphPlugin, boolean isConnected) {
     super(anvillGraphPlugin.getTool(), AnvillGraphPlugin.GRAPH_NAME, anvillGraphPlugin.getName());
 
     this.tool = anvillGraphPlugin.getTool();
     this.plugin = anvillGraphPlugin;
+    this.functionSlices = new ConcurrentHashMap<>();
 
     // View is handled by FGController in upstream
     view = new VisualGraphView<>();
@@ -516,7 +522,8 @@ public class AnvillGraphProvider
             var id = currentProgram.startTransaction("Generating anvill patch");
             Specification spec;
             try {
-              spec = ProgramSpecifier.specifySingleFunction(func);
+              var funcSplitAddrs = functionSlices.get(func);
+              spec = ProgramSpecifier.specifySingleFunctionWithSplits(func, funcSplitAddrs);
             } finally {
               currentProgram.endTransaction(id, true);
             }
@@ -553,6 +560,16 @@ public class AnvillGraphProvider
     decompileAction.setEnabled(true);
     decompileAction.markHelpUnnecessary();
     addLocalAction(decompileAction);
+
+    var sliceActionDecomp = new AddToPatchSliceAction(this.functionSlices);
+    var sliceActionCode = new AddToPatchSliceAction(this.functionSlices);
+    this.tool.addLocalAction(this.tool.getComponentProvider("Decompiler"), sliceActionDecomp);
+    this.tool.addLocalAction(
+        this.tool.getComponentProvider(PluginConstants.CODE_BROWSER), sliceActionCode);
+
+    // TODO(alex): Only enable the action when there's a selection.
+    sliceActionDecomp.setEnabled(true);
+    sliceActionCode.setEnabled(true);
 
     addLayoutAction();
   }

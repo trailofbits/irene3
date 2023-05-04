@@ -18,116 +18,111 @@ import ghidra.util.Msg
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
 import specification.specification.{CodeBlock => CodeBlockSpec}
+import math.Ordering.Implicits.infixOrderingOps
 
 object BasicBlockSplit {
 
+  def createSubblock(
+      bounds: (Address, Address),
+      preds: Map[Address, Seq[Long]],
+      succs: Map[Address, Seq[Long]],
+      spec: CodeBlockSpec,
+      blk: CodeBlock
+  ): CodeBlockSpec = {
+    CodeBlockSpec(
+      bounds._1.getOffset,
+      "seg_" + bounds._1.toString() + blk.getName,
+      preds(bounds._1),
+      succs(bounds._1),
+      (bounds._2.getOffset - bounds._1.getOffset).toInt,
+      spec.contextAssignments
+    )
+  }
+
+  def splitBlock(
+      point_in: Set[Address],
+      spec: CodeBlockSpec,
+      blk: CodeBlock
+  ): List[(Long, CodeBlockSpec)] = {
+    val max_addr = blk.getMaxAddress.add(1)
+    val split_points_with_ends =
+      ((point_in + blk.getMinAddress) + max_addr).toSeq.sorted
+    val preds: Seq[(Address, Seq[Long])] =
+      Seq((blk.getMinAddress, spec.incomingBlocks)) ++ split_points_with_ends
+        .sliding(2, 1)
+        .map(window => (window(1), Seq(window.head.getOffset)))
+    val succs: Seq[(Address, Seq[Long])] = split_points_with_ends
+      .sliding(2, 1)
+      .map(window =>
+        (
+          window.head,
+          if window(1) == max_addr then spec.outgoingBlocks
+          else Seq(window(1).getOffset)
+        )
+      )
+      .toSeq
+
+    split_points_with_ends
+      .sliding(2, 1)
+      .map(window => {
+        (
+          window.head.getOffset,
+          createSubblock(
+            (window.head, window(1)),
+            preds.toMap,
+            succs.toMap,
+            spec,
+            blk
+          )
+        )
+      })
+      .toList
+  }
+
   def splitBlocks(
       func: Function,
-      blks: Iterator[CodeBlock]
+      blks: Iterator[CodeBlock],
+      func_split_addrs: Set[Address]
   ): Map[Long, CodeBlockSpec] = {
-    val blk_map: MutableMap[Long, CodeBlockSpec] = MutableMap.empty
-
-    // If we split off a prologue block, any subsequent blocks will need to have their "incoming"
-    // list point to the new start address. Let's keep a map of addresses that need to be remapped.
-    val blk_remap: MutableMap[Long, Long] = MutableMap.empty
-
-    for (blk <- blks) {
-      var blk_spec = specifyBlock(func, blk)
-      val decomp_c = getGhidraDecompilation(func)
-      // val stack_refs = computeStackReferences(blk)
-
-      // Check whether the block has an prologue.
-      if (blk.getFirstStartAddress == func.getEntryPoint) {
-        val decomp_addrs = computeDecompilationMappings(decomp_c, blk)
-        val maybe_prologue_exit = getPrologueExitAddr(blk, decomp_addrs)
-
-        if (!maybe_prologue_exit.isEmpty) {
-          val prologue_exit = maybe_prologue_exit.get
-          Msg.info(this, s"Found a prologue exit for $func at $prologue_exit")
-
-          // If so, emplace the prologue block.
-          blk_map += (blk.getFirstStartAddress.getOffset ->
-            CodeBlockSpec(
-              blk_spec.address,
-              "prologue_" + blk.getName,
-              blk_spec.incomingBlocks,
-              Array(prologue_exit.getOffset),
-              (prologue_exit.getOffset - blk.getFirstStartAddress.getOffset).toInt,
-              blk_spec.contextAssignments
-            ),
-          )
-
-          // And create a separate block for the remainder of the instructions.
-          blk_spec = CodeBlockSpec(
-            prologue_exit.getOffset,
-            blk_spec.name,
-            Array(blk.getFirstStartAddress.getOffset),
-            blk_spec.outgoingBlocks,
-            (blk.getMaxAddress.getOffset - prologue_exit.getOffset).toInt + 1,
-            blk_spec.contextAssignments
-          )
-
-          // Keep track of the mapping between the original start address and the new one now that
-          // a prologue has been inserted before it. We'll need to know this to fix the "incoming"
-          // list for any subsequent blocks.
-          blk_remap += (blk.getFirstStartAddress.getOffset -> prologue_exit.getOffset)
-        }
-      }
-
-      // Check whether the block has an epilogue.
-      if (blk_spec.outgoingBlocks.isEmpty) {
-        val decomp_addrs = computeDecompilationMappings(decomp_c, blk)
-        val maybe_epilogue_entry = getEpilogueEntryAddr(blk, decomp_addrs)
-
-        if (!maybe_epilogue_entry.isEmpty) {
-          val epilogue_entry = maybe_epilogue_entry.get
-          Msg.info(
-            this,
-            s"Found an epilogue entry for $func at $epilogue_entry"
-          )
-
-          // If so, emplace the epilogue block.
-          blk_map += (epilogue_entry.getOffset ->
-            CodeBlockSpec(
-              epilogue_entry.getOffset,
-              "epilogue_" + blk.getName,
-              Array(blk.getFirstStartAddress.getOffset),
-              blk_spec.outgoingBlocks,
-              (blk.getMaxAddress.getOffset - epilogue_entry.getOffset).toInt + 1,
-              blk_spec.contextAssignments
-            ))
-
-          // And create a separate block for the remainder of the instructions.
-          blk_spec = CodeBlockSpec(
-            blk_spec.address,
-            blk_spec.name,
-            blk_spec.incomingBlocks,
-            Array(epilogue_entry.getOffset),
-            (epilogue_entry.getOffset - blk_spec.address).toInt,
-            blk_spec.contextAssignments
-          )
-        }
-      }
-
-      // Remap any incoming blocks.
-      val remap_incoming_blks =
-        blk_spec.incomingBlocks
-          .map(i => blk_remap.getOrElse(i, i))
-          .toSeq
-      if (remap_incoming_blks != blk_spec.incomingBlocks) {
-        blk_spec = CodeBlockSpec(
-          blk_spec.address,
-          blk_spec.name,
-          remap_incoming_blks,
-          blk_spec.outgoingBlocks,
-          blk_spec.size,
-          blk_spec.contextAssignments
+    blks
+      .flatMap(blk => {
+        val relevant_splits = func_split_addrs.filter(addr =>
+          addr >= blk.getFirstStartAddress && addr <= blk.getMaxAddress
         )
-      }
+        val blk_spec = specifyBlock(func, blk)
+        splitBlock(relevant_splits, blk_spec, blk)
+      })
+      .toMap
+  }
 
-      blk_map += (blk_spec.address -> blk_spec)
-    }
-    blk_map.toMap
+  def splitBlocksWithPrologueEpiloguePoints(
+      func: Function,
+      blks: Iterator[CodeBlock],
+      func_split_addrs: Set[Address]
+  ): Map[Long, CodeBlockSpec] = {
+    val blkseq = blks.toSeq
+    val decomp_c = getGhidraDecompilation(func)
+    // val stack_refs = computeStackReferences(blk)
+
+    val prologue_exits = blkseq
+      .filter(_.getFirstStartAddress == func.getEntryPoint)
+      .flatMap(blk => {
+        getPrologueExitAddr(blk, computeDecompilationMappings(decomp_c, blk))
+      })
+    Msg.debug(this, s"Found prologue exits $func: $prologue_exits")
+
+    val epilogue_entries = blkseq
+      .filter(blk => specifyBlock(func, blk).outgoingBlocks.isEmpty)
+      .flatMap(blk => {
+        getEpilogueEntryAddr(blk, computeDecompilationMappings(decomp_c, blk))
+      })
+    Msg.debug(this, s"Found epilogue entries for $func: $epilogue_entries")
+
+    splitBlocks(
+      func,
+      blkseq.iterator,
+      func_split_addrs ++ prologue_exits ++ epilogue_entries
+    )
   }
 
   def getGhidraDecompilation(func: Function): ClangTokenGroup = {
@@ -253,6 +248,9 @@ object BasicBlockSplit {
         if (!clang_stmt.toString.contains("return")) {
           decomp_addrs += clang_node.getMaxAddress
         }
+      }
+      case clang_op: ClangOpToken => {
+        decomp_addrs += clang_node.getMaxAddress
       }
       case clang_group: ClangTokenGroup => {
         // If it's not an exact match, we should still check children since this node could contain

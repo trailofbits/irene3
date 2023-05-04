@@ -524,9 +524,16 @@ object ProgramSpecifier {
     )
   }
 
-  def getCFG(func: Function): Map[Long, CodeBlockSpec] = {
+  def getCFG(
+      func: Function,
+      func_split_addrs: Set[Address] = Set.empty
+  ): Map[Long, CodeBlockSpec] = {
     val body_cfg = Util.getBodyCFG(func)
-    BasicBlockSplit.splitBlocks(func, body_cfg)
+    BasicBlockSplit.splitBlocksWithPrologueEpiloguePoints(
+      func,
+      body_cfg,
+      func_split_addrs
+    )
   }
 
   def getInScopeVars(
@@ -544,14 +551,15 @@ object ProgramSpecifier {
       func: Function,
       defaultRetAddr: Option[ValueSpec],
       aliases: MutableMap[Long, TypeSpec],
-      linkage: FunctionLinkage
+      linkage: FunctionLinkage,
+      func_split_addrs: Set[Address]
   ): FuncSpec = {
 
     val params = func.getParameters().toSeq.map(x => specifyParam(x, aliases))
     val retValue =
       Option(func.getReturn()).map(x => specifyVariable(x, aliases))
     var cfg = if func.isExternal() then { Map.empty }
-    else { getCFG(func) }
+    else { getCFG(func, func_split_addrs) }
 
     if (!(cfg contains func.getEntryPoint().getOffset())) {
       cfg = Map.empty
@@ -872,7 +880,8 @@ object ProgramSpecifier {
       func: Function,
       defaultRetAddr: Option[ValueSpec],
       aliases: MutableMap[Long, TypeSpec],
-      as_decl: Boolean
+      as_decl: Boolean,
+      func_split_addrs: Set[Address]
   ): FuncSpec = {
     val linkage = (as_decl, func.isExternal()) match {
       case (_, true) => FunctionLinkage.FUNCTION_LINKAGE_EXTERNAL
@@ -881,7 +890,8 @@ object ProgramSpecifier {
       case _ => FunctionLinkage.FUNCTION_LINKAGE_NORMAL_UNSPECIFIED
     }
 
-    var spec = specifyFunction(func, defaultRetAddr, aliases, linkage)
+    var spec =
+      specifyFunction(func, defaultRetAddr, aliases, linkage, func_split_addrs)
 
     spec
   }
@@ -1042,7 +1052,8 @@ object ProgramSpecifier {
   def specifyProgram(
       prog: Program,
       function_def_list: Seq[Function],
-      function_decl_list: Seq[Function]
+      function_decl_list: Seq[Function],
+      function_split_addrs: Set[Address] = Set.empty
   ): Specification = {
     val aliases = MutableMap[Long, TypeSpec]()
     val arch = getProgramArch(prog)
@@ -1057,9 +1068,21 @@ object ProgramSpecifier {
       applyThunkRedirections(prog, function_decl_list) -- func_defs_redirected
 
     val func_specs = (func_decls_redirected.toSeq.map(
-      specifyFunctionOrDecl(_, defaultRetAddr, aliases, true)
+      specifyFunctionOrDecl(
+        _,
+        defaultRetAddr,
+        aliases,
+        true,
+        function_split_addrs
+      )
     ) ++ func_defs_redirected.toSeq.map(
-      specifyFunctionOrDecl(_, defaultRetAddr, aliases, false)
+      specifyFunctionOrDecl(
+        _,
+        defaultRetAddr,
+        aliases,
+        false,
+        function_split_addrs
+      )
     )).toList
 
     val symbol_specs = {
@@ -1169,9 +1192,22 @@ object ProgramSpecifier {
   }
 
   def specifySingleFunction(func: Function) = {
+    specifySingleFunctionWithSplits(func, null)
+  }
+
+  def specifySingleFunctionWithSplits(
+      func: Function,
+      func_split_addrs: ju.Set[Address]
+  ) = {
     makeFunctionsPermissive(Seq(func))
     val decls = calledFunctions(func)
-    specifyProgram(func.getProgram(), List(func), decls.toSeq)
+    specifyProgram(
+      func.getProgram(),
+      List(func),
+      decls.toSeq,
+      if (func_split_addrs == null) Set.empty
+      else func_split_addrs.asScala.toSet
+    )
   }
 
   def specifyFunctions(

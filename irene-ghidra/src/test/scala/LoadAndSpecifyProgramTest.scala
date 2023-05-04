@@ -1,12 +1,16 @@
 import ghidra.test.AbstractGhidraHeadlessIntegrationTest
+import ghidra.test.AbstractGhidraHeadedIntegrationTest
 import ghidra.test.TestEnv
+
+import collection.JavaConverters.*
 import scala.io.Source
 import java.io.File
 import java.util.concurrent.TimeUnit
-import anvill.ProgramSpecifier
+import anvill.{BasicBlockSplit, ProgramSpecifier}
+import anvill.plugin.anvillgraph.actions.AddToPatchSliceAction
+import docking.ComponentProvider
 import specification.specification.Arch.ARCH_AMD64
 import specification.specification.OS.OS_MACOS
-
 import org.junit.Before
 import org.junit.Test
 import org.junit.After
@@ -15,14 +19,22 @@ import ghidra.base.project.GhidraProject
 import ghidra.test.AbstractProgramBasedTest
 import ghidra.util.Msg
 import ghidra.util.ErrorLogger
-import ghidra.util.task.TimeoutTaskMonitor
+import ghidra.util.task.{TaskMonitor, TimeoutTaskMonitor}
 import ghidra.framework.ToolUtils
 import ghidra.program.model.listing.Program
 import generic.test.AbstractGenericTest
+import ghidra.app.context.ProgramLocationActionContext
+import ghidra.app.util.PluginConstants
+import ghidra.framework.plugintool.PluginTool
+import ghidra.program.model.address.{Address, AddressSetView}
+import ghidra.program.model.block.BasicBlockModel
+import ghidra.program.util.{ProgramLocation, ProgramSelection}
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
+import specification.specification.CodeBlock
+import ghidra.program.model.address.AddressSet
 
 class StderrLogger extends ErrorLogger {
 
@@ -62,13 +74,14 @@ class StderrLogger extends ErrorLogger {
 
 }
 
-class LoadAndSpecifyProgramTest extends AbstractGhidraHeadlessIntegrationTest { // extends AbstractProgramBasedTest {
+class LoadAndSpecifyProgramTest extends AbstractGhidraHeadedIntegrationTest { // extends AbstractProgramBasedTest {
   var env: TestEnv = _
   var collatz: Program = _
   var stackArgsX86: Program = _
   var jmpX86: Program = _
   var callX86: Program = _
   var globalsX86: Program = _
+  var satck_args_tool: PluginTool = _
 
   def loadProgram(proj: GhidraProject, resourcePath: String): Program = {
     val file = File(
@@ -103,10 +116,85 @@ class LoadAndSpecifyProgramTest extends AbstractGhidraHeadlessIntegrationTest { 
     jmpX86 = loadProgram(proj, "binaries/jmp-x86.o")
     callX86 = loadProgram(proj, "binaries/call-x86.o")
     globalsX86 = loadProgram(proj, "binaries/globals-x86.o")
+    satck_args_tool = env.launchDefaultTool(stackArgsX86)
   }
 
   @After def destroyenv(): Unit = {
     env.dispose()
+  }
+
+  object MockActionContext {
+    def apply(
+        func: ghidra.program.model.listing.Function,
+        addrs: AddressSetView
+    ): MockActionContext = {
+      val prov =
+        satck_args_tool.getComponentProvider(PluginConstants.CODE_BROWSER)
+      val prog = func.getProgram
+
+      new MockActionContext(
+        prov,
+        prog,
+        ProgramLocation(prog, addrs.getMinAddress),
+        ProgramSelection(addrs),
+        ProgramSelection(addrs)
+      )
+    }
+  }
+  class MockActionContext(
+      prov: ComponentProvider,
+      prog: Program,
+      loc: ProgramLocation,
+      programSelection: ProgramSelection,
+      highlight: ProgramSelection
+  ) extends ProgramLocationActionContext(
+        prov,
+        prog,
+        loc,
+        programSelection,
+        highlight
+      ) {}
+
+  def runBlockSplitWithSelections(
+      func: ghidra.program.model.listing.Function,
+      selects: Seq[AddressSetView]
+  ): Map[Long, CodeBlock] = {
+    val mp: java.util.Map[ghidra.program.model.listing.Function, java.util.Set[
+      Address
+    ]] = java.util.HashMap()
+    val act = AddToPatchSliceAction(mp)
+
+    selects.foreach(addr => act.actionPerformed(MockActionContext(func, addr)))
+
+    val model = BasicBlockModel(func.getProgram)
+    val fpoints = mp.getOrDefault(func, java.util.HashSet())
+    BasicBlockSplit.splitBlocks(
+      func,
+      model
+        .getCodeBlocksContaining(func.getBody, TaskMonitor.DUMMY)
+        .iterator()
+        .asScala,
+      fpoints.asScala.toSet
+    )
+  }
+
+  @Test def blockSplitStackArgs(): Unit = {
+    val addr_fac = stackArgsX86.getAddressFactory
+    val func = stackArgsX86.getFunctionManager.getFunctionAt(
+      addr_fac.getAddress("00010000")
+    )
+    val sel1 =
+      AddressSet(addr_fac.getAddress("0010003"), addr_fac.getAddress("0010008"))
+    val sel2 =
+      AddressSet(addr_fac.getAddress("001000b"), addr_fac.getAddress("001000d"))
+    val bmap = runBlockSplitWithSelections(func, Seq(sel1, sel2))
+    assertEquals(5, bmap.size)
+
+    assertEquals(6, bmap(0x10003).size)
+    assertEquals(3, bmap(0x10000).size)
+    assertEquals(2, bmap(0x10009).size)
+    assertEquals(3, bmap(0x1000b).size)
+    assertEquals(1, bmap(0x1000e).size)
   }
 
   @Test def collatzX86Tests(): Unit = {
