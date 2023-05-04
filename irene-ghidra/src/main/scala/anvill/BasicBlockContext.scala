@@ -219,9 +219,15 @@ class BasicBlockContextProducer(
           )
 
         })
-        .toSeq
-        ++
-          global_reg_overrides,
+        .toSeq ++ global_reg_overrides,
+      stack_depths_exit
+        .map((reg, dpth) => {
+          ValueMapSpec(
+            Some(registerToVariable(reg)),
+            Some(ValueDomain(ValueDomain.Inner.StackDisp(dpth)))
+          )
+        })
+        .toSeq ++ global_reg_overrides,
       // TODO(Ian): filter by curr depth
       filterStackLocationsByStackDepth(
         max_depth,

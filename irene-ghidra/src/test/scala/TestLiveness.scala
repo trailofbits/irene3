@@ -160,7 +160,7 @@ class TestLiveness extends BaseProgramLoadTest {
       prog.getAddressFactory().getAddress("00401b14")
     )
 
-    val rsp_mapping = stack_vals.symvals.toSeq
+    val rsp_mapping = stack_vals.symvalsAtEntry.toSeq
       .find(vm => {
         val vals = vm.targetValue.get.values
         vals.length == 1 && vals(0).innerValue.isReg && vals(

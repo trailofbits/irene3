@@ -167,7 +167,7 @@ namespace
 
     std::optional< std::int64_t > GetDepthForBlockEntry(
         const remill::Register *stack_reg, const anvill::BasicBlockContext &bbcont) {
-        for (const auto &c : bbcont.GetStackOffsets().affine_equalities) {
+        for (const auto &c : bbcont.GetStackOffsetsAtEntry().affine_equalities) {
             if (c.target_value.oredered_locs.size() == 1 && c.target_value.oredered_locs[0].reg
                 && c.target_value.oredered_locs[0].reg == stack_reg) {
                 return c.stack_offset;
