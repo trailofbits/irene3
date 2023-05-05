@@ -91,6 +91,8 @@ dependencies {
   }
   implementation 'org.scalaz:scalaz-core_3:7.3.7'
   implementation 'org.scala-graph:graph-core_2.13:1.13.5'
+  implementation 'com.github.docker-java:docker-java:3.3.0'
+  implementation 'com.github.docker-java:docker-java-transport-zerodep:3.3.0'
 
   runtimeOnly "io.grpc:grpc-netty-shaded:${grpcVersion}"
 

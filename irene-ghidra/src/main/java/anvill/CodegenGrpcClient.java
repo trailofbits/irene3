@@ -2,6 +2,7 @@ package anvill;
 
 import ghidra.util.Msg;
 import io.grpc.Channel;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import irene.server.IreneGrpc;
 import irene.server.Service;
@@ -21,8 +22,8 @@ public class CodegenGrpcClient {
     asyncStub = IreneGrpc.newStub(channel);
   }
 
-  public Optional<Codegen> processSpec(Specification spec) {
-    Msg.info(this, "Sending specification to server");
+  public Optional<Codegen> processSpec(Specification spec) throws StatusRuntimeException {
+    Msg.info(this, "Attempting to send specification to server...");
 
     var sobs =
         new StreamObserver<Codegen>() {
@@ -64,9 +65,13 @@ public class CodegenGrpcClient {
     } catch (InterruptedException e) {
       Msg.warn(this, "GRPC call timed out");
     }
-    sobs.error.ifPresent(
-        throwable -> Msg.warn(this, "RPC failed with error: " + throwable.getMessage()));
+    if (sobs.error.isPresent()) {
+      Throwable e = sobs.error.get();
+      if (e instanceof StatusRuntimeException) throw (StatusRuntimeException) e;
+      else throw (RuntimeException) e;
+    }
 
+    Msg.info(this, "Sent specification to server!");
     return sobs.response;
   }
 }

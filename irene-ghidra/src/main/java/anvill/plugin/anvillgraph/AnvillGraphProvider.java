@@ -19,6 +19,9 @@ package anvill.plugin.anvillgraph;
 
 import anvill.CodegenGrpcClient;
 import anvill.ProgramSpecifier;
+import anvill.decompiler.DecompilerServerException;
+import anvill.decompiler.DecompilerServerManager;
+import anvill.decompiler.DockerDecompilerServerManager;
 import anvill.plugin.anvillgraph.AnvillPatchInfo.Patch;
 import anvill.plugin.anvillgraph.actions.AddToPatchSliceAction;
 import anvill.plugin.anvillgraph.graph.*;
@@ -58,6 +61,7 @@ import ghidra.util.filechooser.ExtensionFileFilter;
 import ghidra.util.filechooser.GhidraFileFilter;
 import ghidra.util.task.*;
 import io.grpc.*;
+import io.grpc.Status.Code;
 import irene.server.Service.Codegen;
 import java.awt.Color;
 import java.io.*;
@@ -101,6 +105,8 @@ public class AnvillGraphProvider
   private CodegenGrpcClient grpcClient;
 
   private final Map<Function, Set<Address>> functionSlices;
+  private final DecompilerServerManager decompilerServerManager =
+      new DockerDecompilerServerManager(50080);
 
   public AnvillGraphProvider(AnvillGraphPlugin anvillGraphPlugin, boolean isConnected) {
     super(anvillGraphPlugin.getTool(), AnvillGraphPlugin.GRAPH_NAME, anvillGraphPlugin.getName());
@@ -351,7 +357,7 @@ public class AnvillGraphProvider
     while (iterator.hasNext()) {
       CodeBlock codeBlock = iterator.next();
       List<Patch> blkPatches = blkToPatches.get(codeBlock);
-      if (blkToPatches == null || blkPatches.isEmpty()) {
+      if (blkPatches == null || blkPatches.isEmpty()) {
         Msg.info(
             this,
             "This function contains a basic block address that has no corresponding patch: "
@@ -444,6 +450,7 @@ public class AnvillGraphProvider
         throw new RuntimeException(e);
       }
     }
+    decompilerServerManager.dispose();
     super.dispose();
     removeFromTool();
   }
@@ -536,8 +543,55 @@ public class AnvillGraphProvider
               return;
             }
 
-            Optional<Codegen> maybeCodegen =
-                grpcClient.processSpec(Specification.toJavaProto(spec));
+            boolean connected = false;
+            int retry = 0;
+            Optional<Codegen> maybeCodegen = Optional.empty();
+            while (!connected && retry < 10) {
+              // NOTE: There isn't an easy way to check whether the gRPC server is actually
+              // available unless you try an RPC, so we have this logic to first attempt
+              // the RPC and if it fails, attempt to automatically start it.
+              try {
+                maybeCodegen = grpcClient.processSpec(Specification.toJavaProto(spec));
+                connected = true;
+              } catch (StatusRuntimeException statusRuntimeException) {
+                if (Code.UNAVAILABLE.equals(statusRuntimeException.getStatus().getCode())) {
+                  try {
+                    decompilerServerManager.startDecompilerServer();
+                  } catch (DecompilerServerException e) {
+                    Msg.showError(
+                        this,
+                        view.getPrimaryGraphViewer(),
+                        "Cannot Automatically Start Decompiler Server",
+                        e.getMessage(),
+                        e.getCause());
+                    break;
+                  }
+                  retry++;
+                  // Sleep for a bit to let things boot.
+                  try {
+                    Thread.sleep(500);
+                  } catch (InterruptedException interruptedException) {
+                    // Don't care
+                  }
+                } else {
+                  // Some other issue
+                  connected = true;
+                  Msg.showError(
+                      this,
+                      view.getPrimaryGraphViewer(),
+                      "Issue With Decompiler Server",
+                      "Issue: " + statusRuntimeException.getMessage(),
+                      statusRuntimeException);
+                }
+              }
+            }
+            if (!connected)
+              Msg.showError(
+                  this,
+                  view.getPrimaryGraphViewer(),
+                  "Could Not Connect To Decompiler Server",
+                  "Could not start or connect to decompiler server even though we tried starting it");
+
             if (maybeCodegen.isPresent()) {
               try {
                 anvillPatchInfo = new AnvillPatchInfo(maybeCodegen.get().getJson());
