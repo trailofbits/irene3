@@ -15,12 +15,22 @@ import org.junit.After
 class BaseProgramLoadTest extends AbstractGhidraHeadlessIntegrationTest {
   var env: TestEnv = _
   var proj: GhidraProject = _
-  def loadProgram(proj: GhidraProject, resourcePath: String): Program = {
+  def loadProgram(
+      proj: GhidraProject,
+      resourcePath: String,
+      disable_dwarf: Boolean = false
+  ): Program = {
     val file = File(
       getClass.getResource(resourcePath).getFile()
     )
 
     val prog = proj.importProgram(file)
+
+    val opt = proj.getAnalysisOptions(prog)
+
+    if (disable_dwarf) {
+      opt.setBoolean("DWARF", false)
+    }
 
     proj.analyze(prog, true)
 

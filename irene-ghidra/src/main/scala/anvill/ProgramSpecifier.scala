@@ -274,12 +274,15 @@ object ProgramSpecifier {
     if (conv == null) {
       CALLING_CONVENTION_UNSPECIFIED
     } else {
-      conv.getGenericCallingConvention() match {
-        case GenericCallingConvention.cdecl    => CALLING_CONVENTION_CDECL
-        case GenericCallingConvention.fastcall => CALLING_CONVENTION_FASTCALL
-        case GenericCallingConvention.stdcall  => CALLING_CONVENTION_STDCALL
-        case GenericCallingConvention.thiscall => CALLING_CONVENTION_THISCALL
-        case GenericCallingConvention.vectorcall =>
+      conv.getName match {
+        case CompilerSpec.CALLING_CONVENTION_cdecl => CALLING_CONVENTION_CDECL
+        case CompilerSpec.CALLING_CONVENTION_fastcall =>
+          CALLING_CONVENTION_FASTCALL
+        case CompilerSpec.CALLING_CONVENTION_stdcall =>
+          CALLING_CONVENTION_STDCALL
+        case CompilerSpec.CALLING_CONVENTION_thiscall =>
+          CALLING_CONVENTION_THISCALL
+        case CompilerSpec.CALLING_CONVENTION_vectorcall =>
           CALLING_CONVENTION_VECTORCALL
         case _ => CALLING_CONVENTION_UNSPECIFIED
       }
@@ -946,7 +949,7 @@ object ProgramSpecifier {
         .getProgram()
         .getCompilerSpec()
         .getCallingConvention(
-          sig.getGenericCallingConvention().getDeclarationName()
+          sig.getCallingConventionName
         )
     )
 

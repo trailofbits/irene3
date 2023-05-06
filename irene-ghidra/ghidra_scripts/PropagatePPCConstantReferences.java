@@ -83,7 +83,7 @@ public class PropagatePPCConstantReferences extends GhidraScript {
       // Use this to set the initial values for r2/r13 which contain
       // the address of SDA_BASE and SDA2_BASE
       ConstantPropagationContextEvaluator eval =
-          new ConstantPropagationContextEvaluator(true) {
+          new ConstantPropagationContextEvaluator(monitor) {
 
             @Override
             public boolean evaluateContext(VarnodeContext context, Instruction instr) {

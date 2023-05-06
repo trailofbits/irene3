@@ -203,7 +203,7 @@ class TestLiveness extends BaseProgramLoadTest {
   @Test def testChal3SetPower(): Unit = {
     println("working on 00401920")
     val coll_prog =
-      loadProgram(proj, "binaries/challenge-3_amd64_program_c.elf")
+      loadProgram(proj, "binaries/challenge-3_amd64_program_c.elf", true)
     val func = firstFunctionNamed(coll_prog, "set_power")
     val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
     val cfg = ProgramSpecifier.getCFG(func)
@@ -216,13 +216,15 @@ class TestLiveness extends BaseProgramLoadTest {
     val target_addr = coll_prog.getAddressFactory.getAddress("00401920")
     val live_info =
       bb_cont.liveness(cfg.get(target_addr.getOffset).get)
-
+    println(cfg.get(target_addr.getOffset).get.outgoingBlocks)
     println(
       live_info.live_before.toSeq
         .groupBy(p => p.name.get)
         .map((nm, l) => (nm, l.length))
         .toMap
     )
+
+    println(live_info.live_before)
 
     live_info.live_before.toSeq
       .filter(p => p.name.get == "p")
