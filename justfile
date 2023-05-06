@@ -127,7 +127,7 @@ install-ghidra:
          mkdir -p deps
          echo "Downloading Ghidra"
          curl -sL \
-         https://github.com/trail-of-forks/ghidra/releases/download/amp-ghidra-v0.0.1-rc2/ghidra_10.3_DEV_20230420.zip \
+         https://github.com/trail-of-forks/ghidra/releases/download/amp-ghidra-v0.0.2-rc2/ghidra_10.3_DEV_20230505.zip \
          --output deps/ghidra.zip
          echo "Extracting Ghidra"
          cd deps && unzip -qq ghidra.zip && mv ghidra_10.3_DEV ghidra && cd ..
