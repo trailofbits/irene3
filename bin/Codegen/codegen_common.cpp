@@ -149,12 +149,30 @@ std::string PrintBodyToString(clang::CompoundStmt *compound) {
     return code;
 }
 
-void GVarToSpec(const irene3::GlobalVarInfo &ginfo, llvm::json::Array &patch_vars) {
-    llvm::json::Object memory;
-    memory["address"] = to_hex(ginfo.address) + ":" + std::to_string(ginfo.size);
+void GVarToSpec(
+    const irene3::GlobalVarInfo &ginfo, llvm::json::Array &patch_vars, uint64_t address_size) {
+    llvm::json::Array memory;
+    memory.push_back("address");
+    memory.push_back(to_hex(ginfo.address) + ":" + std::to_string(address_size));
     llvm::json::Object var;
-    var["name"]   = ginfo.name;
-    var["memory"] = std::move(memory);
+    llvm::json::Array sclass;
+    sclass.push_back("memory");
+    sclass.push_back(std::move(memory));
+
+    var["name"]          = ginfo.name;
+    var["storage-class"] = std::move(sclass);
+    patch_vars.push_back(std::move(var));
+}
+
+void FuncToSpec(
+    const irene3::FunctionInfo finfo, llvm::json::Array &patch_vars, uint64_t addr_size) {
+    llvm::json::Object var;
+    var["name"] = finfo.name;
+    llvm::json::Array arr;
+    arr.push_back("constant");
+    arr.push_back(to_hex(finfo.addr) + ":" + std::to_string(addr_size));
+
+    var["storage-class"] = std::move(arr);
     patch_vars.push_back(std::move(var));
 }
 
@@ -217,10 +235,13 @@ namespace
 
 } // namespace
 std::optional< llvm::json::Array > LowLocToStorage(
+    const anvill::BasicBlockVariable &bb_param,
     const anvill::LowLoc &loc,
     const remill::Register *stack_pointer_reg,
     const StackOffsets &block_stack_disp,
-    bool unsafe) {
+    bool isVibes,
+    bool unsafe,
+    uint64_t address_size) {
     llvm::json::Array arr;
     if (loc.reg) {
         arr.push_back("register");
@@ -228,9 +249,21 @@ std::optional< llvm::json::Array > LowLocToStorage(
         std::stringstream ss;
         ss << loc.reg->name;
         if (loc.size) {
-            ss << ":" << *loc.size;
+            ss << ":" << address_size;
         }
-        arr.push_back(ss.str());
+        if (!isVibes) {
+            arr.push_back(ss.str());
+        } else {
+            llvm::json::Object reg;
+            if (bb_param.live_at_entry) {
+                reg["at-entry"] = ss.str();
+            }
+
+            if (bb_param.live_at_exit) {
+                reg["at-exit"] = ss.str();
+            }
+            arr.push_back(std::move(reg));
+        }
     } else if (loc.mem_reg) {
         if (!unsafe && loc.mem_reg == stack_pointer_reg) {
             return std::nullopt;
@@ -250,12 +283,12 @@ std::optional< llvm::json::Array > LowLocToStorage(
         }
         memory.push_back("frame");
         memory.push_back(loc.mem_reg->name);
-        memory.push_back(to_hex(offset) + ":" + std::to_string(loc.Size()));
+        memory.push_back(to_hex(offset) + ":" + std::to_string(address_size));
         arr.push_back(std::move(memory));
     } else {
         llvm::json::Array memory;
         memory.push_back("address");
-        memory.push_back(to_hex(loc.mem_offset) + ":" + std::to_string(loc.Size()));
+        memory.push_back(to_hex(loc.mem_offset) + ":" + std::to_string(address_size));
         arr.push_back("memory");
         arr.push_back(std::move(memory));
     }
@@ -263,11 +296,42 @@ std::optional< llvm::json::Array > LowLocToStorage(
     return std::move(arr);
 }
 
+void ParamToSpecVibes(
+    const anvill::BasicBlockVariable &bb_param,
+    const remill::Register *stack_pointer_reg,
+    const StackOffsets &block_stack_disp,
+    llvm::json::Array &patch_vars,
+    uint64_t address_size,
+    bool unsafe = false) {
+    auto var_spec = bb_param.param;
+    llvm::json::Object var;
+    var["name"] = bb_param.param.name;
+
+    std::optional< llvm::json::Array > vstorage;
+    if (bb_param.param.oredered_locs.size() == 1) {
+        vstorage = LowLocToStorage(
+            bb_param, bb_param.param.oredered_locs[0], stack_pointer_reg, block_stack_disp, true,
+            unsafe, address_size);
+    }
+
+    if (!vstorage) {
+        LOG(ERROR) << "Cannot generate patch def of composite inserting storage placeholder: "
+                   << var_spec.name;
+
+        var["storage-class"] = llvm::json::Array();
+    } else {
+        var["storage-class"] = std::move(*vstorage);
+    }
+
+    patch_vars.push_back(std::move(var));
+}
+
 void ParamToSpec(
     const anvill::BasicBlockVariable &bb_param,
     const remill::Register *stack_pointer_reg,
     const StackOffsets &block_stack_disp,
     llvm::json::Array &patch_vars,
+    uint64_t address_size,
     bool unsafe = false) {
     auto var_spec = bb_param.param;
     llvm::json::Object var;
@@ -276,7 +340,8 @@ void ParamToSpec(
     std::vector< llvm::json::Value > storage;
 
     for (const auto &loc : var_spec.oredered_locs) {
-        auto comp = LowLocToStorage(loc, stack_pointer_reg, block_stack_disp, unsafe);
+        auto comp = LowLocToStorage(
+            bb_param, loc, stack_pointer_reg, block_stack_disp, false, address_size, unsafe);
         if (comp) {
             storage.push_back(std::move(*comp));
         } else {
@@ -295,13 +360,34 @@ void ParamToSpec(
     patch_vars.push_back(std::move(var));
 }
 
+static int64_t GetStackOffset(
+    const remill::Arch &arch, const anvill::SpecStackOffsets &stack_offs) {
+    auto sp_reg = arch.RegisterByName(arch.StackPointerRegisterName());
+    for (auto &eq : stack_offs.affine_equalities) {
+        if (eq.target_value.oredered_locs.size() != 1) {
+            continue;
+        }
+
+        if (eq.target_value.oredered_locs[0].mem_reg) {
+            continue;
+        }
+
+        if (eq.target_value.oredered_locs[0].reg == sp_reg) {
+            return eq.stack_offset;
+        }
+    }
+    LOG(ERROR) << "Couldn't find stack pointer";
+    return 0;
+}
+
 rellic::Result< llvm::json::Object, std::string > ProcessSpecification(
     const std::string &spec_pb,
     std::unordered_set< uint64_t > &target_funcs,
     bool propagate_types,
     bool args_as_locals,
     bool unsafe_stack_locations,
-    bool add_edges) {
+    bool add_edges,
+    bool is_vibes) {
     irene3::TypeDecoder type_decoder;
     auto maybe_spec = irene3::SpecDecompilationJobBuilder::CreateDefaultBuilder(
         spec_pb, propagate_types, args_as_locals, unsafe_stack_locations, type_decoder);
@@ -326,18 +412,20 @@ rellic::Result< llvm::json::Object, std::string > ProcessSpecification(
     llvm::json::Array patches;
 
     auto stack_pointer_reg = spec.Arch()->RegisterByName(spec.Arch()->StackPointerRegisterName());
-
+    uint64_t address_size  = spec.Arch()->address_size;
     for (auto &[addr, compound] : decomp_res.blocks) {
         const anvill::BasicBlockContext &block
             = block_contexts.GetBasicBlockContextForAddr(addr).value();
 
         llvm::json::Object patch;
-        patch["patch-name"] = "block_" + std::to_string(addr);
-        patch["patch-addr"] = to_hex(addr);
+        patch["patch-point"] = to_hex(addr) + ":" + std::to_string(address_size);
 
         auto func_decl      = spec.FunctionAt(block.GetParentFunctionAddress());
         auto cb             = func_decl->cfg.find(addr)->second;
-        patch["patch-size"] = to_hex(cb.size);
+        patch["patch-size"] = cb.size;
+
+        patch["sp-align"] = GetStackOffset(*spec.Arch(), block.GetStackOffsetsAtExit())
+                            - GetStackOffset(*spec.Arch(), block.GetStackOffsetsAtEntry());
 
         if (add_edges) {
             llvm::json::Array edges;
@@ -356,19 +444,34 @@ rellic::Result< llvm::json::Object, std::string > ProcessSpecification(
         auto fdecl     = spec.FunctionAt(block.GetParentFunctionAddress());
         auto stackoffs = ComputeStackOffsets(stack_pointer_reg, *fdecl, addr);
 
-        patch_vars.push_back(llvm::json::Object{
-            {  "name",                                                                                    "stack"},
-            {"memory", llvm::json::Object{ { "frame-pointer", stack_pointer_reg->name },
- { "offset", -stackoffs.stack_depth_at_entry } }                                           }
-        });
+        if (!unsafe_stack_locations) {
+            patch_vars.push_back(llvm::json::Object{
+                {  "name",                          "stack"     },
+                {"memory",
+                 llvm::json::Object{ { "frame-pointer", stack_pointer_reg->name },
+                 { "offset", -stackoffs.stack_depth_at_entry } }}
+            });
+        }
 
         CHECK(fdecl);
         for (auto &bb_param : block.LiveParamsAtEntryAndExit()) {
-            ParamToSpec(bb_param, stack_pointer_reg, stackoffs, patch_vars, unsafe_stack_locations);
+            if (is_vibes) {
+                ParamToSpecVibes(
+                    bb_param, stack_pointer_reg, stackoffs, patch_vars, address_size,
+                    unsafe_stack_locations);
+            } else {
+                ParamToSpec(
+                    bb_param, stack_pointer_reg, stackoffs, patch_vars, address_size,
+                    unsafe_stack_locations);
+            }
         }
 
         for (const auto &gv : decomp_res.block_globals[addr]) {
-            GVarToSpec(gv, patch_vars);
+            GVarToSpec(gv, patch_vars, address_size);
+        }
+
+        for (const auto &func : decomp_res.block_functions[addr]) {
+            FuncToSpec(func, patch_vars, address_size);
         }
 
         patch["patch-vars"] = std::move(patch_vars);

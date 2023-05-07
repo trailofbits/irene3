@@ -73,7 +73,7 @@ class IreneImpl final : public Irene::Service {
         spec.ParseFromArray(bytes.data(), bytes.size());
         auto maybe_result = ::ProcessSpecification(
             spec.SerializeAsString(), target_funcs, propagate_types, args_as_locals,
-            unsafe_stack_locations, add_edges);
+            unsafe_stack_locations, add_edges, this->is_vibes);
         if (!maybe_result.Succeeded()) {
             LOG(ERROR) << "Error ocurred: " << maybe_result.TakeError();
             return { grpc::StatusCode::INTERNAL, maybe_result.TakeError() };
@@ -92,6 +92,7 @@ class IreneImpl final : public Irene::Service {
     bool args_as_locals         = false;
     bool unsafe_stack_locations = true;
     bool add_edges              = false;
+    bool is_vibes               = true;
 };
 
 void RunServer(int32_t port, IreneImpl &service) {

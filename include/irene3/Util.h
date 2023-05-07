@@ -17,7 +17,22 @@ namespace irene3
     // Gets pc metadata repersented in irene3 by the "pc" metadata kind.
     std::optional< uint64_t > GetPCMetadata(const llvm::Value* value);
 
-    std::vector< llvm::GlobalVariable* > UsedGlobalVars(llvm::Function* func);
+    template< typename T >
+    std::vector< T* > UsedGlobalValue(llvm::Function* func) {
+        std::vector< T* > vars;
+        for (auto& gv : func->getParent()->global_values()) {
+            for (auto use : gv.users()) {
+                if (T* casted_val = llvm::dyn_cast< T >(&gv)) {
+                    if (auto insn = llvm::dyn_cast< llvm::Instruction >(use)) {
+                        if (insn->getFunction() == func) {
+                            vars.push_back(casted_val);
+                        }
+                    }
+                }
+            }
+        }
+        return vars;
+    }
 
     llvm::Function* GetOrCreateGotoInstrinsic(llvm::Module* mod, llvm::IntegerType* addr_ty);
 } // namespace irene3

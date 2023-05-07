@@ -209,7 +209,9 @@ namespace irene3
     }
 
     CodegenResult SpecDecompilationJob::PopulateCodegenResFromRellic(
-        rellic::DecompilationResult res, GvarInfoByBlock gvar_prov) const {
+        rellic::DecompilationResult res,
+        GvarInfoByBlock gvar_prov,
+        FunctionInfoByBlock functions) const {
         std::unordered_map< uint64_t, FunctionDecompResult > function_results;
 
         auto [prov, rev_prov] = this->ExtractLLVMProvenance(res.module.get());
@@ -245,6 +247,7 @@ namespace irene3
                  std::move(res.ast),
                  std::move(prov_info),
                  std::move(gvar_prov),
+                 std::move(functions),
                  blocks };
     }
 
@@ -293,7 +296,6 @@ namespace irene3
         anvill::SpecificationTypeProvider spec_tp(this->spec);
         anvill::SpecificationControlFlowProvider spec_cfp(this->spec);
         anvill::SpecificationMemoryProvider spec_mp(this->spec);
-
         anvill::LifterOptions options(spec.Arch().get(), *module, spec_tp, spec_cfp, spec_mp);
         options.stack_frame_recovery_options.stack_frame_struct_init_procedure
             = this->stack_initialization_strategy;
@@ -310,6 +312,8 @@ namespace irene3
 
         std::unordered_map< uint64_t, std::vector< GlobalVarInfo > > gvars;
 
+        std::unordered_map< uint64_t, std::vector< FunctionInfo > > functions;
+
         llvm::FunctionPassManager fpm;
         llvm::FunctionAnalysisManager fam;
         llvm::PassBuilder pb;
@@ -320,12 +324,16 @@ namespace irene3
         for (auto& func : module->functions()) {
             auto block_addr = anvill::GetBasicBlockAddr(&func);
             if (!block_addr.has_value()) {
+                auto pc = func.getMetadata("pc");
                 func.deleteBody();
+                if (pc) {
+                    func.setMetadata("pc", pc);
+                }
                 continue;
             }
 
             std::vector< GlobalVarInfo > blk_gvars;
-            for (auto var : UsedGlobalVars(&func)) {
+            for (auto var : UsedGlobalValue< llvm::GlobalVariable >(&func)) {
                 auto pc = GetPCMetadata(var);
                 if (!pc) {
                     continue;
@@ -335,8 +343,26 @@ namespace irene3
                     size_t sz = v->type->getScalarSizeInBits();
                     blk_gvars.push_back({ std::string(var->getName()), *pc, sz });
                 }
-                gvars.insert({ *block_addr, blk_gvars });
             }
+
+            gvars.insert({ *block_addr, blk_gvars });
+
+            std::vector< FunctionInfo > blk_funcs;
+            for (auto var : UsedGlobalValue< llvm::Function >(&func)) {
+                auto pc = lifter.AddressOfEntity(var);
+                if (anvill::GetBasicBlockAddr(var).has_value()) {
+                    continue;
+                }
+
+                if (!pc) {
+                    LOG(ERROR) << "No pc " << std::string(var->getName());
+                    continue;
+                }
+
+                blk_funcs.push_back({ std::string(var->getName()), *pc });
+            }
+
+            functions.insert({ *block_addr, blk_funcs });
 
             // Copy instructions to temporary storage so we don't invalidate iterators
             std::vector< llvm::Instruction* > insts;
@@ -377,7 +403,8 @@ namespace irene3
             return maybe_dec_res.TakeError().message;
         }
 
-        return PopulateCodegenResFromRellic(maybe_dec_res.TakeValue(), std::move(gvars));
+        return PopulateCodegenResFromRellic(
+            maybe_dec_res.TakeValue(), std::move(gvars), std::move(functions));
     }
 
     SpecDecompilationJob::SpecDecompilationJob(SpecDecompilationJobBuilder&& o)
