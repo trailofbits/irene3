@@ -18,9 +18,10 @@
  */
 package anvill.plugin.anvillgraph;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
 import anvill.plugin.anvillgraph.graph.BasicBlockGraph;
+import docking.test.AbstractDockingTest;
 import ghidra.app.plugin.core.codebrowser.CodeBrowserPlugin;
 import ghidra.app.plugin.core.decompile.DecompilePlugin;
 import ghidra.app.services.ProgramManager;
@@ -33,6 +34,7 @@ import ghidra.program.model.address.AddressFactory;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.util.ProgramLocation;
 import ghidra.test.*;
+import java.awt.Component;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
@@ -105,6 +107,12 @@ public abstract class AbstractAnvillGraphTest extends AbstractGhidraHeadedIntegr
     //    build_sscanf(builder);
     //
     program = builder.getProgram();
+  }
+
+  protected static void assertDoNotContainsString(String expected, String actual) {
+    assertFalse(
+        "String contained.  Found: '" + actual + "'\n\tExpected to not contain: '" + expected + "'",
+        actual.contains(expected));
   }
 
   private void build_sscanf(ToyProgramBuilder builder) throws MemoryAccessException {
@@ -217,6 +225,10 @@ public abstract class AbstractAnvillGraphTest extends AbstractGhidraHeadedIntegr
   protected ProgramLocation getLocationForAddressString(String addressString) {
     Address address = getAddress(addressString);
     return new ProgramLocation(program, address);
+  }
+
+  protected void typeInGraph(Component v, String s) {
+    AbstractDockingTest.triggerText(v, s);
   }
 
   protected void goToAddress(String addressString) {

@@ -1,5 +1,5 @@
 /* ###
- * Adapted from upstream Ghidra 10.1.5
+ * Adapted from upstream Ghidra 10.3
  *
  * IP: GHIDRA
  *
@@ -18,6 +18,8 @@
 package anvill.plugin.anvillgraph;
 
 import anvill.plugin.anvillgraph.layout.AnvillGraphLayoutOptions;
+import generic.theme.GColor;
+import generic.theme.GThemeDefaults.Colors.Palette;
 import ghidra.framework.options.Options;
 import ghidra.graph.viewer.options.RelayoutOption;
 import ghidra.graph.viewer.options.VisualGraphOptions;
@@ -41,19 +43,6 @@ public class BBGraphOptions extends VisualGraphOptions {
   private static final String EDGE_UNCONDITIONAL_JUMP_COLOR_KEY =
       "Edge Color - Unconditional Jump ";
   private static final String EDGE_COLOR_CONDITIONAL_JUMP_KEY = "Edge Color - Conditional Jump ";
-
-  // @formatter:off
-  private static final String NAVIGATION_HISTORY_KEY = "Navigation History";
-  private static final String NAVIGATION_HISTORY_DESCRIPTION =
-      "Determines how the navigation history will be updated when using the Function Graph. "
-          + "The basic options are:"
-          + "<ul>"
-          + "<li><b>Navigation Events</b> - save a history entry when a navigation takes place "
-          + "(e.g., double-click or Go To event)</li>"
-          + "<li><b>Vertex Changes</b> - save a history entry each time a new vertex is selected</li>"
-          + "</ul>"
-          + "<b><i>See help for more</i></b>";
-  // @formatter:on
 
   private static final String USE_FULL_SIZE_TOOLTIP_KEY = "Use Full-size Tooltip";
   private static final String USE_FULL_SIZE_TOOLTIP_DESCRIPTION =
@@ -87,30 +76,79 @@ public class BBGraphOptions extends VisualGraphOptions {
       "Signals that any user color changes to a group vertex will apply that same color to "
           + "all grouped vertices as well.";
 
-  public static final Color DEFAULT_VERTEX_BACKGROUND_COLOR = Color.WHITE;
-  public static final Color DEFAULT_GROUP_BACKGROUND_COLOR = new Color(226, 255, 155);
-  private static final Color HOVER_HIGHLIGHT_FALL_THROUGH_COLOR = new Color(255, 127, 127);
-  private static final Color HOVER_HIGHLIGHT_UNCONDITIONAL_COLOR = new Color(127, 127, 255);
-  private static final Color HOVER_HIGHLIGHT_CONDITIONAL_COLOR = Color.GREEN;
-
-  private Color defaultVertexBackgroundColor = DEFAULT_VERTEX_BACKGROUND_COLOR;
-
   private boolean updateGroupColorsAutomatically = true;
-  private Color defaultGroupBackgroundColor = DEFAULT_GROUP_BACKGROUND_COLOR;
 
-  private Color fallthroughEdgeColor = Color.RED;
-  private Color unconditionalJumpEdgeColor = Color.BLUE;
-  private Color conditionalJumpEdgeColor = Color.GREEN.darker().darker();
+  // @formatter:off
+  public static final Color DEFAULT_GROUP_BACKGROUND_COLOR =
+      new GColor("color.bg.plugin.functiongraph.vertex.group");
+  private GColor defaultVertexBackgroundColor = new GColor("color.bg.plugin.functiongraph");
+  private GColor defaultGroupBackgroundColor =
+      new GColor("color.bg.plugin.functiongraph.vertex.group");
 
-  private Color fallthroughEdgeHighlightColor = HOVER_HIGHLIGHT_FALL_THROUGH_COLOR;
-  private Color unconditionalJumpEdgeHighlightColor = HOVER_HIGHLIGHT_UNCONDITIONAL_COLOR;
-  private Color conditionalJumpEdgeHighlightColor = HOVER_HIGHLIGHT_CONDITIONAL_COLOR;
+  private GColor fallthroughEdgeColor =
+      new GColor("color.bg.plugin.functiongraph.edge.fall.through");
+  private GColor conditionalJumpEdgeColor =
+      new GColor("color.bg.plugin.functiongraph.edge.jump.conditional");
+  private GColor unconditionalJumpEdgeColor =
+      new GColor("color.bg.plugin.functiongraph.edge.jump.unconditional");
+
+  private GColor fallthroughEdgeHighlightColor =
+      new GColor("color.bg.plugin.functiongraph.edge.fall.through.highlight");
+  private GColor conditionalJumpEdgeHighlightColor =
+      new GColor("color.bg.plugin.functiongraph.edge.jump.conditional.highlight");
+  private GColor unconditionalJumpEdgeHighlightColor =
+      new GColor("color.bg.plugin.functiongraph.edge.jump.unconditional.highlight");
+  // @formatter:on
 
   private boolean useFullSizeTooltip = false;
 
   private RelayoutOption relayoutOption = RelayoutOption.VERTEX_GROUPING_CHANGES;
 
   private final Map<String, AnvillGraphLayoutOptions> layoutOptionsByName = new HashMap<>();
+
+  public Color getDefaultVertexBackgroundColor() {
+    return defaultVertexBackgroundColor;
+  }
+
+  public Color getDefaultGroupBackgroundColor() {
+    return defaultGroupBackgroundColor;
+  }
+
+  public boolean getUpdateGroupColorsAutomatically() {
+    return updateGroupColorsAutomatically;
+  }
+
+  public Color getFallthroughEdgeColor() {
+    return fallthroughEdgeColor;
+  }
+
+  public Color getUnconditionalJumpEdgeColor() {
+    return unconditionalJumpEdgeColor;
+  }
+
+  public Color getConditionalJumpEdgeColor() {
+    return conditionalJumpEdgeColor;
+  }
+
+  public Color getUnconditionalJumpEdgeHighlightColor() {
+    return unconditionalJumpEdgeHighlightColor;
+  }
+
+  public Color getFallthroughEdgeHighlightColor() {
+    return fallthroughEdgeHighlightColor;
+  }
+
+  public Color getConditionalJumpEdgeHighlightColor() {
+    return conditionalJumpEdgeHighlightColor;
+  }
+
+  public RelayoutOption getRelayoutOption() {
+    return relayoutOption;
+  }
+
+  public boolean useFullSizeTooltip() {
+    return useFullSizeTooltip;
+  }
 
   public void registerOptions(Options options) {
 
@@ -120,66 +158,57 @@ public class BBGraphOptions extends VisualGraphOptions {
     options.registerOption(
         RELAYOUT_OPTIONS_KEY, relayoutOption, help, RELAYOUT_OPTIONS_DESCRIPTION);
 
-    //    options.registerOption(NAVIGATION_HISTORY_KEY, navigationHistoryChoice, help,
-    //        NAVIGATION_HISTORY_DESCRIPTION);
-
     options.registerOption(
         USE_CONDENSED_LAYOUT_KEY,
         useCondensedLayout(),
         new HelpLocation(OWNER, "Layout_Compressing"),
         USE_CONDENSED_LAYOUT_DESCRIPTION);
 
-    options.registerOption(
+    options.registerThemeColorBinding(
         DEFAULT_VERTEX_BACKGROUND_COLOR_KEY,
-        DEFAULT_VERTEX_BACKGROUND_COLOR,
+        defaultVertexBackgroundColor.getId(),
         help,
         DEFAULT_VERTEX_BACKGROUND_COLOR_DESCRPTION);
 
-    options.registerOption(
+    options.registerThemeColorBinding(
         DEFAULT_GROUP_BACKGROUND_COLOR_KEY,
-        DEFAULT_GROUP_BACKGROUND_COLOR,
+        defaultGroupBackgroundColor.getId(),
         help,
         DEFAULT_GROUP_BACKGROUND_COLOR_DESCRPTION);
 
     options.registerOption(
-        UPDATE_GROUP_AND_UNGROUP_COLORS,
-        updateGroupColorsAutomatically,
-        help,
-        UPDATE_GROUP_AND_UNGROUP_COLORS_DESCRIPTION);
-
-    options.registerOption(
         USE_FULL_SIZE_TOOLTIP_KEY, useFullSizeTooltip, help, USE_FULL_SIZE_TOOLTIP_DESCRIPTION);
 
-    options.registerOption(
+    options.registerThemeColorBinding(
         EDGE_COLOR_CONDITIONAL_JUMP_KEY,
-        conditionalJumpEdgeColor,
+        conditionalJumpEdgeColor.getId(),
         help,
         "Conditional jump edge color");
 
-    options.registerOption(
+    options.registerThemeColorBinding(
         EDGE_UNCONDITIONAL_JUMP_COLOR_KEY,
-        unconditionalJumpEdgeColor,
+        unconditionalJumpEdgeColor.getId(),
         help,
         "Unconditional jump edge color");
 
-    options.registerOption(
-        EDGE_FALLTHROUGH_COLOR_KEY, fallthroughEdgeColor, help, "Fallthrough edge color");
+    options.registerThemeColorBinding(
+        EDGE_FALLTHROUGH_COLOR_KEY, fallthroughEdgeColor.getId(), help, "Fallthrough edge color");
 
-    options.registerOption(
+    options.registerThemeColorBinding(
         EDGE_CONDITIONAL_JUMP_HIGHLIGHT_COLOR_KEY,
-        conditionalJumpEdgeHighlightColor,
+        conditionalJumpEdgeHighlightColor.getId(),
         help,
         "Conditional jump edge color when highlighting the reachablity of a vertex");
 
-    options.registerOption(
+    options.registerThemeColorBinding(
         EDGE_UNCONDITIONAL_JUMP_HIGHLIGHT_COLOR_KEY,
-        unconditionalJumpEdgeHighlightColor,
+        unconditionalJumpEdgeHighlightColor.getId(),
         help,
         "Unconditional jump edge color when highlighting the reachablity of a vertex");
 
-    options.registerOption(
+    options.registerThemeColorBinding(
         EDGE_FALLTHROUGH_HIGHLIGHT_COLOR_KEY,
-        fallthroughEdgeHighlightColor,
+        fallthroughEdgeHighlightColor.getId(),
         help,
         "Fallthrough edge color when highlighting the reachablity of a vertex");
   }
@@ -193,19 +222,7 @@ public class BBGraphOptions extends VisualGraphOptions {
       return getConditionalJumpEdgeColor();
     }
 
-    return Color.BLACK;
-  }
-
-  private Color getConditionalJumpEdgeColor() {
-    return Color.GREEN.darker().darker();
-  }
-
-  private Color getUnconditionalJumpEdgeColor() {
-    return Color.BLUE;
-  }
-
-  private Color getFallthroughEdgeColor() {
-    return Color.RED;
+    return Palette.BLACK;
   }
 
   public Color getHighlightColor(FlowType flowType) {
@@ -217,19 +234,7 @@ public class BBGraphOptions extends VisualGraphOptions {
       return getConditionalJumpEdgeHighlightColor();
     }
 
-    return Color.BLACK;
-  }
-
-  private Color getConditionalJumpEdgeHighlightColor() {
-    return Color.GREEN;
-  }
-
-  private Color getUnconditionalJumpEdgeHighlightColor() {
-    return new Color(127, 127, 255);
-  }
-
-  private Color getFallthroughEdgeHighlightColor() {
-    return new Color(255, 127, 127);
+    return Palette.BLACK;
   }
 
   public AnvillGraphLayoutOptions getLayoutOptions(String layoutName) {

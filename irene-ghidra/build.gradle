@@ -34,6 +34,7 @@ plugins  {
   id 'scala'
   id 'java'
   id "com.diffplug.spotless" version "6.18.0"
+  id 'antlr'
 }
 
 
@@ -95,6 +96,10 @@ dependencies {
   implementation 'com.github.docker-java:docker-java:3.3.0'
   implementation 'com.github.docker-java:docker-java-transport-zerodep:3.3.0'
 
+  implementation 'com.fifesoft:rsyntaxtextarea:3.3.3'
+
+  antlr 'org.antlr:antlr4:4.12.0'
+
   runtimeOnly "io.grpc:grpc-netty-shaded:${grpcVersion}"
 
   testImplementation 'junit:junit:4.13.2'
@@ -103,6 +108,14 @@ dependencies {
   testRuntimeOnly files("lib")
 }
 
+generateGrammarSource {
+    arguments += ["-package", "anvill.plugin.anvillgraph.grammar"]
+    outputDirectory = file("${project.buildDir}/generated-src/antlr/main/anvill/plugin/anvillgraph/grammar")
+}
+
+compileJava {
+    dependsOn generateGrammarSource
+}
 
 // The following installation helpers were copied from
 // https://github.com/cmu-sei/kaiju/blob/c00a351aa4332e8b6e2be94f6fe52418f8946b11/build.gradle
@@ -214,7 +227,10 @@ test {
     // Copied from some of Ghidra's properties in
     // 'gradle/javaTestProject.gradle' and
     // 'Ghidra/Test/IntegrationTest/build.gradle'
-    jvmArgs '--add-exports=java.desktop/sun.awt=ALL-UNNAMED' // Required for Java 17 compatibility
+    jvmArgs '--add-exports=java.desktop/sun.awt=ALL-UNNAMED', // Required for Java 17 compatibility
+	'--add-opens=java.desktop/java.awt=ALL-UNNAMED',         // allow reflection for tests
+	'--add-opens=java.desktop/javax.swing=ALL-UNNAMED',      // allow reflection for tests			
+	'--add-opens=java.desktop/javax.swing.text=ALL-UNNAMED'  // allow reflection for tests
 
     // Required due to global state that gets messed up if we don't use a new
     // JVM for each test
@@ -240,16 +256,19 @@ spotless {
 sourceSets {
   main {
     scala {
-        srcDirs "${protobuf.generatedFilesBaseDir}/main/scalapb"
-        srcDirs 'ghidra_scripts'
-        srcDirs 'src/main/scala'
-        srcDirs 'src/main/java'
+        srcDirs = [
+            "${protobuf.generatedFilesBaseDir}/main/scalapb",
+            "ghidra_scripts",
+            "src/main/scala",
+            "src/main/java" // we use a scala protobuf object in java
+        ]
     }
 
     java {
         srcDirs = [
-                "${protobuf.generatedFilesBaseDir}/main/grpc_java",
-                "${protobuf.generatedFilesBaseDir}/main/java"
+            "${protobuf.generatedFilesBaseDir}/main/grpc_java",
+            "${protobuf.generatedFilesBaseDir}/main/java",
+            "${project.buildDir}/generated-src/antlr/main"
         ]
     }
 

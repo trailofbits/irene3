@@ -121,6 +121,11 @@ public class AnvillGraphProvider
     // values set here are arbitrary and are for demo purposes
     view.setVertexFocusPathHighlightMode(PathHighlightMode.OUT);
     view.setVertexHoverPathHighlightMode(PathHighlightMode.IN);
+    view.setVertexFocusListener(
+        v -> {
+          ProgramLocation location = new ProgramLocation(getProgram(), v.getVertexAddress());
+          this.goTo(location);
+        });
 
     setConnected(isConnected);
     setIcon(AnvillGraphPlugin.ICON);
@@ -211,6 +216,9 @@ public class AnvillGraphProvider
     renderContext.setEdgeDrawPaintTransformer(edgePaintTransformer);
     renderContext.setArrowDrawPaintTransformer(edgePaintTransformer);
     renderContext.setArrowFillPaintTransformer(edgePaintTransformer);
+
+    // note: disable focus keys here to avoid tab getting consumed
+    view.getPrimaryGraphViewer().setFocusTraversalKeysEnabled(false);
 
     // edge label rendering
     com.google.common.base.Function<BasicBlockEdge, String> edgeLabelTransformer =
@@ -368,7 +376,7 @@ public class AnvillGraphProvider
 
       List<BasicBlockVertex> blockVertices = new ArrayList<>();
       for (Patch patch : blkPatches) {
-        blockVertices.add(new AnvillVertex(this, codeBlock, patch));
+        blockVertices.add(new AnvillVertex(codeBlock, patch));
       }
       // Make sure that blocks that correspond to the same Ghidra code block are in chronological
       // order.
