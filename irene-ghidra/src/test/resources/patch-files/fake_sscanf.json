@@ -1,44 +1,44 @@
 {
     "patches": [
         {
-            "patch-addr": "0x100415a",
+            "patch-point": "0x100415a:32",
             "patch-code": "0\nThis\nis\na\ntest.",
-            "patch-size": "0x1c"
+            "patch-size": 2
         },
         {
-            "patch-addr": "0x1004178",
+            "patch-point": "0x1004178:32",
             "patch-code": "1\nThis\nis\na\ntest.",
-            "patch-size": "0x1a"
+            "patch-size": 2
         },
         {
-            "patch-addr": "0x1004192",
+            "patch-point": "0x1004192:32",
             "patch-code": "2\nThis\nis\na\ntest.",
-            "patch-size": "0x2"
+            "patch-size": 2
         },
         {
-            "patch-addr": "0x1004196",
+            "patch-point": "0x1004196:32",
             "patch-code": "3\nThis\nis\na\ntest.",
-            "patch-size": "0x4"
+            "patch-size": 2
         },
         {
-            "patch-addr": "0x100419c",
+            "patch-point": "0x100419c:32",
             "patch-code": "4\nThis\nis\na\ntest.",
-            "patch-size": "0x3"
+            "patch-size": 2
         },
         {
-            "patch-addr": "0x10041a1",
+            "patch-point": "0x10041a1:32",
             "patch-code": "5\nThis\nis\na\ntest.",
-            "patch-size": "0x3"
+            "patch-size": 2
         },
         {
-            "patch-addr": "0x10041a4",
+            "patch-point": "0x10041a4:32",
             "patch-code": "6\nThis\nis\na\ntest.",
-            "patch-size": "0x1"
+            "patch-size": 2
         },
         {
-            "patch-addr": "0x1004100",
+            "patch-point": "0x1004100:32",
             "patch-code": "Is not in function",
-            "patch-size": "0x1"
+            "patch-size": 2
         }
     ]
 }

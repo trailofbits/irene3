@@ -47,8 +47,7 @@ import ghidra.framework.preferences.Preferences;
 import ghidra.graph.VisualGraphComponentProvider;
 import ghidra.graph.viewer.*;
 import ghidra.graph.viewer.renderer.VisualGraphEdgeLabelRenderer;
-import ghidra.program.model.address.Address;
-import ghidra.program.model.address.AddressSetView;
+import ghidra.program.model.address.*;
 import ghidra.program.model.block.*;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
@@ -87,6 +86,9 @@ public class AnvillGraphProvider
   public static final String DECOMPILE_ACTION_NAME = "Decompile Function";
   private final GhidraFileFilter JSON_FILE_FILTER =
       ExtensionFileFilter.forExtensions("JSON files", "json");
+
+  private final GhidraFileFilter C_FILE_FILTER = ExtensionFileFilter.forExtensions("C files", "c");
+
   private final PluginTool tool;
   private final AnvillGraphPlugin plugin;
   private DecoratorPanel decorationPanel;
@@ -659,29 +661,15 @@ public class AnvillGraphProvider
     }
   }
 
-  private void savePatches() {
-    if (anvillPatchInfo == null) {
-      Msg.showError(
-          this, view.getPrimaryGraphViewer(), "Nothing to Save", "There is no patch data to save.");
-      return;
-    }
-
-    updatePatchModel();
-    if (!anvillPatchInfo.isModified()) {
-      Msg.showError(
-          this,
-          view.getPrimaryGraphViewer(),
-          "No Changes",
-          "Patch data has not changed. Nothing to save.");
-      return;
-    }
-
+  private void saveContent(String content, GhidraFileFilter file_filter) {
     // Initialize file chooser
     if (saveFileChooser == null) {
       saveFileChooser = new GhidraFileChooser(tool.getActiveWindow());
-      saveFileChooser.addFileFilter(JSON_FILE_FILTER);
-      saveFileChooser.setSelectedFileFilter(JSON_FILE_FILTER);
     }
+
+    saveFileChooser.addFileFilter(file_filter);
+    saveFileChooser.setSelectedFileFilter(file_filter);
+
     String lastSaveFile = Preferences.getProperty(LAST_SAVEFILE_PREFERENCE_KEY);
     if (lastSaveFile != null) {
       saveFileChooser.setSelectedFile(new File(lastSaveFile));
@@ -704,9 +692,8 @@ public class AnvillGraphProvider
       }
     }
     try {
-      String str = anvillPatchInfo.serialize();
       PrintWriter writer = new PrintWriter(new FileWriter(saveAsFile));
-      writer.println(str);
+      writer.println(content);
       writer.close();
 
       Preferences.setProperty(LAST_SAVEFILE_PREFERENCE_KEY, saveAsFile.getAbsolutePath());
@@ -716,6 +703,53 @@ public class AnvillGraphProvider
     } catch (IOException e) {
       Msg.showError(this, view.getPrimaryGraphViewer(), "Error Saving File As...", e.getMessage());
     }
+  }
+
+  private void savePatches() {
+    if (anvillPatchInfo == null) {
+      Msg.showError(
+          this, view.getPrimaryGraphViewer(), "Nothing to Save", "There is no patch data to save.");
+      return;
+    }
+
+    updatePatchModel();
+
+    var matching_patch =
+        anvillPatchInfo.getPatches().stream()
+            .filter(
+                (Patch p) -> {
+                  var addr = currentProgram.getAddressFactory().getAddress(p.getAddress());
+                  var max_addr = addr.add(p.getSize());
+                  return p.getSize() > 0
+                      && new AddressRangeImpl(addr, max_addr.subtract(1))
+                          .contains(currentLocation.getAddress());
+                })
+            .findFirst();
+
+    if (matching_patch.isEmpty()) {
+      Msg.showError(
+          this,
+          view.getPrimaryGraphViewer(),
+          "No Patch for Location",
+          "Selected location is not in decompiled function.");
+      return;
+    }
+
+    var patch_to_save = matching_patch.get();
+    if (!patch_to_save.isModified()) {
+      Msg.showWarn(
+          this,
+          view.getPrimaryGraphViewer(),
+          "Selected Location was not Modified",
+          "No code modifications were made to the selected patch block.");
+      return;
+    }
+
+    String pinfo = patch_to_save.serializePatchInfo();
+    String code = patch_to_save.getCode();
+
+    this.saveContent(pinfo, JSON_FILE_FILTER);
+    this.saveContent(code, C_FILE_FILTER);
   }
 
   /** Update patch models with potentially user-changed text in the graph vertices. */

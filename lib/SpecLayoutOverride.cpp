@@ -292,7 +292,7 @@ namespace irene3
 
         void DeclUsedGlobals(
             llvm::Function& func, clang::FunctionDecl* fdecl, anvill::Specification& spec) {
-            auto vars = UsedGlobalVars(&func);
+            auto vars = UsedGlobalValue< llvm::GlobalVariable >(&func);
             for (auto gv : vars) {
                 auto maybe_addr = GetPCMetadata(gv);
                 if (!maybe_addr) {

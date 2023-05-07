@@ -17,7 +17,7 @@ public class AnvillPatchInfo {
     jsonContent = JsonParser.parseString(jsonObject).getAsJsonObject();
 
     for (JsonElement patchJson : selectJsonPatches()) {
-      patches.add(Patch.parseJson(patchJson.getAsJsonObject()));
+      patches.add(Patch.parseJson(patchJson.getAsJsonObject(), gson));
     }
   }
 
@@ -59,41 +59,59 @@ public class AnvillPatchInfo {
 
   public static class Patch {
 
-    public static final String ADDR_FIELD_NAME = "patch-addr";
+    public static final String ADDR_FIELD_NAME = "patch-point";
     public static final String CODE_FIELD_NAME = "patch-code";
+
     public static final String SIZE_FIELD_NAME = "patch-size";
+
     private String code;
-    private long size;
     private final String address;
     private final JsonObject orig;
+
+    public int getSize() {
+      return size;
+    }
+
+    private final int size;
+
     private boolean modified;
 
-    Patch(String address, String code, long size, JsonObject orig) {
+    private final Gson gson;
+
+    Patch(String address, String code, int size, Gson gson, JsonObject orig) {
       this.orig = orig;
       this.address = address;
       this.code = code;
-      this.size = size;
       this.modified = false;
+      this.size = size;
+      this.gson = gson;
     }
 
-    public static Patch parseJson(JsonObject object) throws InstantiationException {
+    public String serializePatchInfo() {
+      var out = this.getJson();
+      out.remove(CODE_FIELD_NAME);
+      return gson.toJson(out);
+    }
+
+    public static Patch parseJson(JsonObject object, Gson gson) throws InstantiationException {
       JsonElement addressObj = object.get(ADDR_FIELD_NAME);
       if (addressObj == null) {
         throw new InstantiationException("Cannot find " + ADDR_FIELD_NAME + " in JSON");
       }
       String address = addressObj.getAsString();
+      address = address.split(":")[0];
       JsonElement codeObj = object.get(CODE_FIELD_NAME);
       if (codeObj == null) {
         throw new InstantiationException("Cannot find " + CODE_FIELD_NAME + " in JSON");
       }
-      String code = codeObj.getAsString();
-      JsonElement sizeObj = object.get(SIZE_FIELD_NAME);
-      if (sizeObj == null) {
+
+      JsonElement size = object.get(SIZE_FIELD_NAME);
+      if (size == null) {
         throw new InstantiationException("Cannot find " + SIZE_FIELD_NAME + " in JSON");
       }
-      String sizeHexString = sizeObj.getAsString().substring(2);
-      long size = Long.parseLong(sizeHexString, 16);
-      return new Patch(address, code, size, object);
+
+      String code = codeObj.getAsString();
+      return new Patch(address, code, size.getAsInt(), gson, object);
     }
 
     /**
@@ -125,10 +143,6 @@ public class AnvillPatchInfo {
       modified = !originalCode.equals(code);
     }
 
-    public long getSize() {
-      return size;
-    }
-
     @Override
     public boolean equals(Object o) {
       if (this == o) {
@@ -146,7 +160,7 @@ public class AnvillPatchInfo {
 
     @Override
     public int hashCode() {
-      return Objects.hash(code, address, orig, modified);
+      return Objects.hash(code, address, size, orig, modified);
     }
   }
 }

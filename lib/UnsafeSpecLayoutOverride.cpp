@@ -132,7 +132,7 @@ namespace irene3
 
         void DeclUsedGlobals(
             llvm::Function& func, clang::FunctionDecl* fdecl, anvill::Specification& spec) {
-            auto vars = UsedGlobalVars(&func);
+            auto vars = UsedGlobalValue< llvm::GlobalVariable >(&func);
             for (auto gv : vars) {
                 auto maybe_addr = GetPCMetadata(gv);
                 if (!maybe_addr) {
@@ -151,6 +151,57 @@ namespace irene3
             }
         }
 
+        void DeclUsedFunctions(
+            llvm::Function& func, clang::FunctionDecl* fdecl, anvill::Specification& spec) {
+            auto vars = UsedGlobalValue< llvm::Function >(&func);
+            for (auto gv : vars) {
+                if (anvill::GetBasicBlockAddr(gv)) {
+                    continue;
+                }
+
+                auto maybe_addr = GetPCMetadata(gv);
+                if (!maybe_addr) {
+                    LOG(ERROR) << "no pc metadata for " << std::string(gv->getName());
+                    continue;
+                }
+
+                auto var = spec.FunctionAt(*maybe_addr);
+
+                auto ftype = std::make_shared< anvill::FunctionType >();
+                for (auto param : var->params) {
+                    ftype->arguments.push_back(param.spec_type);
+                }
+                ftype->return_type = var->returns.spec_type;
+
+                auto type = type_decoder.Decode(ctx, spec, ftype, gv->getValueType(), true);
+                if (!type.isNull()) {
+                    auto new_fdecl
+                        = ctx.ast.CreateFunctionDecl(fdecl, type, std::string(gv->getName()));
+
+                    size_t i = 0;
+                    std::vector< clang::ParmVarDecl* > parms;
+                    for (auto param : var->params) {
+                        ftype->arguments.push_back(param.spec_type);
+                        parms.push_back(ctx.ast.CreateParamDecl(
+                            new_fdecl,
+                            type_decoder.Decode(
+                                ctx, spec, param.spec_type, gv->getFunctionType()->getParamType(i),
+                                true),
+                            param.name));
+
+                        i++;
+                    }
+                    new_fdecl->setParams(parms);
+
+                    auto& decl = ctx.value_decls[gv];
+                    auto name  = std::string(gv->getName());
+
+                    decl = new_fdecl;
+                    fdecl->addDecl(decl);
+                }
+            }
+        }
+
         void BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) {
             auto block_addr = anvill::GetBasicBlockAddr(&func);
             CHECK(block_addr.has_value());
@@ -160,6 +211,7 @@ namespace irene3
             // const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
             this->DeclUsedGlobals(func, fdecl, spec);
+            this->DeclUsedFunctions(func, fdecl, spec);
             auto available_vars     = fspec->in_scope_variables;
             auto num_available_vars = fspec->in_scope_variables.size();
 
@@ -213,9 +265,9 @@ namespace irene3
             CHECK(maybe_block_ctx.has_value());
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
             const auto& available_vars = fspec->in_scope_variables;
-            auto num_available_vars = available_vars.size();
-            auto first_var_idx      = func.arg_size() - num_available_vars;
-            auto arg                = llvm::dyn_cast< llvm::Argument >(&value);
+            auto num_available_vars    = available_vars.size();
+            auto first_var_idx         = func.arg_size() - num_available_vars;
+            auto arg                   = llvm::dyn_cast< llvm::Argument >(&value);
             if (arg && arg->getArgNo() >= first_var_idx) {
                 auto decl = this->ctx.value_decls[arg];
                 // Ghidra considers array arguments as passed by value

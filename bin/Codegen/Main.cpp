@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
     }
     auto maybe_result = ProcessSpecification(
         buff->getBuffer().str(), target_funcs, FLAGS_type_propagation, true,
-        FLAGS_unsafe_stack_locations, FLAGS_add_edges);
+        FLAGS_unsafe_stack_locations, FLAGS_add_edges, true);
     if (!maybe_result.Succeeded()) {
         std::cerr << maybe_result.TakeError() << std::endl;
         return EXIT_FAILURE;

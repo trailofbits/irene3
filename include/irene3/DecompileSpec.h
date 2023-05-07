@@ -135,7 +135,13 @@ namespace irene3
         size_t size;
     };
 
-    using GvarInfoByBlock = std::unordered_map< std::uint64_t, std::vector< GlobalVarInfo > >;
+    struct FunctionInfo {
+        std::string name;
+        uint64_t addr;
+    };
+
+    using GvarInfoByBlock     = std::unordered_map< std::uint64_t, std::vector< GlobalVarInfo > >;
+    using FunctionInfoByBlock = std::unordered_map< std::uint64_t, std::vector< FunctionInfo > >;
 
     struct CodegenResult {
         std::shared_ptr< llvm::LLVMContext > context;
@@ -146,6 +152,8 @@ namespace irene3
         ProvenanceInfo prov_info;
 
         GvarInfoByBlock block_globals;
+
+        FunctionInfoByBlock block_functions;
 
         std::unordered_map< std::uint64_t, clang::CompoundStmt* > blocks;
     };
@@ -183,7 +191,7 @@ namespace irene3
 
         DecompilationResult PopulateDecompResFromRellic(rellic::DecompilationResult res) const;
         CodegenResult PopulateCodegenResFromRellic(
-            rellic::DecompilationResult res, GvarInfoByBlock) const;
+            rellic::DecompilationResult res, GvarInfoByBlock, FunctionInfoByBlock functions) const;
         void CreateSpecLayoutOverride(bool stack_grows_down) const;
 
       public:
