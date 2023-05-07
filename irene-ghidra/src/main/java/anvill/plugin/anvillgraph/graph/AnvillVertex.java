@@ -78,7 +78,8 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
     address = addressFactory.getAddress(patch.getAddress());
     Address maxAddress =
         addressFactory.getAddress(
-            address.getAddressSpace().getSpaceID(), address.getOffset() + patch.getSize());
+            address.getAddressSpace().getSpaceID(),
+            address.getOffset() + Integer.max(patch.getSize() - 1, 0));
     addressSetView = new AddressSet(address, maxAddress);
     this.patch = patch;
 
