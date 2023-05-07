@@ -20,6 +20,7 @@ package anvill.plugin.anvillgraph.graph;
 import ghidra.graph.viewer.VisualVertex;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
+import javax.swing.JTextArea;
 
 /** A vertex that represents a Basic Block in a control-flow graph */
 public interface BasicBlockVertex extends VisualVertex {
@@ -29,4 +30,10 @@ public interface BasicBlockVertex extends VisualVertex {
   public abstract Address getVertexAddress();
 
   public abstract boolean containsAddress(Address address);
+
+  public abstract void setEditable(boolean editable);
+
+  public abstract String getText();
+
+  public abstract JTextArea getTextArea();
 }

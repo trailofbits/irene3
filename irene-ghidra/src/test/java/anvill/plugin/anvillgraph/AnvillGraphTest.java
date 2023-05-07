@@ -3,6 +3,9 @@ package anvill.plugin.anvillgraph;
 import static org.junit.Assert.*;
 
 import anvill.plugin.anvillgraph.graph.BasicBlockGraph;
+import anvill.plugin.anvillgraph.graph.BasicBlockVertex;
+import ghidra.program.model.address.Address;
+import java.awt.*;
 import java.io.File;
 import java.util.Objects;
 import org.junit.After;
@@ -40,6 +43,30 @@ public class AnvillGraphTest extends AbstractAnvillGraphTest {
     BasicBlockGraph graph = getBasicBlockGraph();
     assertNotNull(graph);
     assertEquals(7, graph.getVertexCount());
+  }
+
+  @Test
+  public void testGraphEdit() {
+    runSwing(
+        () ->
+            graphProvider.importPatchesFile(
+                new File(
+                    Objects.requireNonNull(classLoader.getResource("patch-files/fake_sscanf.json"))
+                        .getFile())));
+    BasicBlockGraph graph = getBasicBlockGraph();
+
+    Address address = getAddress("0x1004178");
+    BasicBlockVertex vertex = graph.getVertexAtAddr(address);
+    String text = "\n\t\tTest edit 1";
+    String vertexText = runSwing(() -> vertex.getText());
+    typeInGraph(vertex.getComponent(), text);
+    assertDoNotContainsString(text, vertexText);
+    runSwing(() -> vertex.setEditable(true));
+    text =
+        "\n\t\tthe quick brown fox jumped over the lazy dog THE QUICK BROWN FOX JUMPED OVER THE LAZY DOG 2";
+    typeInGraph(vertex.getTextArea(), text);
+    vertexText = runSwing(() -> vertex.getText());
+    assertContainsString(text, vertexText);
   }
 
   @Test

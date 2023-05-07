@@ -27,6 +27,7 @@ VCPKG_ARCH := if "x86_64" == arch() { "x64" } else { "arm64" }
 export VCPKG_TARGET_TRIPLET := env_var_or_default("VCPKG_TARGET_TRIPLET", VCPKG_ARCH + "-" + VCPKG_OS + "-rel")
 export CMAKE_TOOLCHAIN_FILE := env_var_or_default("CMAKE_TOOLCHAIN_FILE", justfile_directory() + "/deps/" + CXX_COMMON_NAME + "/scripts/buildsystems/vcpkg.cmake")
 export CMAKE_INSTALL_PREFIX := env_var_or_default("CMAKE_INSTALL_PREFIX", justfile_directory() + "/install")
+export GHIDRA_INSTALL_DIR := env_var_or_default("GHIDRA_INSTALL_DIR", justfile_directory() + "/deps/ghidra")
 
 default:
     @just --list
