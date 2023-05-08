@@ -14,6 +14,10 @@ CMAKE_ARCH := if "macos" == "{{CMAKE_OS}}" { "universal" } else { arch() }
 CMAKE_VERSION := "3.24.2"
 CMAKE_DIR := "cmake-"+CMAKE_VERSION+"-"+CMAKE_OS+"-"+CMAKE_ARCH
 
+GHIDRA_TAG := "amp-ghidra-v0.0.2-rc2"
+GHIDRA_MAJOR_VERSION := "10.3_DEV"
+GHIDRA_MINOR_VERSION := "20230505"
+
 VIRTUAL_ENV := env_var_or_default("VIRTUAL_ENV", justfile_directory() + "/venv")
 DOCKER_CMD := "docker"
 
@@ -124,14 +128,15 @@ install-cmake:
 
 install-ghidra:
     #!/usr/bin/env bash
-    if [[ ! -d "deps/ghidra" ]]; then
-         mkdir -p deps
-         echo "Downloading Ghidra"
-         curl -sL \
-         https://github.com/trail-of-forks/ghidra/releases/download/amp-ghidra-v0.0.2-rc2/ghidra_10.3_DEV_20230505.zip \
-         --output deps/ghidra.zip
-         echo "Extracting Ghidra"
-         cd deps && unzip -qq ghidra.zip && mv ghidra_10.3_DEV ghidra && cd ..
+    if [[ "$(awk -F'=' '/build\.date\.short/{print $2}' ./deps/ghidra/Ghidra/application.properties 2>/dev/null)" != "{{GHIDRA_MINOR_VERSION}}" ]]; then
+      mkdir -p deps
+      echo "Downloading Ghidra"
+      curl -sL \
+      https://github.com/trail-of-forks/ghidra/releases/download/{{GHIDRA_TAG}}/ghidra_{{GHIDRA_MAJOR_VERSION}}_{{GHIDRA_MINOR_VERSION}}.zip \
+      --output deps/ghidra.zip
+      echo "Extracting Ghidra"
+      rm -rf ./deps/ghidra ./deps/ghidra_{{GHIDRA_MAJOR_VERSION}}
+      cd deps && unzip -qq ghidra.zip && mv ghidra_{{GHIDRA_MAJOR_VERSION}} ghidra && cd ..
     fi
     echo "GHIDRA_INSTALL_DIR={{justfile_directory()}}/deps/ghidra" >{{justfile_directory()}}/gradle.properties
 
