@@ -2,6 +2,7 @@
 #include <irene3/DecompileSpec.h>
 #include <irene3/TypeDecoder.h>
 #include <llvm/IR/GlobalVariable.h>
+#include <unordered_set>
 #include <vector>
 
 namespace irene3
@@ -19,19 +20,19 @@ namespace irene3
 
     template< typename T >
     std::vector< T* > UsedGlobalValue(llvm::Function* func) {
-        std::vector< T* > vars;
+        std::unordered_set< T* > vars;
         for (auto& gv : func->getParent()->global_values()) {
             for (auto use : gv.users()) {
                 if (T* casted_val = llvm::dyn_cast< T >(&gv)) {
                     if (auto insn = llvm::dyn_cast< llvm::Instruction >(use)) {
                         if (insn->getFunction() == func) {
-                            vars.push_back(casted_val);
+                            vars.insert(casted_val);
                         }
                     }
                 }
             }
         }
-        return vars;
+        return { vars.begin(), vars.end() };
     }
 
     llvm::Function* GetOrCreateGotoInstrinsic(llvm::Module* mod, llvm::IntegerType* addr_ty);
