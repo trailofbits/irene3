@@ -139,6 +139,7 @@ object BasicBlockSplit {
       )
     }
     val decomp_res = decomp_ifc.decompileFunction(func, 30, null)
+    decomp_ifc.closeProgram();
     if (!decomp_res.decompileCompleted) {
       throw new RuntimeException(
         "Unable to decompile: " + decomp_ifc.getLastMessage
