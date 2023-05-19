@@ -125,7 +125,7 @@ public class AnvillPatchInfo {
       return jRet;
     }
 
-    public boolean isModified() {
+    public synchronized boolean isModified() {
       return modified;
     }
 
@@ -137,7 +137,7 @@ public class AnvillPatchInfo {
       return code;
     }
 
-    public void setCode(String newCode) {
+    public synchronized void setCode(String newCode) {
       String originalCode = orig.get(CODE_FIELD_NAME).getAsString();
       code = newCode;
       modified = !originalCode.equals(code);
