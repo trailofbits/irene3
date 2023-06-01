@@ -1061,6 +1061,8 @@ object ProgramSpecifier {
     val aliases = MutableMap[Long, TypeSpec]()
     val arch = getProgramArch(prog)
     val os = getProgramOS(prog)
+    val image_name = prog.getName();
+    val image_base = prog.getImageBase().getOffset();
     val listing = prog.getListing()
     val memory = prog.getMemory()
     val funcmgr = prog.getFunctionManager()
@@ -1127,7 +1129,9 @@ object ProgramSpecifier {
       symbol_specs.toArray.toSeq,
       mem_specs.toArray.toSeq,
       Some(specifyControlFlow(prog)),
-      aliases.view.toMap
+      aliases.view.toMap,
+      image_name,
+      image_base
     )
   }
 
