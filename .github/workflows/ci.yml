@@ -63,8 +63,8 @@ jobs:
       matrix:
         image:
           - { name: "ubuntu", tag: "22.04" }
-        llvm: ["15"]
-        cxxcommon_version: ["0.2.24"]
+        llvm: ["16"]
+        cxxcommon_version: ["0.4.1"]
 
     runs-on:
       labels: gha-ubuntu-32
