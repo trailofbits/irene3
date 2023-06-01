@@ -2,8 +2,9 @@ set dotenv-load
 LLVM_VERSION := "16"
 CXX_COMMON_VERSION := "0.4.1"
 CXX_COMMON_ARCH := if "x86_64" == arch() { "amd64" } else { "arm64" }
+XCODE_VERSION := "14.2"
 CXX_COMMON_NAME := if "macos" == os() {
-      "vcpkg_macos-11_llvm-" + LLVM_VERSION + "_xcode-13.0_" + CXX_COMMON_ARCH
+      "vcpkg_macos-12_llvm-" + LLVM_VERSION + "_xcode-" + XCODE_VERSION + "_" + CXX_COMMON_ARCH
     } else {
       "vcpkg_ubuntu-22.04_llvm-" + LLVM_VERSION + "_" + CXX_COMMON_ARCH
     }
@@ -11,7 +12,7 @@ CXX_COMMON_URL := "https://github.com/lifting-bits/cxx-common/releases/download/
 
 CMAKE_OS := os()
 CMAKE_ARCH := if "macos" == "{{CMAKE_OS}}" { "universal" } else { arch() }
-CMAKE_VERSION := "3.24.2"
+CMAKE_VERSION := "3.26.4"
 CMAKE_DIR := "cmake-"+CMAKE_VERSION+"-"+CMAKE_OS+"-"+CMAKE_ARCH
 
 GHIDRA_TAG := "amp-ghidra-v0.0.2-rc2"
@@ -59,7 +60,7 @@ test-irene3-ghidra:
 
 install-cxx-common:
     #!/usr/bin/env bash
-    if [[ ! -f "deps/cxx-common.tar.xz" ]]
+    if [[ ! -d "deps/{{CXX_COMMON_NAME}}" ]]
     then
         mkdir -p deps
         echo "Downloading {{CXX_COMMON_NAME}}.tar.xz to deps/cxx-common.tar.xz"
@@ -70,6 +71,10 @@ install-cxx-common:
 
 install-ninja:
     #!/usr/bin/env bash
+    if command -v ninja >/dev/null 2>&1; then
+      exit 0
+    fi
+
     if [[ "macos" == "{{os()}}" ]]; then
         brew install ninja
     elif [[ "linux" == "{{os()}}" ]]; then
@@ -176,6 +181,9 @@ check-irene3-decompile:
         exit 1
     fi
     exit 0
+
+generate-spec bin out_spec: install-irene3-ghidra
+    ./deps/ghidra/support/analyzeHeadless /tmp dummy-project -readOnly -deleteProject -import {{bin}} -postScript anvillHeadlessExportScript {{out_spec}}
 
 decompile-spec spec out_c: check-irene3-decompile
     "${CMAKE_INSTALL_PREFIX}/bin/irene3-decompile" -spec {{spec}} -c_out {{out_c}}
