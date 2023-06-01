@@ -1,5 +1,5 @@
 set dotenv-load
-LLVM_VERSION := "15"
+LLVM_VERSION := "16"
 CXX_COMMON_VERSION := "0.2.24"
 CXX_COMMON_ARCH := if "x86_64" == arch() { "amd64" } else { "arm64" }
 CXX_COMMON_NAME := if "macos" == os() {
