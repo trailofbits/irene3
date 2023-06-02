@@ -23,7 +23,6 @@ import anvill.decompiler.DecompilerServerException;
 import anvill.decompiler.DecompilerServerManager;
 import anvill.decompiler.DockerDecompilerServerManager;
 import anvill.plugin.anvillgraph.AnvillPatchInfo.Patch;
-import anvill.plugin.anvillgraph.actions.AddToPatchSliceAction;
 import anvill.plugin.anvillgraph.graph.*;
 import anvill.plugin.anvillgraph.graph.jung.renderer.AnvillEdgePaintTransformer;
 import anvill.plugin.anvillgraph.layout.AnvillGraphLayoutProvider;
@@ -31,6 +30,7 @@ import anvill.plugin.anvillgraph.layout.BBGraphLayout;
 import docking.ActionContext;
 import docking.WindowPosition;
 import docking.action.DockingAction;
+import docking.action.MenuData;
 import docking.action.ToolBarData;
 import docking.menu.ActionState;
 import docking.menu.MultiStateDockingAction;
@@ -39,7 +39,9 @@ import docking.widgets.OptionDialog;
 import docking.widgets.filechooser.GhidraFileChooser;
 import docking.widgets.filechooser.GhidraFileChooserMode;
 import edu.uci.ics.jung.visualization.RenderContext;
+import ghidra.app.context.ProgramLocationActionContext;
 import ghidra.app.nav.DecoratorPanel;
+import ghidra.app.plugin.core.decompile.DecompilePlugin;
 import ghidra.app.services.GoToService;
 import ghidra.app.util.PluginConstants;
 import ghidra.framework.plugintool.PluginTool;
@@ -68,7 +70,7 @@ import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import javax.swing.JComponent;
+import javax.swing.*;
 import org.apache.commons.collections4.BidiMap;
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 import resources.Icons;
@@ -106,13 +108,15 @@ public class AnvillGraphProvider
   private ManagedChannel grpcChannel;
   private CodegenGrpcClient grpcClient;
 
+  private Optional<Thread> busy;
+
   private final Map<Function, Set<Address>> functionSlices;
   private final DecompilerServerManager decompilerServerManager =
       new DockerDecompilerServerManager(50080);
 
   public AnvillGraphProvider(AnvillGraphPlugin anvillGraphPlugin, boolean isConnected) {
     super(anvillGraphPlugin.getTool(), AnvillGraphPlugin.GRAPH_NAME, anvillGraphPlugin.getName());
-
+    this.busy = Optional.empty();
     this.tool = anvillGraphPlugin.getTool();
     this.plugin = anvillGraphPlugin;
     this.functionSlices = new ConcurrentHashMap<>();
@@ -491,12 +495,141 @@ public class AnvillGraphProvider
     return decorationPanel;
   }
 
+  public synchronized boolean tryAcquire() {
+    if (busy.isPresent()) {
+      return false;
+    }
+    busy = Optional.of(Thread.currentThread());
+    return true;
+  }
+
+  public synchronized void release() {
+    if (busy.isPresent() && Thread.currentThread() == busy.get()) {
+      busy = Optional.empty();
+    }
+  }
+
+  class AnvillGraphTask extends Task {
+    AnvillGraphAction parent;
+    ActionContext context;
+
+    public AnvillGraphTask(AnvillGraphAction parent, ActionContext context) {
+      super("Anvill graph task");
+      this.parent = parent;
+      this.context = context;
+    }
+
+    @Override
+    public void run(TaskMonitor taskMonitor) throws CancelledException {
+      this.parent.runInAction(taskMonitor, this.context);
+    }
+  }
+
+  /**
+   * An irene task synchronizes on a latch guarenteeing that at most one task is inflight at a time
+   */
+  abstract class AnvillGraphAction extends DockingAction implements TaskListener {
+
+    public AnvillGraphAction(String name, String owner) {
+      super(name, owner);
+    }
+
+    @Override
+    public void actionPerformed(ActionContext context) {
+      if (!tryAcquire()) {
+        Msg.warn(this, "The IRENE decompiler is busy");
+        return;
+      }
+
+      var tsk = new AnvillGraphTask(this, context);
+      tsk.addTaskListener(this);
+      new TaskLauncher(tsk);
+    }
+
+    public abstract void runInAction(TaskMonitor taskMonitor, ActionContext context);
+
+    public void onTaskCompleted() {}
+
+    @Override
+    public void taskCompleted(Task task) {
+      onTaskCompleted();
+      release();
+    }
+
+    @Override
+    public void taskCancelled(Task task) {
+      release();
+    }
+  }
+
+  public static void addSliceToSaveList(
+      ActionContext actionContext, Map<Function, Set<Address>> saveList) {
+    if (actionContext instanceof ProgramLocationActionContext context) {
+      if (!context.hasSelection()) {
+        return;
+      }
+      var highlight = context.getSelection();
+      var minSplit = highlight.getMinAddress();
+
+      var listing = context.getProgram().getListing();
+
+      // The selection's max address gives us the address of the last highlighted instruction,
+      // whereas we want the address of the instruction after.
+      var currInst = listing.getInstructionContaining(highlight.getMaxAddress());
+
+      var maxSplit = highlight.getMaxAddress();
+      if (currInst != null) {
+        maxSplit = currInst.getMaxAddress().add(1);
+      }
+
+      var func = listing.getFunctionContaining(minSplit);
+      if (func == null || func != listing.getFunctionContaining(highlight.getMaxAddress())) {
+        return;
+      }
+      saveList.putIfAbsent(func, new HashSet<>());
+      var targetSet = saveList.get(func);
+      targetSet.add(minSplit);
+      targetSet.add(maxSplit);
+      Msg.debug(
+          AnvillGraphProvider.class,
+          "Added selection between "
+              + minSplit.toString()
+              + " and "
+              + maxSplit.toString()
+              + " for "
+              + func.getName());
+    }
+  }
+
+  public class AddToPatchSliceAction extends AnvillGraphAction {
+    private final Map<Function, Set<Address>> saveList;
+
+    public AddToPatchSliceAction(Map<Function, Set<Address>> save_list) {
+      super("Add Patch To Slice", DecompilePlugin.class.getSimpleName());
+      this.saveList = save_list;
+      setPopupMenuData(new MenuData(new String[] {"Add selection to slice"}, "New"));
+      setDescription("Adds selection to the working patch slice for this function");
+    }
+
+    @Override
+    public void runInAction(TaskMonitor monitor, ActionContext actionContext) {
+      addSliceToSaveList(actionContext, this.saveList);
+    }
+  }
+
   private void createActions() {
     DockingAction loadPatches =
-        new DockingAction(LOAD_PATCHES_ACTION_NAME, plugin.getName()) {
+        new AnvillGraphAction(LOAD_PATCHES_ACTION_NAME, plugin.getName()) {
           @Override
-          public void actionPerformed(ActionContext context) {
+          public void runInAction(TaskMonitor monitor, ActionContext actionContext) {
             importPatchesAction();
+          }
+
+          @Override
+          public void onTaskCompleted() {
+            installGraph(true);
+            displayLocation(currentLocation);
+            notifyContextChanged();
           }
         };
     loadPatches.setToolBarData(new ToolBarData(Icons.ADD_ICON, null));
@@ -505,9 +638,9 @@ public class AnvillGraphProvider
     addLocalAction(loadPatches);
 
     DockingAction savePatchesAction =
-        new DockingAction(SAVE_PATCHES_ACTION_NAME, plugin.getName()) {
+        new AnvillGraphAction(SAVE_PATCHES_ACTION_NAME, plugin.getName()) {
           @Override
-          public void actionPerformed(ActionContext context) {
+          public void runInAction(TaskMonitor monitor, ActionContext actionContext) {
             savePatches();
           }
         };
@@ -519,9 +652,9 @@ public class AnvillGraphProvider
     addLocalAction(savePatchesAction);
 
     DockingAction decompileAction =
-        new DockingAction(DECOMPILE_ACTION_NAME, plugin.getName()) {
+        new AnvillGraphAction(DECOMPILE_ACTION_NAME, plugin.getName()) {
           @Override
-          public void actionPerformed(ActionContext actionContext) {
+          public void runInAction(TaskMonitor monitor, ActionContext actionContext) {
             setupGrpcClient();
 
             Function func =
@@ -612,7 +745,10 @@ public class AnvillGraphProvider
             } else {
               anvillPatchInfo = null;
             }
+          }
 
+          @Override
+          public void onTaskCompleted() {
             installGraph(true);
             displayLocation(currentLocation);
             notifyContextChanged();
@@ -802,8 +938,11 @@ public class AnvillGraphProvider
     }
     Preferences.setProperty(LAST_IMPORTFILE_PREFERENCE_KEY, file.getAbsolutePath());
     Preferences.store();
-    installGraph(true);
+  }
 
+  void importPatchesFileSynchronous(File file) {
+    this.importPatchesFile(file);
+    installGraph(true);
     displayLocation(currentLocation);
     notifyContextChanged();
   }
@@ -832,8 +971,13 @@ public class AnvillGraphProvider
           @Override
           public void actionPerformed(ActionContext context) {
             // this callback is when the user clicks the button
-            AnvillGraphLayoutProvider currentUserData = getCurrentUserData();
-            changeLayout(currentUserData);
+            if (tryAcquire()) {
+              AnvillGraphLayoutProvider currentUserData = getCurrentUserData();
+              changeLayout(currentUserData);
+              release();
+            } else {
+              Msg.info(this, "Could not change layout because the graph provider is busy");
+            }
           }
 
           @Override
