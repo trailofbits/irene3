@@ -1,3 +1,4 @@
+import anvill.plugin.anvillgraph.AnvillGraphProvider
 import ghidra.test.AbstractGhidraHeadlessIntegrationTest
 import ghidra.test.AbstractGhidraHeadedIntegrationTest
 import ghidra.test.TestEnv
@@ -7,7 +8,6 @@ import scala.io.Source
 import java.io.File
 import java.util.concurrent.TimeUnit
 import anvill.{BasicBlockSplit, ProgramSpecifier}
-import anvill.plugin.anvillgraph.actions.AddToPatchSliceAction
 import docking.ComponentProvider
 import specification.specification.Arch.ARCH_AMD64
 import specification.specification.OS.OS_MACOS
@@ -162,9 +162,10 @@ class LoadAndSpecifyProgramTest extends AbstractGhidraHeadedIntegrationTest { //
     val mp: java.util.Map[ghidra.program.model.listing.Function, java.util.Set[
       Address
     ]] = java.util.HashMap()
-    val act = AddToPatchSliceAction(mp)
 
-    selects.foreach(addr => act.actionPerformed(MockActionContext(func, addr)))
+    selects.foreach(addr =>
+      AnvillGraphProvider.addSliceToSaveList(MockActionContext(func, addr), mp)
+    )
 
     val model = BasicBlockModel(func.getProgram)
     val fpoints = mp.getOrDefault(func, java.util.HashSet())

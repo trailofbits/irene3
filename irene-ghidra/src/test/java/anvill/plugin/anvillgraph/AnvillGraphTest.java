@@ -36,7 +36,7 @@ public class AnvillGraphTest extends AbstractAnvillGraphTest {
   public void testGraphSmoketest() {
     runSwing(
         () ->
-            graphProvider.importPatchesFile(
+            graphProvider.importPatchesFileSynchronous(
                 new File(
                     Objects.requireNonNull(classLoader.getResource("patch-files/fake_sscanf.json"))
                         .getFile())));
@@ -49,7 +49,7 @@ public class AnvillGraphTest extends AbstractAnvillGraphTest {
   public void testGraphEdit() {
     runSwing(
         () ->
-            graphProvider.importPatchesFile(
+            graphProvider.importPatchesFileSynchronous(
                 new File(
                     Objects.requireNonNull(classLoader.getResource("patch-files/fake_sscanf.json"))
                         .getFile())));
@@ -73,7 +73,7 @@ public class AnvillGraphTest extends AbstractAnvillGraphTest {
   public void testBadPatch() {
     runSwing(
         () ->
-            graphProvider.importPatchesFile(
+            graphProvider.importPatchesFileSynchronous(
                 new File(
                     Objects.requireNonNull(classLoader.getResource("patch-files/bad_sscanf.json"))
                         .getFile())));
@@ -86,7 +86,7 @@ public class AnvillGraphTest extends AbstractAnvillGraphTest {
   public void testGraphInteractive() {
     runSwing(
         () ->
-            graphProvider.importPatchesFile(
+            graphProvider.importPatchesFileSynchronous(
                 new File(
                     Objects.requireNonNull(classLoader.getResource("patch-files/fake_sscanf.json"))
                         .getFile())));
