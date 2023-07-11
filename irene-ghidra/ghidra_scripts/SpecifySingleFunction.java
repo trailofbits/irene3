@@ -32,7 +32,8 @@ public class SpecifySingleFunction extends GhidraScript {
         this.currentProgram
             .getFunctionManager()
             .getFunctionContaining(currentLocation.getAddress());
-    var spec = ProgramSpecifier.specifySingleFunction(func);
+    var spec =
+        ProgramSpecifier.specifySingleFunction(func, new scala.collection.immutable.HashSet<>());
 
     var format =
         askChoice(

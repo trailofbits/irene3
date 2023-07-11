@@ -47,6 +47,7 @@ public class DockerDecompilerServerManager implements DecompilerServerManager {
             dockerClient
                 .createContainerCmd(IMAGE_NAME)
                 .withEntrypoint(EXECUTABLE)
+                .withCmd("--unsafe-stack-locations=1")
                 .withName(CONTAINER_NAME)
                 .withHostConfig(
                     new HostConfig().withPortBindings(PortBinding.parse(port + ":" + EXPOSED_PORT)))

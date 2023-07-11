@@ -1056,7 +1056,8 @@ object ProgramSpecifier {
       prog: Program,
       function_def_list: Seq[Function],
       function_decl_list: Seq[Function],
-      function_split_addrs: Set[Address] = Set.empty
+      function_split_addrs: Set[Address] = Set.empty,
+      required_globals: Set[Symbol] = Set.empty
   ): Specification = {
     val aliases = MutableMap[Long, TypeSpec]()
     val arch = getProgramArch(prog)
@@ -1068,9 +1069,16 @@ object ProgramSpecifier {
     val funcmgr = prog.getFunctionManager()
     val defaultRetAddr = specifyDefaultReturnAddress(prog)
 
+    val required_funcs = required_globals.flatMap(sym =>
+      Option(prog.getFunctionManager().getFunctionAt(sym.getAddress()))
+    )
+
     val func_defs_redirected = applyThunkRedirections(prog, function_def_list)
     val func_decls_redirected =
-      applyThunkRedirections(prog, function_decl_list) -- func_defs_redirected
+      applyThunkRedirections(
+        prog,
+        function_decl_list ++ required_funcs
+      ) -- func_defs_redirected
 
     val func_specs = (func_decls_redirected.toSeq.map(
       specifyFunctionOrDecl(
@@ -1111,6 +1119,8 @@ object ProgramSpecifier {
       func_defs_redirected
         .flatMap(getGlobalsFromFunction)
         .flatMap(x => specifyGlobalVariable(x, aliases))
+        ++ required_globals.toSeq
+          .flatMap(sym => specifyGlobalVariable(sym, aliases))
     }
 
     val callsite_overrides =
@@ -1131,7 +1141,8 @@ object ProgramSpecifier {
       Some(specifyControlFlow(prog)),
       aliases.view.toMap,
       image_name,
-      image_base
+      image_base,
+      required_globals.map(_.getName).toSeq
     )
   }
 
@@ -1198,13 +1209,17 @@ object ProgramSpecifier {
     })
   }
 
-  def specifySingleFunction(func: Function) = {
-    specifySingleFunctionWithSplits(func, null)
+  def specifySingleFunction(
+      func: Function,
+      required_globals: Set[Symbol] = Set.empty
+  ) = {
+    specifySingleFunctionWithSplits(func, null, required_globals)
   }
 
   def specifySingleFunctionWithSplits(
       func: Function,
-      func_split_addrs: ju.Set[Address]
+      func_split_addrs: ju.Set[Address],
+      required_globals: Set[Symbol] = Set.empty
   ) = {
     makeFunctionsPermissive(Seq(func))
     val decls = calledFunctions(func)
@@ -1213,7 +1228,8 @@ object ProgramSpecifier {
       List(func),
       decls.toSeq,
       if (func_split_addrs == null) Set.empty
-      else func_split_addrs.asScala.toSet
+      else func_split_addrs.asScala.toSet,
+      required_globals
     )
   }
 

@@ -66,8 +66,8 @@ namespace
             auto repl_function   = llvm::cast< llvm::Function >(target_value);
             std::string nm       = std::string(repl_function->getName());
             auto nfunc           = llvm::Function::Create(
-                          repl_function->getFunctionType(), llvm::GlobalValue::ExternalLinkage,
-                          repl_function->getName(), curr);
+                repl_function->getFunctionType(), llvm::GlobalValue::ExternalLinkage,
+                repl_function->getName(), curr);
 
             target_function->replaceAllUsesWith(nfunc);
             target_function->eraseFromParent();
@@ -80,9 +80,9 @@ namespace
             auto repl_var   = llvm::cast< llvm::GlobalVariable >(target_value);
             std::string nm  = std::string(repl_var->getName());
             auto newv       = new llvm::GlobalVariable(
-                      *curr, repl_var->getValueType(), repl_var->isConstant(),
-                      llvm::GlobalValue::ExternalLinkage, nullptr, "", target_var,
-                      repl_var->getThreadLocalMode(), repl_var->getAddressSpace(), true);
+                *curr, repl_var->getValueType(), repl_var->isConstant(),
+                llvm::GlobalValue::ExternalLinkage, nullptr, "", target_var,
+                repl_var->getThreadLocalMode(), repl_var->getAddressSpace(), true);
             target_var->replaceAllUsesWith(newv);
             target_var->eraseFromParent();
             newv->setName(nm);

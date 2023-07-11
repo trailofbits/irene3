@@ -177,15 +177,17 @@ namespace irene3
         return { res, rev };
     }
 
-    void SpecDecompilationJob::CreateSpecLayoutOverride(bool stack_grows_down) const {
+    void SpecDecompilationJob::CreateSpecLayoutOverride(
+        bool stack_grows_down, const std::unordered_set< std::string >& required_globals) const {
         if (args_as_locals) {
             if (unsafe_stack_locations) {
                 options->additional_variable_providers.push_back(
-                    std::make_unique< UnsafeSpecLayoutOverride::Factory >(spec, type_decoder));
+                    std::make_unique< UnsafeSpecLayoutOverride::Factory >(
+                        spec, type_decoder, required_globals));
             } else {
                 options->additional_variable_providers.push_back(
                     std::make_unique< SpecLayoutOverride::Factory >(
-                        spec, type_decoder, stack_grows_down));
+                        spec, type_decoder, stack_grows_down, required_globals));
             }
         }
     }
@@ -266,7 +268,8 @@ namespace irene3
         options.state_struct_init_procedure = this->state_initialization_strategy;
         options.should_remove_anvill_pc     = this->should_remove_anvill_pc;
         options.pc_metadata_name            = "pc";
-        CreateSpecLayoutOverride(options.stack_frame_recovery_options.stack_grows_down);
+        CreateSpecLayoutOverride(
+            options.stack_frame_recovery_options.stack_grows_down, this->spec.GetRequiredGlobals());
         anvill::EntityLifter lifter(options);
 
         this->LiftOrDeclareFunctionsInto(lifter);
@@ -302,7 +305,8 @@ namespace irene3
         options.state_struct_init_procedure = this->state_initialization_strategy;
         options.should_remove_anvill_pc     = this->should_remove_anvill_pc;
         options.pc_metadata_name            = "pc";
-        CreateSpecLayoutOverride(options.stack_frame_recovery_options.stack_grows_down);
+        CreateSpecLayoutOverride(
+            options.stack_frame_recovery_options.stack_grows_down, this->spec.GetRequiredGlobals());
         anvill::EntityLifter lifter(options);
 
         this->LiftOrDeclareFunctionsInto(lifter);
@@ -333,7 +337,8 @@ namespace irene3
             }
 
             std::vector< GlobalVarInfo > blk_gvars;
-            for (auto var : UsedGlobalValue< llvm::GlobalVariable >(&func)) {
+            for (auto var :
+                 UsedGlobalValue< llvm::GlobalVariable >(&func, this->spec.GetRequiredGlobals())) {
                 auto pc = GetPCMetadata(var);
                 if (!pc) {
                     continue;
@@ -348,7 +353,8 @@ namespace irene3
             gvars.insert({ *block_addr, blk_gvars });
 
             std::vector< FunctionInfo > blk_funcs;
-            for (auto var : UsedGlobalValue< llvm::Function >(&func)) {
+            for (auto var :
+                 UsedGlobalValue< llvm::Function >(&func, this->spec.GetRequiredGlobals())) {
                 auto pc = lifter.AddressOfEntity(var);
                 if (anvill::GetBasicBlockAddr(var).has_value()) {
                     continue;

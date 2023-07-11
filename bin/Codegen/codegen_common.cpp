@@ -418,8 +418,8 @@ rellic::Result< llvm::json::Object, std::string > ProcessSpecification(
             = block_contexts.GetBasicBlockContextForAddr(addr).value();
 
         llvm::json::Object patch;
-        patch["image-name"] = spec.ImageName();
-        patch["image-base"] = spec.ImageBase();
+        patch["image-name"]  = spec.ImageName();
+        patch["image-base"]  = spec.ImageBase();
         patch["patch-point"] = to_hex(addr) + ":" + std::to_string(address_size);
 
         auto func_decl      = spec.FunctionAt(block.GetParentFunctionAddress());
