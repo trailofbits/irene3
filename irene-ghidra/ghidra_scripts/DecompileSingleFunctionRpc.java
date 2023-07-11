@@ -24,7 +24,8 @@ public class DecompileSingleFunctionRpc extends GhidraScript {
           this.currentProgram
               .getFunctionManager()
               .getFunctionContaining(currentLocation.getAddress());
-      var spec = ProgramSpecifier.specifySingleFunction(func);
+      var spec =
+          ProgramSpecifier.specifySingleFunction(func, new scala.collection.immutable.HashSet<>());
       client
           .processSpec(Specification.toJavaProto(spec))
           .ifPresent(

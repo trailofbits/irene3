@@ -29,7 +29,9 @@ public class anvillHeadlessFunctionExport extends GhidraScript {
 
     Objects.requireNonNull(target_func);
 
-    var spec = ProgramSpecifier.specifySingleFunction(target_func);
+    var spec =
+        ProgramSpecifier.specifySingleFunction(
+            target_func, new scala.collection.immutable.HashSet<>());
 
     var strm = new FileOutputStream(fname);
     spec.writeTo(strm);

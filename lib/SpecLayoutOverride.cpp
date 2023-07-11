@@ -44,6 +44,7 @@ namespace irene3
         TypeDecoder& type_decoder;
         bool stack_grows_down;
         bool should_preserve_unused_decls;
+        const std::unordered_set< std::string >& required_globals;
 
         bool IsStackVariable(const anvill::ParameterDecl& var) {
             auto stack_pointer_reg
@@ -57,12 +58,14 @@ namespace irene3
             anvill::Specification& spec,
             TypeDecoder& type_decoder,
             bool stack_grows_down,
-            bool should_preserve_unused_decls)
+            bool should_preserve_unused_decls,
+            const std::unordered_set< std::string >& required_globals)
             : ctx(ctx)
             , spec(spec)
             , type_decoder(type_decoder)
             , stack_grows_down(stack_grows_down)
-            , should_preserve_unused_decls(should_preserve_unused_decls) {}
+            , should_preserve_unused_decls(should_preserve_unused_decls)
+            , required_globals(required_globals) {}
 
         std::optional< std::reference_wrapper< const anvill::BasicBlockContext > > GetContext(
             llvm::Function& func) {
@@ -292,7 +295,7 @@ namespace irene3
 
         void DeclUsedGlobals(
             llvm::Function& func, clang::FunctionDecl* fdecl, anvill::Specification& spec) {
-            auto vars = UsedGlobalValue< llvm::GlobalVariable >(&func);
+            auto vars = UsedGlobalValue< llvm::GlobalVariable >(&func, required_globals);
             for (auto gv : vars) {
                 auto maybe_addr = GetPCMetadata(gv);
                 if (!maybe_addr) {
@@ -411,10 +414,16 @@ namespace irene3
         anvill::Specification& spec,
         TypeDecoder& type_decoder,
         bool stack_grows_down,
-        bool should_preserve_unused_decls)
+        bool should_preserve_unused_decls,
+        const std::unordered_set< std::string >& required_globals)
         : FunctionLayoutOverride(dec_ctx)
         , impl(std::make_unique< Impl >(
-              dec_ctx, spec, type_decoder, stack_grows_down, should_preserve_unused_decls)) {}
+              dec_ctx,
+              spec,
+              type_decoder,
+              stack_grows_down,
+              should_preserve_unused_decls,
+              required_globals)) {}
     SpecLayoutOverride::~SpecLayoutOverride() = default;
 
     bool SpecLayoutOverride::HasOverride(llvm::Function& func) { return impl->HasOverride(func); }
@@ -437,7 +446,10 @@ namespace irene3
     }
 
     SpecLayoutOverride::Factory::Factory(
-        anvill::Specification spec, TypeDecoder& type_decoder, bool stack_grows_down)
+        anvill::Specification spec,
+        TypeDecoder& type_decoder,
+        bool stack_grows_down,
+        const std::unordered_set< std::string >& required_globals)
         : spec(spec)
         , type_decoder(type_decoder)
         , stack_grows_down(stack_grows_down) {}
@@ -445,6 +457,6 @@ namespace irene3
     std::unique_ptr< FunctionLayoutOverride > SpecLayoutOverride::Factory::create(
         rellic::DecompilationContext& dec_ctx) {
         return std::make_unique< SpecLayoutOverride >(
-            dec_ctx, spec, type_decoder, stack_grows_down, false);
+            dec_ctx, spec, type_decoder, stack_grows_down, false, required_globals);
     }
 } // namespace irene3

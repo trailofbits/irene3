@@ -40,16 +40,19 @@ namespace irene3
         TypeDecoder& type_decoder;
         bool stack_grows_down;
         bool should_preserve_unused_decls;
+        const std::unordered_set< std::string >& required_globals;
 
         Impl(
             DecompilationContext& ctx,
             anvill::Specification& spec,
             TypeDecoder& type_decoder,
-            bool should_preserve_unused_decls)
+            bool should_preserve_unused_decls,
+            const std::unordered_set< std::string >& required_globals)
             : ctx(ctx)
             , spec(spec)
             , type_decoder(type_decoder)
-            , should_preserve_unused_decls(should_preserve_unused_decls) {}
+            , should_preserve_unused_decls(should_preserve_unused_decls)
+            , required_globals(required_globals) {}
 
         std::optional< std::reference_wrapper< const anvill::BasicBlockContext > > GetContext(
             llvm::Function& func) {
@@ -132,7 +135,7 @@ namespace irene3
 
         void DeclUsedGlobals(
             llvm::Function& func, clang::FunctionDecl* fdecl, anvill::Specification& spec) {
-            auto vars = UsedGlobalValue< llvm::GlobalVariable >(&func);
+            auto vars = UsedGlobalValue< llvm::GlobalVariable >(&func, required_globals);
             for (auto gv : vars) {
                 auto maybe_addr = GetPCMetadata(gv);
                 if (!maybe_addr) {
@@ -153,7 +156,7 @@ namespace irene3
 
         void DeclUsedFunctions(
             llvm::Function& func, clang::FunctionDecl* fdecl, anvill::Specification& spec) {
-            auto vars = UsedGlobalValue< llvm::Function >(&func);
+            auto vars = UsedGlobalValue< llvm::Function >(&func, required_globals);
             for (auto gv : vars) {
                 if (anvill::GetBasicBlockAddr(gv)) {
                     continue;
@@ -281,11 +284,11 @@ namespace irene3
         DecompilationContext& dec_ctx,
         anvill::Specification& spec,
         TypeDecoder& type_decoder,
-        bool should_preserve_unused_decls)
+        bool should_preserve_unused_decls,
+        const std::unordered_set< std::string >& required_globals)
         : FunctionLayoutOverride(dec_ctx)
-        , impl(
-              std::make_unique< Impl >(dec_ctx, spec, type_decoder, should_preserve_unused_decls)) {
-    }
+        , impl(std::make_unique< Impl >(
+              dec_ctx, spec, type_decoder, should_preserve_unused_decls, required_globals)) {}
     UnsafeSpecLayoutOverride::~UnsafeSpecLayoutOverride() = default;
 
     bool UnsafeSpecLayoutOverride::HasOverride(llvm::Function& func) {
@@ -311,12 +314,16 @@ namespace irene3
     }
 
     UnsafeSpecLayoutOverride::Factory::Factory(
-        anvill::Specification spec, TypeDecoder& type_decoder)
+        anvill::Specification spec,
+        TypeDecoder& type_decoder,
+        const std::unordered_set< std::string >& required_globals)
         : spec(spec)
-        , type_decoder(type_decoder) {}
+        , type_decoder(type_decoder)
+        , required_globals(required_globals) {}
 
     std::unique_ptr< FunctionLayoutOverride > UnsafeSpecLayoutOverride::Factory::create(
         rellic::DecompilationContext& dec_ctx) {
-        return std::make_unique< UnsafeSpecLayoutOverride >(dec_ctx, spec, type_decoder, false);
+        return std::make_unique< UnsafeSpecLayoutOverride >(
+            dec_ctx, spec, type_decoder, false, required_globals);
     }
 } // namespace irene3

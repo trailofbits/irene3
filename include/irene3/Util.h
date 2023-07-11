@@ -35,5 +35,25 @@ namespace irene3
         return { vars.begin(), vars.end() };
     }
 
+    template< typename T >
+    std::vector< T* > UsedGlobalValue(
+        llvm::Function* func, const std::unordered_set< std::string >& required_globals) {
+        std::unordered_set< T* > vars;
+        for (auto& gv : func->getParent()->global_values()) {
+            for (auto use : gv.users()) {
+                if (T* casted_val = llvm::dyn_cast< T >(&gv)) {
+                    if (auto insn = llvm::dyn_cast< llvm::Instruction >(use)) {
+                        if (insn->getFunction() == func) {
+                            vars.insert(casted_val);
+                        }
+                    } else if (required_globals.count(casted_val->getName().str())) {
+                        vars.insert(casted_val);
+                    }
+                }
+            }
+        }
+        return { vars.begin(), vars.end() };
+    }
+
     llvm::Function* GetOrCreateGotoInstrinsic(llvm::Module* mod, llvm::IntegerType* addr_ty);
 } // namespace irene3

@@ -192,7 +192,8 @@ namespace irene3
         DecompilationResult PopulateDecompResFromRellic(rellic::DecompilationResult res) const;
         CodegenResult PopulateCodegenResFromRellic(
             rellic::DecompilationResult res, GvarInfoByBlock, FunctionInfoByBlock functions) const;
-        void CreateSpecLayoutOverride(bool stack_grows_down) const;
+        void CreateSpecLayoutOverride(
+            bool stack_grows_down, const std::unordered_set< std::string >& required_globals) const;
 
       public:
         // Gets the underlying anvill spec for this decompilation job.

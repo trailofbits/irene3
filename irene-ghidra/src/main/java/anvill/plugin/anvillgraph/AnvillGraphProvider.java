@@ -54,6 +54,7 @@ import ghidra.program.model.block.*;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.FlowType;
+import ghidra.program.model.symbol.Symbol;
 import ghidra.program.util.ProgramLocation;
 import ghidra.util.Msg;
 import ghidra.util.SystemUtilities;
@@ -71,6 +72,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import javax.swing.*;
+import javax.swing.ImageIcon;
+import javax.swing.JComponent;
 import org.apache.commons.collections4.BidiMap;
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 import resources.Icons;
@@ -86,10 +89,16 @@ public class AnvillGraphProvider
   public static final String LOAD_PATCHES_ACTION_NAME = "Load Patch File";
   public static final String SAVE_PATCHES_ACTION_NAME = "Save Patches";
   public static final String DECOMPILE_ACTION_NAME = "Decompile Function";
+  public static final String ADD_REFERENCE_TO_GLOBAL = "Add reference to global";
+  public static final ImageIcon REFERENCES_TO_ICON;
   private final GhidraFileFilter JSON_FILE_FILTER =
       ExtensionFileFilter.forExtensions("JSON files", "json");
 
   private final GhidraFileFilter C_FILE_FILTER = ExtensionFileFilter.forExtensions("C files", "c");
+
+  static {
+    REFERENCES_TO_ICON = ResourceManager.loadImage("images/references_to.gif");
+  }
 
   private final PluginTool tool;
   private final AnvillGraphPlugin plugin;
@@ -103,6 +112,7 @@ public class AnvillGraphProvider
   private GhidraFileChooser loadFileChooser;
   private GhidraFileChooser saveFileChooser;
   private AnvillPatchInfo anvillPatchInfo;
+  private java.util.ArrayList<Symbol> anvillRequiredGlobals = new ArrayList<>();
   private ProgramLocation pendingLocation;
   private SwingUpdateManager updateLocationUpdateManager;
   private ManagedChannel grpcChannel;
@@ -231,8 +241,9 @@ public class AnvillGraphProvider
         BasicBlockEdge::getLabel;
     renderContext.setEdgeLabelTransformer(edgeLabelTransformer);
 
-    // note: this label renderer is the stamp for the label; we use another edge label
-    //       renderer inside of the VisualGraphRenderer
+    // note: this label renderer is the stamp for the label; we use another edge
+    // label
+    // renderer inside of the VisualGraphRenderer
     VisualGraphEdgeLabelRenderer edgeLabelRenderer = new VisualGraphEdgeLabelRenderer(Color.BLACK);
     edgeLabelRenderer.setNonPickedForegroundColor(Color.LIGHT_GRAY);
     edgeLabelRenderer.setRotateEdgeLabels(false);
@@ -384,7 +395,8 @@ public class AnvillGraphProvider
       for (Patch patch : blkPatches) {
         blockVertices.add(new AnvillVertex(codeBlock, patch));
       }
-      // Make sure that blocks that correspond to the same Ghidra code block are in chronological
+      // Make sure that blocks that correspond to the same Ghidra code block are in
+      // chronological
       // order.
       blockVertices.sort((lhs, rhs) -> lhs.getVertexAddress().compareTo(rhs.getVertexAddress()));
       vertices.put(codeBlock, blockVertices);
@@ -398,9 +410,11 @@ public class AnvillGraphProvider
     Collection<BasicBlockEdge> edges = new ArrayList<>();
     for (List<BasicBlockVertex> startVertices : vertices.values()) {
       if (startVertices.size() > 1) {
-        // If we have a prologue and/or epilogue, it's possible to have multiple vertices for the
+        // If we have a prologue and/or epilogue, it's possible to have multiple
+        // vertices for the
         // same Ghidra code block.
-        // These will all map to the same Ghidra code block, however we know that the flow type
+        // These will all map to the same Ghidra code block, however we know that the
+        // flow type
         // should be "fall-through".
         for (int i = 0; i < startVertices.size() - 1; ++i) {
           BasicBlockVertex startVertex = startVertices.get(i);
@@ -420,9 +434,11 @@ public class AnvillGraphProvider
           continue; // no vertex means the code block is not in our function
         }
 
-        // If a destination has more than one vertex, we should choose the first one. For example,
+        // If a destination has more than one vertex, we should choose the first one.
+        // For example,
         // if a block has a flow
-        // to a terminating block, the edge should point at the block just before the epilogue block
+        // to a terminating block, the edge should point at the block just before the
+        // epilogue block
         // rather than the
         // epilogue block itself.
         BasicBlockVertex destinationVertex = destinationVertices.get(0);
@@ -651,100 +667,43 @@ public class AnvillGraphProvider
     savePatchesAction.markHelpUnnecessary();
     addLocalAction(savePatchesAction);
 
+    DockingAction addGlobalReferenceAction =
+        new AnvillGraphAction(ADD_REFERENCE_TO_GLOBAL, plugin.getName()) {
+          @Override
+          public void runInAction(TaskMonitor monitor, ActionContext context) {
+            var dlg = new GlobalNameInputDialogComponentProvider("Add reference to global");
+            if (dlg.isCanceled()) {
+              return;
+            }
+            var name = dlg.getGlobalName();
+            for (var sym : currentProgram.getSymbolTable().getAllSymbols(false)) {
+              if (sym.getName().equals(name)) {
+                anvillRequiredGlobals.add(sym);
+                decompileFunction();
+                return;
+              }
+            }
+            ghidra.util.Msg.showError(
+                null, null, "Cannot find symbol", "No symbol with the specified name was found");
+          }
+
+          @Override
+          public void onTaskCompleted() {
+            installGraph(true);
+            displayLocation(currentLocation);
+            notifyContextChanged();
+          }
+        };
+    addGlobalReferenceAction.setToolBarData(new ToolBarData(REFERENCES_TO_ICON, null));
+    addGlobalReferenceAction.setEnabled(true);
+    addGlobalReferenceAction.markHelpUnnecessary();
+    addLocalAction(addGlobalReferenceAction);
+
     DockingAction decompileAction =
         new AnvillGraphAction(DECOMPILE_ACTION_NAME, plugin.getName()) {
           @Override
           public void runInAction(TaskMonitor monitor, ActionContext actionContext) {
-            setupGrpcClient();
-
-            Function func =
-                currentProgram
-                    .getFunctionManager()
-                    .getFunctionContaining(currentLocation.getAddress());
-            if (func == null) {
-              Msg.showWarn(
-                  this,
-                  null,
-                  "No function",
-                  "IRENE cannot decompile null function at " + currentLocation);
-              return;
-            }
-            var id = currentProgram.startTransaction("Generating anvill patch");
-            Specification spec;
-            try {
-              var funcSplitAddrs = functionSlices.get(func);
-              spec = ProgramSpecifier.specifySingleFunctionWithSplits(func, funcSplitAddrs);
-            } finally {
-              currentProgram.endTransaction(id, true);
-            }
-            if (spec == null) {
-              Msg.showWarn(
-                  this,
-                  null,
-                  "Cannot create specification",
-                  "IRENE cannot create a specification for function " + func);
-              return;
-            }
-
-            boolean connected = false;
-            int retry = 0;
-            Optional<Codegen> maybeCodegen = Optional.empty();
-            while (!connected && retry < 10) {
-              // NOTE: There isn't an easy way to check whether the gRPC server is actually
-              // available unless you try an RPC, so we have this logic to first attempt
-              // the RPC and if it fails, attempt to automatically start it.
-              try {
-                maybeCodegen = grpcClient.processSpec(Specification.toJavaProto(spec));
-                connected = true;
-              } catch (StatusRuntimeException statusRuntimeException) {
-                if (Code.UNAVAILABLE.equals(statusRuntimeException.getStatus().getCode())) {
-                  try {
-                    decompilerServerManager.startDecompilerServer();
-                  } catch (DecompilerServerException e) {
-                    Msg.showError(
-                        this,
-                        view.getPrimaryGraphViewer(),
-                        "Cannot Automatically Start Decompiler Server",
-                        e.getMessage(),
-                        e.getCause());
-                    break;
-                  }
-                  retry++;
-                  // Sleep for a bit to let things boot.
-                  try {
-                    Thread.sleep(500);
-                  } catch (InterruptedException interruptedException) {
-                    // Don't care
-                  }
-                } else {
-                  // Some other issue
-                  connected = true;
-                  Msg.showError(
-                      this,
-                      view.getPrimaryGraphViewer(),
-                      "Issue With Decompiler Server",
-                      "Issue: " + statusRuntimeException.getMessage(),
-                      statusRuntimeException);
-                }
-              }
-            }
-            if (!connected)
-              Msg.showError(
-                  this,
-                  view.getPrimaryGraphViewer(),
-                  "Could Not Connect To Decompiler Server",
-                  "Could not start or connect to decompiler server even though we tried starting it");
-
-            if (maybeCodegen.isPresent()) {
-              try {
-                anvillPatchInfo = new AnvillPatchInfo(maybeCodegen.get().getJson());
-              } catch (InstantiationException e) {
-                Msg.showError(this, null, "Bad patch", "Could not import patch: " + e.getMessage());
-                anvillPatchInfo = null;
-              }
-            } else {
-              anvillPatchInfo = null;
-            }
+            decompileFunction();
           }
 
           @Override
@@ -774,14 +733,109 @@ public class AnvillGraphProvider
     addLayoutAction();
   }
 
+  private void decompileFunction() {
+    setupGrpcClient();
+
+    Function func =
+        currentProgram.getFunctionManager().getFunctionContaining(currentLocation.getAddress());
+    if (func == null) {
+      Msg.showWarn(
+          this, null, "No function", "IRENE cannot decompile null function at " + currentLocation);
+      return;
+    }
+    var id = currentProgram.startTransaction("Generating anvill patch");
+    Specification spec;
+    try {
+      var funcSplitAddrs = functionSlices.get(func);
+      var sym_set = new scala.collection.immutable.HashSet<Symbol>();
+      // TODO(frabert): This is pretty bad... but also I don't expect
+      // tons of required globals
+      for (var sym : anvillRequiredGlobals) {
+        sym_set = (scala.collection.immutable.HashSet<Symbol>) sym_set.$plus(sym);
+      }
+      spec = ProgramSpecifier.specifySingleFunctionWithSplits(func, funcSplitAddrs, sym_set);
+    } finally {
+      currentProgram.endTransaction(id, true);
+    }
+    if (spec == null) {
+      Msg.showWarn(
+          this,
+          null,
+          "Cannot create specification",
+          "IRENE cannot create a specification for function " + func);
+      return;
+    }
+
+    boolean connected = false;
+    int retry = 0;
+    Optional<Codegen> maybeCodegen = Optional.empty();
+    while (!connected && retry < 10) {
+      // NOTE: There isn't an easy way to check whether the gRPC server is actually
+      // available unless you try an RPC, so we have this logic to first attempt
+      // the RPC and if it fails, attempt to automatically start it.
+      try {
+        maybeCodegen = grpcClient.processSpec(Specification.toJavaProto(spec));
+        connected = true;
+      } catch (StatusRuntimeException statusRuntimeException) {
+        if (Code.UNAVAILABLE.equals(statusRuntimeException.getStatus().getCode())) {
+          try {
+            decompilerServerManager.startDecompilerServer();
+          } catch (DecompilerServerException e) {
+            Msg.showError(
+                this,
+                view.getPrimaryGraphViewer(),
+                "Cannot Automatically Start Decompiler Server",
+                e.getMessage(),
+                e.getCause());
+            break;
+          }
+          retry++;
+          // Sleep for a bit to let things boot.
+          try {
+            Thread.sleep(500);
+          } catch (InterruptedException interruptedException) {
+            // Don't care
+          }
+        } else {
+          // Some other issue
+          connected = true;
+          Msg.showError(
+              this,
+              view.getPrimaryGraphViewer(),
+              "Issue With Decompiler Server",
+              "Issue: " + statusRuntimeException.getMessage(),
+              statusRuntimeException);
+        }
+      }
+    }
+    if (!connected)
+      Msg.showError(
+          this,
+          view.getPrimaryGraphViewer(),
+          "Could Not Connect To Decompiler Server",
+          "Could not start or connect to decompiler server even though we tried starting it");
+
+    if (maybeCodegen.isPresent()) {
+      try {
+        anvillPatchInfo = new AnvillPatchInfo(maybeCodegen.get().getJson());
+      } catch (InstantiationException e) {
+        Msg.showError(this, null, "Bad patch", "Could not import patch: " + e.getMessage());
+        anvillPatchInfo = null;
+      }
+    } else {
+      anvillPatchInfo = null;
+    }
+  }
+
   private void setupGrpcClient() {
     if (grpcChannel == null) {
       try {
         grpcChannel =
             Grpc.newChannelBuilder("localhost:50080", InsecureChannelCredentials.create()).build();
       } catch (NoSuchMethodError e) {
-        // NOTE(ekilmer): We need this to gracefully handle the error and report it to the user.
-        //   Ghidra 10.3 should fix this when it's released.
+        // NOTE(ekilmer): We need this to gracefully handle the error and report it to
+        // the user.
+        // Ghidra 10.3 should fix this when it's released.
         if (e.getMessage().contains("com.google.common.base.Preconditions.checkArgument")) {
           Msg.showError(
               this,

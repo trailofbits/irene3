@@ -51,6 +51,7 @@ public class CodegenGrpcClient {
 
     var encoded = spec.toByteString();
     int ind = 0;
+
     while (ind < encoded.size()) {
       var next_end = Integer.min(encoded.size(), ind + CHUNK_SIZE);
       var chunk = Service.SpecChunk.newBuilder().setChunk(encoded.substring(ind, next_end)).build();

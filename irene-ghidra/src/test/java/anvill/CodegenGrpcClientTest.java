@@ -105,7 +105,9 @@ public class CodegenGrpcClientTest extends AbstractGhidraHeadlessIntegrationTest
     Specification spec;
     var id = program.startTransaction("Generating anvill patch");
     try {
-      spec = ProgramSpecifier.specifySingleFunction(sscanf);
+      spec =
+          ProgramSpecifier.specifySingleFunction(
+              sscanf, new scala.collection.immutable.HashSet<>());
     } finally {
       program.endTransaction(id, false);
     }

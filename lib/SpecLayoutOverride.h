@@ -11,6 +11,7 @@
 #include <anvill/Specification.h>
 #include <irene3/TypeDecoder.h>
 #include <rellic/Decompiler.h>
+#include <unordered_set>
 
 namespace irene3
 {
@@ -24,7 +25,8 @@ namespace irene3
             anvill::Specification& spec,
             TypeDecoder& type_decoder,
             bool stack_grows_down,
-            bool should_preserve_unused_decls);
+            bool should_preserve_unused_decls,
+            const std::unordered_set< std::string >& required_globals);
         ~SpecLayoutOverride();
 
         bool HasOverride(llvm::Function& func) final;
@@ -40,9 +42,14 @@ namespace irene3
             anvill::Specification spec;
             TypeDecoder& type_decoder;
             bool stack_grows_down;
+            std::unordered_set< std::string > required_globals;
 
           public:
-            Factory(anvill::Specification spec, TypeDecoder& type_decoder, bool stack_grows_down);
+            Factory(
+                anvill::Specification spec,
+                TypeDecoder& type_decoder,
+                bool stack_grows_down,
+                const std::unordered_set< std::string >& required_globals);
 
             std::unique_ptr< rellic::FunctionLayoutOverride > create(
                 rellic::DecompilationContext& ctx) override;
@@ -58,7 +65,8 @@ namespace irene3
             rellic::DecompilationContext& dec_ctx,
             anvill::Specification& spec,
             TypeDecoder& type_decoder,
-            bool should_preserve_unused_decls);
+            bool should_preserve_unused_decls,
+            const std::unordered_set< std::string >& required_globals);
         ~UnsafeSpecLayoutOverride();
 
         bool HasOverride(llvm::Function& func) final;
@@ -72,9 +80,13 @@ namespace irene3
         class Factory final : public rellic::FunctionLayoutOverrideFactory {
             anvill::Specification spec;
             TypeDecoder& type_decoder;
+            std::unordered_set< std::string > required_globals;
 
           public:
-            Factory(anvill::Specification spec, TypeDecoder& type_decoder);
+            Factory(
+                anvill::Specification spec,
+                TypeDecoder& type_decoder,
+                const std::unordered_set< std::string >& required_globals);
 
             std::unique_ptr< rellic::FunctionLayoutOverride > create(
                 rellic::DecompilationContext& ctx) override;
