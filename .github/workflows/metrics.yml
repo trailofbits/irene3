@@ -10,8 +10,6 @@ name: Metrics Nightly
 on:
   schedule:
     - cron: '0 0 * * *'
-  # TODO(alex): Remove this before merging.
-  pull_request:
 
 jobs:
   test-anvill:
