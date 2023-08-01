@@ -1,4 +1,5 @@
 import anvill.plugin.anvillgraph.AnvillGraphProvider
+import anvill.plugin.anvillgraph.AnvillSlices
 import ghidra.test.AbstractGhidraHeadlessIntegrationTest
 import ghidra.test.AbstractGhidraHeadedIntegrationTest
 import ghidra.test.TestEnv
@@ -159,16 +160,16 @@ class LoadAndSpecifyProgramTest extends AbstractGhidraHeadedIntegrationTest { //
       func: ghidra.program.model.listing.Function,
       selects: Seq[AddressSetView]
   ): Map[Long, CodeBlock] = {
-    val mp: java.util.Map[ghidra.program.model.listing.Function, java.util.Set[
-      Address
-    ]] = java.util.HashMap()
-
+    val slices = new AnvillSlices
     selects.foreach(addr =>
-      AnvillGraphProvider.addSliceToSaveList(MockActionContext(func, addr), mp)
+      AnvillGraphProvider.addSliceToSaveList(
+        MockActionContext(func, addr),
+        slices
+      )
     )
 
     val model = BasicBlockModel(func.getProgram)
-    val fpoints = mp.getOrDefault(func, java.util.HashSet())
+    val fpoints = slices.getSlices(func)
     BasicBlockSplit.splitBlocks(
       func,
       model

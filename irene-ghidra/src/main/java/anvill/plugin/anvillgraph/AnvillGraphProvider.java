@@ -41,7 +41,6 @@ import docking.widgets.filechooser.GhidraFileChooserMode;
 import edu.uci.ics.jung.visualization.RenderContext;
 import ghidra.app.context.ProgramLocationActionContext;
 import ghidra.app.nav.DecoratorPanel;
-import ghidra.app.plugin.core.decompile.DecompilePlugin;
 import ghidra.app.services.GoToService;
 import ghidra.app.util.PluginConstants;
 import ghidra.framework.plugintool.PluginTool;
@@ -69,9 +68,7 @@ import java.awt.Color;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import javax.swing.*;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import org.apache.commons.collections4.BidiMap;
@@ -118,18 +115,13 @@ public class AnvillGraphProvider
   private ManagedChannel grpcChannel;
   private CodegenGrpcClient grpcClient;
 
-  private Optional<Thread> busy;
-
-  private final Map<Function, Set<Address>> functionSlices;
   private final DecompilerServerManager decompilerServerManager =
       new DockerDecompilerServerManager(50080);
 
   public AnvillGraphProvider(AnvillGraphPlugin anvillGraphPlugin, boolean isConnected) {
     super(anvillGraphPlugin.getTool(), AnvillGraphPlugin.GRAPH_NAME, anvillGraphPlugin.getName());
-    this.busy = Optional.empty();
     this.tool = anvillGraphPlugin.getTool();
     this.plugin = anvillGraphPlugin;
-    this.functionSlices = new ConcurrentHashMap<>();
 
     // View is handled by FGController in upstream
     view = new VisualGraphView<>();
@@ -511,75 +503,7 @@ public class AnvillGraphProvider
     return decorationPanel;
   }
 
-  public synchronized boolean tryAcquire() {
-    if (busy.isPresent()) {
-      return false;
-    }
-    busy = Optional.of(Thread.currentThread());
-    return true;
-  }
-
-  public synchronized void release() {
-    if (busy.isPresent() && Thread.currentThread() == busy.get()) {
-      busy = Optional.empty();
-    }
-  }
-
-  class AnvillGraphTask extends Task {
-    AnvillGraphAction parent;
-    ActionContext context;
-
-    public AnvillGraphTask(AnvillGraphAction parent, ActionContext context) {
-      super("Anvill graph task");
-      this.parent = parent;
-      this.context = context;
-    }
-
-    @Override
-    public void run(TaskMonitor taskMonitor) throws CancelledException {
-      this.parent.runInAction(taskMonitor, this.context);
-    }
-  }
-
-  /**
-   * An irene task synchronizes on a latch guarenteeing that at most one task is inflight at a time
-   */
-  abstract class AnvillGraphAction extends DockingAction implements TaskListener {
-
-    public AnvillGraphAction(String name, String owner) {
-      super(name, owner);
-    }
-
-    @Override
-    public void actionPerformed(ActionContext context) {
-      if (!tryAcquire()) {
-        Msg.warn(this, "The IRENE decompiler is busy");
-        return;
-      }
-
-      var tsk = new AnvillGraphTask(this, context);
-      tsk.addTaskListener(this);
-      new TaskLauncher(tsk);
-    }
-
-    public abstract void runInAction(TaskMonitor taskMonitor, ActionContext context);
-
-    public void onTaskCompleted() {}
-
-    @Override
-    public void taskCompleted(Task task) {
-      onTaskCompleted();
-      release();
-    }
-
-    @Override
-    public void taskCancelled(Task task) {
-      release();
-    }
-  }
-
-  public static void addSliceToSaveList(
-      ActionContext actionContext, Map<Function, Set<Address>> saveList) {
+  public static void addSliceToSaveList(ActionContext actionContext, AnvillSlices saveList) {
     if (actionContext instanceof ProgramLocationActionContext context) {
       if (!context.hasSelection()) {
         return;
@@ -602,10 +526,8 @@ public class AnvillGraphProvider
       if (func == null || func != listing.getFunctionContaining(highlight.getMaxAddress())) {
         return;
       }
-      saveList.putIfAbsent(func, new HashSet<>());
-      var targetSet = saveList.get(func);
-      targetSet.add(minSplit);
-      targetSet.add(maxSplit);
+      saveList.addSlice(func, minSplit);
+      saveList.addSlice(func, maxSplit);
       Msg.debug(
           AnvillGraphProvider.class,
           "Added selection between "
@@ -618,11 +540,11 @@ public class AnvillGraphProvider
   }
 
   public class AddToPatchSliceAction extends AnvillGraphAction {
-    private final Map<Function, Set<Address>> saveList;
+    private final AnvillSlices saveList;
 
-    public AddToPatchSliceAction(Map<Function, Set<Address>> save_list) {
-      super("Add Patch To Slice", DecompilePlugin.class.getSimpleName());
-      this.saveList = save_list;
+    public AddToPatchSliceAction(AnvillGraphPlugin plugin) {
+      super(plugin, "Add Patch To Slice");
+      this.saveList = this.plugin.getFunctionSlices();
       setPopupMenuData(new MenuData(new String[] {"Add selection to slice"}, "New"));
       setDescription("Adds selection to the working patch slice for this function");
     }
@@ -635,7 +557,7 @@ public class AnvillGraphProvider
 
   private void createActions() {
     DockingAction loadPatches =
-        new AnvillGraphAction(LOAD_PATCHES_ACTION_NAME, plugin.getName()) {
+        new AnvillGraphAction(this.plugin, LOAD_PATCHES_ACTION_NAME) {
           @Override
           public void runInAction(TaskMonitor monitor, ActionContext actionContext) {
             importPatchesAction();
@@ -654,7 +576,7 @@ public class AnvillGraphProvider
     addLocalAction(loadPatches);
 
     DockingAction savePatchesAction =
-        new AnvillGraphAction(SAVE_PATCHES_ACTION_NAME, plugin.getName()) {
+        new AnvillGraphAction(this.plugin, SAVE_PATCHES_ACTION_NAME) {
           @Override
           public void runInAction(TaskMonitor monitor, ActionContext actionContext) {
             savePatches();
@@ -668,7 +590,7 @@ public class AnvillGraphProvider
     addLocalAction(savePatchesAction);
 
     DockingAction addGlobalReferenceAction =
-        new AnvillGraphAction(ADD_REFERENCE_TO_GLOBAL, plugin.getName()) {
+        new AnvillGraphAction(this.plugin, ADD_REFERENCE_TO_GLOBAL) {
           @Override
           public void runInAction(TaskMonitor monitor, ActionContext context) {
             var dlg = new GlobalNameInputDialogComponentProvider("Add reference to global");
@@ -700,7 +622,7 @@ public class AnvillGraphProvider
     addLocalAction(addGlobalReferenceAction);
 
     DockingAction decompileAction =
-        new AnvillGraphAction(DECOMPILE_ACTION_NAME, plugin.getName()) {
+        new AnvillGraphAction(this.plugin, DECOMPILE_ACTION_NAME) {
           @Override
           public void runInAction(TaskMonitor monitor, ActionContext actionContext) {
             decompileFunction();
@@ -720,8 +642,8 @@ public class AnvillGraphProvider
     decompileAction.markHelpUnnecessary();
     addLocalAction(decompileAction);
 
-    var sliceActionDecomp = new AddToPatchSliceAction(this.functionSlices);
-    var sliceActionCode = new AddToPatchSliceAction(this.functionSlices);
+    var sliceActionDecomp = new AddToPatchSliceAction(this.plugin);
+    var sliceActionCode = new AddToPatchSliceAction(this.plugin);
     this.tool.addLocalAction(this.tool.getComponentProvider("Decompiler"), sliceActionDecomp);
     this.tool.addLocalAction(
         this.tool.getComponentProvider(PluginConstants.CODE_BROWSER), sliceActionCode);
@@ -746,7 +668,7 @@ public class AnvillGraphProvider
     var id = currentProgram.startTransaction("Generating anvill patch");
     Specification spec;
     try {
-      var funcSplitAddrs = functionSlices.get(func);
+      var funcSplitAddrs = this.plugin.getFunctionSlices().getSlices(func);
       var sym_set = new scala.collection.immutable.HashSet<Symbol>();
       // TODO(frabert): This is pretty bad... but also I don't expect
       // tons of required globals
@@ -1025,10 +947,10 @@ public class AnvillGraphProvider
           @Override
           public void actionPerformed(ActionContext context) {
             // this callback is when the user clicks the button
-            if (tryAcquire()) {
+            if (plugin.tryAcquire()) {
               AnvillGraphLayoutProvider currentUserData = getCurrentUserData();
               changeLayout(currentUserData);
-              release();
+              plugin.release();
             } else {
               Msg.info(this, "Could not change layout because the graph provider is busy");
             }

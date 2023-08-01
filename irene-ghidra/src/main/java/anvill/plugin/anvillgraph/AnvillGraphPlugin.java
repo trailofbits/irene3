@@ -67,9 +67,13 @@ public class AnvillGraphPlugin extends ProgramPlugin {
   private List<AnvillGraphProvider> disconnectedProviders = new ArrayList<>();
   private List<AnvillGraphLayoutProvider> layoutProviders;
   private BBGraphOptions bbGraphOptions = new BBGraphOptions();
+  private AnvillSlicesProvider slicesProvider;
+  private AnvillSlices functionSlices = new AnvillSlices();
+  private Optional<Thread> busy;
 
   public AnvillGraphPlugin(PluginTool tool) {
     super(tool);
+    this.busy = Optional.empty();
   }
 
   @Override
@@ -80,6 +84,9 @@ public class AnvillGraphPlugin extends ProgramPlugin {
 
     createNewProvider();
     initializeOptions();
+
+    GoToService goToService = tool.getService(GoToService.class);
+    this.slicesProvider = new AnvillSlicesProvider(tool, this, goToService);
   }
 
   private void initializeOptions() {
@@ -131,6 +138,7 @@ public class AnvillGraphPlugin extends ProgramPlugin {
       return;
     }
     connectedProvider.setProgram(program);
+    slicesProvider.setProgram(program);
   }
 
   @Override
@@ -139,6 +147,7 @@ public class AnvillGraphPlugin extends ProgramPlugin {
       return;
     }
     connectedProvider.setProgram(null);
+    slicesProvider.setProgram(null);
   }
 
   @Override
@@ -148,6 +157,7 @@ public class AnvillGraphPlugin extends ProgramPlugin {
     }
     connectedProvider.setProgram(currentProgram);
     connectedProvider.setLocation(location);
+    slicesProvider.setProgram(currentProgram);
   }
 
   @Override
@@ -205,6 +215,7 @@ public class AnvillGraphPlugin extends ProgramPlugin {
       removeProvider(provider);
     }
     disconnectedProviders.clear();
+    slicesProvider.dispose();
   }
 
   private void removeProvider(AnvillGraphProvider provider) {
@@ -221,5 +232,23 @@ public class AnvillGraphPlugin extends ProgramPlugin {
 
   public BBGraphOptions getGraphOptions() {
     return bbGraphOptions;
+  }
+
+  public AnvillSlices getFunctionSlices() {
+    return functionSlices;
+  }
+
+  public synchronized boolean tryAcquire() {
+    if (busy.isPresent()) {
+      return false;
+    }
+    busy = Optional.of(Thread.currentThread());
+    return true;
+  }
+
+  public synchronized void release() {
+    if (busy.isPresent() && Thread.currentThread() == busy.get()) {
+      busy = Optional.empty();
+    }
   }
 }
