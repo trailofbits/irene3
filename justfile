@@ -46,6 +46,9 @@ install-irene3-ghidra:
 run-ghidra: install-irene3-ghidra
     ./deps/ghidra/ghidraRun
 
+run-server:
+    "${CMAKE_INSTALL_PREFIX}/bin/irene3-server -unsafe_stack_locations
+
 build-docker:
     {{DOCKER_CMD}} build -t irene3 {{justfile_directory()}} -f Dockerfile
 
@@ -192,7 +195,7 @@ decompile-spec-ll spec out_ir: check-irene3-decompile
     "${CMAKE_INSTALL_PREFIX}/bin/irene3-decompile" -spec {{spec}} -c_out /dev/null -ir_out {{out_ir}}
 
 clean:
-    rm -rf install builds venv irene-ghidra/dist irene-ghidra/build
+    rm -rf install builds venv irene-ghidra/dist irene-ghidra/build irene-ghidra/lib/*.jar
 
 build-docker-eval: build-docker
     {{DOCKER_CMD}} build -t irene3-eval . -f eval.Dockerfile

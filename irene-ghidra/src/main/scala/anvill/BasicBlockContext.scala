@@ -151,7 +151,8 @@ class BasicBlockContextProducer(
   }
 
   val AllowedConstRegisterNames = Map(
-    "PowerPC:BE:64:VLE-32addr" -> Seq(("R13", true), ("R2", true))
+    "PowerPC:BE:64:VLE-32addr" -> Seq(("R13", true), ("R2", true)),
+    "PowerPC:BE:32:e200:VLE" -> Seq(("R13", true), ("R2", true))
   )
 
   def produceGlobalRegOverrides(block_addr: Address): Seq[ValueMapSpec] = {
