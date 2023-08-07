@@ -14,6 +14,7 @@ import anvill.Util.getLiveRegisters
 import anvill.ProgramSpecifier
 import ghidra.app.cmd.function.CallDepthChangeInfo
 import ghidra.util.task.TaskMonitor
+import scalax.collection.OuterImplicits.nodeSetToSeq
 
 class TestLiveness extends BaseProgramLoadTest {
 
