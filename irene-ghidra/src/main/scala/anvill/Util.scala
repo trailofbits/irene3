@@ -5,17 +5,18 @@ import ghidra.program.model.block.BasicBlockModel
 import ghidra.util.task.TaskMonitor
 import ghidra.program.model.address.Address
 
-import java.{util => ju}
-import scalax.collection.Graph
-import scalax.collection.GraphEdge.DiEdge
+import java.util as ju
+import scalax.collection.immutable.Graph
+import scalax.collection.edges.DiEdge
 import ghidra.program.model.block.CodeBlock
-import collection.JavaConverters._
+
+import collection.JavaConverters.*
 import ghidra.program.model.block.CodeBlockReference
 import ghidra.program.model.block.CodeBlockIterator
 import ghidra.program.model.block.CodeBlockReferenceIterator
-import specification.specification.{Register => RegSpec}
-import specification.specification.{Value => ValueSpec}
-import specification.specification.{Variable => VariableSpec}
+import specification.specification.Register as RegSpec
+import specification.specification.Value as ValueSpec
+import specification.specification.Variable as VariableSpec
 import specification.specification.TypeSpec
 
 import scala.collection.mutable.ListBuffer
@@ -24,18 +25,50 @@ import ProgramSpecifier.getRegisterName
 import specification.specification.TypeSpec.Type
 import specification.specification.BaseType.BT_U8
 import ghidra.util.Msg
+
 import scala.collection.mutable.Buffer
 import ghidra.util.task.TimeoutTaskMonitor
+
 import java.util.concurrent.TimeUnit
 import java.util.Objects
 import ghidra.program.model.listing.Program
 import ghidra.program.model.listing.Instruction
-import specification.specification.{CodeBlock => CodeBlockSpec}
+import specification.specification.CodeBlock as CodeBlockSpec
 import anvill.ProgramSpecifier.specifyContextAssignments
 import ghidra.program.model.block.CodeBlockModel
 import aQute.bnd.service.progress.ProgressPlugin.Task
+import ghidra.program.model.pcode.{PcodeOp, Varnode}
+import ghidra.program.model.listing.Function as GFunction
 
 object Util {
+
+  abstract class ProgramAnalysisUtilMixin {
+    val prog: Program
+    def getInstruction(op: PcodeOp): Option[Instruction] =
+      Option(prog.getListing.getInstructionAt(op.getSeqnum.getTarget))
+
+    def getUniqueFlow(op: PcodeOp): Option[Address] = getInstruction(op)
+      .flatMap(i => Option.when(i.getFlows.length == 1)(i.getFlows()(0)))
+
+    def getUniqueCallTarget(op: PcodeOp): Option[GFunction] =
+      getUniqueFlow(op).flatMap(fl =>
+        Option(prog.getFunctionManager.getFunctionAt(fl))
+      )
+
+    def registerToDefinedVnode(reg: Register): Varnode = {
+      val base = reg.getBaseRegister
+      Varnode(base.getAddress, base.getNumBytes)
+    }
+
+    def vnodeToBasRegVnodeOrUnique(vnode: Varnode): Option[Varnode] =
+      Option
+        .when(vnode.isUnique)(vnode)
+        .orElse(
+          Option.when(vnode.isRegister)(
+            registerToDefinedVnode(prog.getRegister(vnode))
+          )
+        )
+  }
 
   def sizeToArray(sz: Int): TypeSpec = {
     TypeSpec(
@@ -70,7 +103,7 @@ object Util {
     VariableSpec(Seq(valspec), Some(typespec))
   }
 
-  type CFG = Graph[CodeBlock, DiEdge]
+  type CFG = Graph[CodeBlock, DiEdge[CodeBlock]]
 
   def collectRefs(blk: CodeBlockReferenceIterator): List[CodeBlockReference] = {
     val buff: ListBuffer[CodeBlockReference] = ListBuffer()
@@ -88,15 +121,15 @@ object Util {
           ref.getDestinationBlock()
         )
       )
-    child_blks.map(c => DiEdge((blk, c.getDestinationBlock())))
+    child_blks.map(c => DiEdge(blk, c.getDestinationBlock()))
   }
 
   def getEdgeSet(cfg: CFG): Set[(Long, Long)] = {
     cfg.edges
       .map(e =>
         (
-          e.source.toOuter.getFirstStartAddress().getOffset(),
-          e.target.toOuter.getFirstStartAddress().getOffset()
+          e.source.getFirstStartAddress().getOffset(),
+          e.target.getFirstStartAddress().getOffset()
         )
       )
       .toSet
