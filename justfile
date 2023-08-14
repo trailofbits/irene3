@@ -47,7 +47,7 @@ run-ghidra: install-irene3-ghidra
     ./deps/ghidra/ghidraRun
 
 run-server:
-    "${CMAKE_INSTALL_PREFIX}/bin/irene3-server -unsafe_stack_locations
+    "${CMAKE_INSTALL_PREFIX}/bin/irene3-server" -unsafe_stack_locations
 
 build-docker:
     {{DOCKER_CMD}} build -t irene3 {{justfile_directory()}} -f Dockerfile
