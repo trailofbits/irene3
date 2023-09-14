@@ -204,7 +204,7 @@ class PcodeEvaluator[N](val cont: N)(using
 }
 
 object TypeConstraints {
-  def apply[N](gfunc: GFunction, mapping: Map[PcodeOp, N])(using
+  def apply[N](gfunc: GFunction, mapping: Map[ComparablePcodeOp, N])(using
       nodeContext: NodeContext[N]
   ): TypeConstraints[N] =
     new TypeConstraints[N](gfunc, 0, mapping)
@@ -213,7 +213,7 @@ object TypeConstraints {
 class TypeConstraints[N](
     private val gfunc: GFunction,
     private var counter: Int,
-    private val mapping: Map[PcodeOp, N]
+    private val mapping: Map[ComparablePcodeOp, N]
 )(using NodeContext[N]) {
 
   given id_gen: FreshVars with

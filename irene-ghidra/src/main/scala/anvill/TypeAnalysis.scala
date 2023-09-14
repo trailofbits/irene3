@@ -38,13 +38,13 @@ class SplitContext[R, P](
 class TypeAnalysis(val func: GFunction) {
   val cfg: ComputeNodeContext.CFG = ComputeNodeContext.func_to_cfg(func)
 
-  def entries(): Iterable[PcodeOp] = cfg.nodes
+  def entries(): Iterable[ComparablePcodeOp] = cfg.nodes
     .filter(_.incoming.isEmpty)
     .map(x => {
       x.outer
     })
 
-  def analyzePointsTo(): Solution[PcodeOp, StackPointsTo.D] = {
+  def analyzePointsTo(): Solution[ComparablePcodeOp, StackPointsTo.D] = {
     val ent_points_to = StackPointsTo.func_entry_value(func)
     implicit val res: PcodeForwardFixpoint[StackPointsTo.D] =
       StackPointsTo.apply(func.getProgram)
@@ -52,7 +52,8 @@ class TypeAnalysis(val func: GFunction) {
       .node_fixpoint[StackPointsTo.D](cfg, entries().map((_, ent_points_to)))
   }
 
-  def analyzeReachingDefs(): Solution[PcodeOp, ReachingDefinitions.Dom] = {
+  def analyzeReachingDefs()
+      : Solution[ComparablePcodeOp, ReachingDefinitions.Dom] = {
     val ent_rdefs = ReachingDefinitions.entry_state(func)
     implicit val reachind_defs: PcodeForwardFixpoint[ReachingDefinitions.Dom] =
       ReachingDefinitions(func.getProgram)
@@ -75,7 +76,8 @@ class TypeAnalysis(val func: GFunction) {
     val fix_points_to = analyzePointsTo()
     val reg_analysis = analyzeReachingDefs()
 
-    val mixed: Map[PcodeOp, (ReachingDefinitions.Dom, StackPointsTo.D)] =
+    val mixed
+        : Map[ComparablePcodeOp, (ReachingDefinitions.Dom, StackPointsTo.D)] =
       mixMapping(reg_analysis, fix_points_to)
 
     implicit val cont: NodeContext[(ReachingDefinitions.Dom, StackPointsTo.D)] =

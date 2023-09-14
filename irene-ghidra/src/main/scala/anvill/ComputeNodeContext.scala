@@ -165,8 +165,8 @@ given [D](using
 
 object ComputeNodeContext {
 
-  type CFG = Graph[PcodeOp, CfgEdge]
-  object CFG extends TypedGraphFactory[PcodeOp, CfgEdge]
+  type CFG = Graph[ComparablePcodeOp, CfgEdge]
+  object CFG extends TypedGraphFactory[ComparablePcodeOp, CfgEdge]
 
   def normalControlFlow(op: PcodeOp): Boolean =
     op.getOpcode <= 3 || op.getOpcode >= 11
@@ -290,15 +290,16 @@ object ComputeNodeContext {
   }
 
   // specialized fixpoint that hides some graph internals. This interface is inspired by cwe_checker and bap graphlib.
-  def fixpoint[D](g: CFG, entrypoints: Iterable[(PcodeOp, D)])(using
+  def fixpoint[D](g: CFG, entrypoints: Iterable[(ComparablePcodeOp, D)])(using
       PcodeForwardFixpoint[D],
       JoinSemiLattice[D]
   ): ForwardEdgeFixpoint.Solution[CfgEdge, D] =
     ForwardEdgeFixpoint.fixpoint(g, entrypoints)
 
-  def node_fixpoint[D](g: CFG, entrypoints: Iterable[(PcodeOp, D)])(using
+  def node_fixpoint[D](g: CFG, entrypoints: Iterable[(ComparablePcodeOp, D)])(
+      using
       PcodeForwardFixpoint[D],
       JoinSemiLattice[D]
-  ): ForwardEdgeFixpoint.Solution[PcodeOp, D] =
+  ): ForwardEdgeFixpoint.Solution[ComparablePcodeOp, D] =
     ForwardEdgeFixpoint.edge_solution_to_node_sol(g, fixpoint(g, entrypoints))
 }
