@@ -2,37 +2,59 @@ package anvill
 
 import java.util as ju
 import scala.collection.mutable
-import ghidra.program.model.address.AddressSet
+import ghidra.program.model.address.{Address, AddressSet}
 import ghidra.program.model.block.CodeBlock
 import ghidra.program.model.lang.Register
+
 import scala.collection.mutable.Stack
 import ghidra.program.model.pcode.PcodeOp
-import ghidra.program.model.listing.Instruction
-import collection.JavaConverters._
+import ghidra.program.model.listing.{Instruction, Program, Variable}
+
+import collection.JavaConverters.*
 import ghidra.app.cmd.function.CallDepthChangeInfo
-import specification.specification.{CodeBlock => CodeBlockSpec}
-import specification.specification.{Value => ValueSpec}
-import specification.specification.{Memory => MemSpec}
-import specification.specification.{Register => RegSpec}
-import specification.specification.{Variable => VarSpec}
-import specification.specification.{Parameter => ParamSpec}
-import specification.specification.Value.{InnerValue => ValueInner}
+import specification.specification.CodeBlock as CodeBlockSpec
+import specification.specification.Value as ValueSpec
+import specification.specification.Memory as MemSpec
+import specification.specification.Register as RegSpec
+import specification.specification.Variable as VarSpec
+import specification.specification.Parameter as ParamSpec
+import specification.specification.Value.InnerValue as ValueInner
 import ghidra.program.model.data.Structure
 import Util.registerToVariable
-import scala.collection.immutable.Set
 
-import ghidra.program.model.listing.Variable
+import scala.collection.immutable.Set
+import scala.collection.Set as MutableSet
 import ProgramSpecifier.getRegisterName
+import anvill.Fixpoint.Solution
 import ghidra.program.model.pcode.Varnode
 import ghidra.program.model.lang.Register
 import specification.specification.TypeSpec
 import ghidra.util.task.TaskMonitor
 import ghidra.util.Msg
+import anvill.Util.ProgramAnalysisUtilMixin
+import ghidra.program.model.block.BasicBlockModel
 
 case class BlockLiveness(
     val live_before: Set[ParamSpec],
     val live_after: Set[ParamSpec]
 )
+
+object LivenessAnalysis {
+  type D = Set[ParamSpec]
+
+  given reaching_lat[A]: JoinSemiLattice[Set[A]] with
+    override val bot: Set[A] = Set.empty
+
+    override def join(lhs: Set[A], rhs: Set[A]): Set[A] = lhs.union(rhs)
+
+    override def lteq(x: Set[A], y: Set[A]): Boolean = x.subsetOf(y)
+
+    override def tryCompare(x: Set[A], y: Set[A]): Option[Int] =
+      if x.equals(y) then Some(0)
+      else if x.subsetOf(y) then Some(-1)
+      else if y.subsetOf(x) then Some(1)
+      else None
+}
 
 /** Reverse dataflow analysis over the CFG for register liveness
   *
@@ -42,13 +64,14 @@ case class BlockLiveness(
   *   the function
   */
 class LivenessAnalysis(
-    val control_flow_graph: Util.CFG,
     val func: ghidra.program.model.listing.Function,
     val cdi: CallDepthChangeInfo,
     val aliases: scala.collection.mutable.Map[Long, TypeSpec],
-    var blks: Map[Long, CodeBlockSpec]
-) {
+    val blks: Map[Long, CodeBlockSpec]
+) extends ProgramAnalysisUtilMixin
+    with PcodeFixpoint[LivenessAnalysis.D] {
 
+  val prog: Program = func.getProgram
   val lang = func.getProgram().getLanguage()
   val register_to_variable: Map[Register, Variable] =
     func
@@ -127,7 +150,7 @@ class LivenessAnalysis(
     getUniqueCallee(insn).map(f => f.getParameters().toSeq).getOrElse(Seq.empty)
   }
 
-  def get_live_reigsters(vars: Seq[Variable]): Set[Register] = {
+  def get_live_registers(vars: Seq[Variable]): Set[Register] = {
     vars
       .flatMap(v =>
         Option(v.getRegisters()).map(rs => rs.asScala).getOrElse(Seq.empty)
@@ -153,7 +176,7 @@ class LivenessAnalysis(
       // TODO(Ian): this assumes that we arent going to build up a stack parameter in a calling block
       // this requires handling stack extensions, which we dont handle... this could come up with something like int a; if (x<0) a= b else a = c; call(a)
       // A reasonable thing for a compile to do would be to either push b or c to the stack in each of those blocks.
-      get_live_reigsters(get_called_sig(insn)).map(registerToParam).toSet
+      get_live_registers(get_called_sig(insn)).map(registerToParam).toSet
     } else {
       Set.empty
     }
@@ -209,72 +232,38 @@ class LivenessAnalysis(
     (live_after -- kill(n, insn)) ++ gen(n, insn)
   }
 
-  def get_initial_after_liveness(blk: CodeBlockSpec): Set[ParamSpec] = {
-    if (blk.outgoingBlocks.isEmpty) {
-      // If a block can return then the saves need to be live at that point,
-      // + returns
-      // Returns no longer need to be considered live with tail calling representations
-      // Native returns already lift the return value
-
-      Option(
-        func
-          .getCallingConvention()
-      ).getOrElse(
-        func.getProgram().getCompilerSpec().getDefaultCallingConvention()
-      ).getUnaffectedList()
-        .filter(vnode => vnode.isRegister())
-        .map(r =>
-          registerToParam(
-            func
-              .getProgram()
-              .getLanguage()
-              .getRegister(r.getAddress(), r.getSize())
-          )
+  def get_initial_after_liveness(): Set[ParamSpec] = {
+    // If a block can return then the saves need to be live at that point,
+    // + returns
+    // Returns no longer need to be considered live with tail calling representations
+    // Native returns already lift the return value
+    Option(
+      func
+        .getCallingConvention()
+    ).getOrElse(
+      func.getProgram().getCompilerSpec().getDefaultCallingConvention()
+    ).getUnaffectedList()
+      .filter(vnode => vnode.isRegister())
+      .map(r =>
+        registerToParam(
+          func
+            .getProgram()
+            .getLanguage()
+            .getRegister(r.getAddress(), r.getSize())
         )
-        .toSet
-    } else {
-      Set.empty
-    }
+      )
+      .toSet
   }
 
-  def transfer_block(
-      blk: CodeBlockSpec,
-      live_after: Set[ParamSpec]
-  ): Set[ParamSpec] = {
-    val blk_end_addr = blk.address + blk.size - 1
-    val addr_factory = func.getProgram.getAddressFactory
-    val space_id = func.getEntryPoint.getAddressSpace.getSpaceID
-    val addr_range = new AddressSet(
-      addr_factory.getAddress(space_id, blk.address),
-      addr_factory.getAddress(space_id, blk_end_addr)
-    )
-
-    // get instructions in reverse then iterate over pcode in reverse
-    val insns_reverse: ju.Iterator[Instruction] =
-      func.getProgram().getListing().getInstructions(addr_range, false)
-    insns_reverse.asScala.toSeq.foldLeft(live_after)(
-      (curr_liveness, curr_insn) =>
-        curr_insn
-          .getPcode()
-          .foldRight(curr_liveness)((pcode, liveness) =>
-            transfer(curr_insn, pcode, liveness)
-          )
-    )
-  }
-
-  def collectLiveOnExit(
-      blk: CodeBlockSpec,
-      curr_liveness: scala.collection.Map[CodeBlockSpec, Set[ParamSpec]]
-  ): Set[ParamSpec] = {
-    if (blk.outgoingBlocks.isEmpty) {
-      return get_initial_after_liveness(blk)
-    }
-
-    val regs: Seq[Set[ParamSpec]] = blk.outgoingBlocks.toSeq
-      .flatMap(out => blks.get(out))
-      .map(out => curr_liveness.get(out).getOrElse(Set.empty))
-
-    regs.fold(Set.empty)((x: Set[ParamSpec], y: Set[ParamSpec]) => x.union(y))
+  def get_liveness_entrypoints(
+      cfg: ComputeNodeContext.CFG
+  ): Map[CfgNode, Set[ParamSpec]] = {
+    cfg.nodes
+      .filter(_.outgoing.isEmpty)
+      .map(x => {
+        (x.outer, get_initial_after_liveness())
+      })
+      .toMap
   }
 
   def getNextLocalDepth(): Int = {
@@ -378,11 +367,53 @@ class LivenessAnalysis(
       .exists(nd => getDepthBeyondLocals(nd) > 0)
 
   def getBlockLiveness(): Map[CodeBlockSpec, BlockLiveness] = {
-    val analysisRes = this.analyze()
-    analysisRes.toMap.map((blk: CodeBlockSpec, _) => {
+    val cfg = ComputeNodeContext.func_to_cfg(func)
+    val bb_model = new BasicBlockModel(prog)
+    val liveness = analyzeLiveness(cfg)
+    blks.map((_, blk) => {
+      val gaddr =
+        prog.getAddressFactory.getDefaultAddressSpace.getAddress(blk.address)
+      val blk_end = prog.getAddressFactory.getDefaultAddressSpace
+        .getAddress(
+          blk.address + blk.size - 1
+        )
+      val blk_addrs = new AddressSet(gaddr, blk_end)
+      val addr_in_blk = (addr: Address) => blk_addrs.contains(addr)
+      val blk_nodes = cfg.nodes
+        .filter(x => addr_in_blk(x.outer.getAddress))
+      val exit_nodes = blk_nodes
+        .filter(x => {
+          x.diSuccessors.isEmpty || x.diSuccessors
+            .exists(y => !addr_in_blk(y.outer.getAddress))
+        })
       val live_past_stack = collectInjectLiveOnEntryExit(blk)
-      val live_on_exit = collectLiveOnExit(blk, analysisRes)
-      val live_on_entry = transfer_block(blk, live_on_exit)
+      // Lookup liveness for each exit node and combine them
+      val live_on_exit: Set[ParamSpec] = exit_nodes
+        .map(x => {
+          if (x.diSuccessors.isEmpty)
+            get_initial_after_liveness()
+          else
+            x.diSuccessors
+              .filter(y => !addr_in_blk(y.outer.getAddress))
+              .map(liveness(_))
+              .foldLeft(Set.empty[ParamSpec])((acc, x) => acc.union(x))
+        })
+        .foldLeft(Set.empty[ParamSpec])((acc, x) => acc.union(x))
+      val live_on_entry = {
+        // Lookup liveness for the first pcode op
+        // Skip any instructions that are in delay slots.
+        var first_ins = prog.getListing.getInstructionAt(gaddr)
+        while (first_ins != null && first_ins.isInDelaySlot) {
+          first_ins = first_ins.getNext
+        }
+        if (first_ins != null && addr_in_blk(first_ins.getAddress())) {
+          liveness(InstructionEntry(first_ins))
+        } else {
+          // If the entire block is nops or is in a delay slot, nothing needs to be live.
+          // The live at exit calculation will do the right thing too.
+          Set.empty
+        }
+      }
       (
         blk,
         BlockLiveness(
@@ -397,37 +428,26 @@ class LivenessAnalysis(
     })
   }
 
-  def analyze(): mutable.Map[CodeBlockSpec, Set[ParamSpec]] = {
-    val res: mutable.Map[CodeBlockSpec, Set[ParamSpec]] = mutable.Map.from(
-      blks.map((blk_addr, blk) => (blk, Set.empty[ParamSpec]))
-    )
+  import LivenessAnalysis.given
 
-    val worklist: Stack[CodeBlockSpec] = Stack.from(
-      blks.values
-    )
-
-    while (!worklist.isEmpty) {
-      val curr_block = worklist.pop()
-      val curr_block_value =
-        res.getOrElse(curr_block, Set.empty)
-
-      val input = collectLiveOnExit(curr_block, res)
-
-      val live_before_block = transfer_block(curr_block, input)
-
-      res.addOne((curr_block, live_before_block))
-      if (live_before_block != curr_block_value) {
-        for (
-          in_neighbor <- curr_block.incomingBlocks
-            .flatMap(nd => blks.get(nd))
-        ) {
-
-          worklist.push(in_neighbor)
-        }
-      }
-    }
-
-    res
+  def analyzeLiveness(
+      cfg: ComputeNodeContext.CFG
+  ): Solution[CfgNode, LivenessAnalysis.D] = {
+    val entry_states = get_liveness_entrypoints(cfg)
+    implicit val res: PcodeFixpoint[LivenessAnalysis.D] = this
+    ComputeNodeContext
+      .reverse_node_fixpoint[LivenessAnalysis.D](cfg, entry_states)
   }
 
+  override def update_guard(
+      vnode: ghidra.program.model.pcode.Varnode,
+      taken: Boolean,
+      pred: LivenessAnalysis.D
+  ): LivenessAnalysis.D = pred
+
+  override def update_op(
+      op: ghidra.program.model.pcode.PcodeOp,
+      pred: LivenessAnalysis.D
+  ): LivenessAnalysis.D =
+    transfer(getInstruction(op).get, op, pred)
 }

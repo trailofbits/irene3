@@ -52,7 +52,7 @@ object ReachingDefinitions {
 }
 class ReachingDefinitions(val prog: Program)
     extends ProgramAnalysisUtilMixin
-    with PcodeForwardFixpoint[ReachingDefinitions.Dom] {
+    with PcodeFixpoint[ReachingDefinitions.Dom] {
 
   def paramToDefinedRegisters(param: Parameter): Iterator[Register] =
     param.getRegisters.asScala.iterator

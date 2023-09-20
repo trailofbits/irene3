@@ -82,7 +82,6 @@ class TestLiveness extends BaseProgramLoadTest {
     val func = firstFunctionNamed(prog, "set_duty")
     val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
     val liveanalysis = anvill.LivenessAnalysis(
-      anvill.Util.getCfgAsGraph(func),
       func,
       cdi,
       mutable.Map(),

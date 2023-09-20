@@ -40,7 +40,6 @@ class BasicBlockContextProducer(
 
   val live_analysis =
     LivenessAnalysis(
-      Util.getCfgAsGraph(gfunc),
       gfunc,
       stack_depth_info,
       aliases,

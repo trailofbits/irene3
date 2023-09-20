@@ -7,9 +7,11 @@ import anvill.{
   Const,
   Elem,
   GuardLabel,
+  InstructionEntry,
   IntRange,
   MappingDomain,
-  PcodeForwardFixpoint,
+  NopLabel,
+  PcodeFixpoint,
   PcodeLabel,
   RegDisp,
   StackPointsTo,
@@ -75,7 +77,7 @@ class TestTypeConstraints extends BaseGzfTest {
     val elis = create_conn_prog.getListing.getInstructionAt(
       create_conn_prog.getAddressFactory.getAddress("000000b8")
     )
-    val elis_zext = elis.getPcode()(0)
+    val elis_zext = InstructionEntry(elis)
     val cbr = ble.getPcode()(6)
     val fallthrough_br = ble.getPcode()(7)
 
@@ -133,7 +135,12 @@ class TestTypeConstraints extends BaseGzfTest {
     assertTrue(ComputeNodeContext.normalControlFlow(to_execute_op))
     assertEquals(
       List(
-        CfgEdge(to_execute_op, PcodeLabel(to_execute_op), insn1.getPcode()(0))
+        CfgEdge(InstructionEntry(insn0), NopLabel, to_execute_op),
+        CfgEdge(
+          to_execute_op,
+          PcodeLabel(to_execute_op),
+          InstructionEntry(insn1)
+        )
       ),
       ComputeNodeContext.edges(create_conn_func)(insn0)
     )
@@ -157,7 +164,7 @@ class TestTypeConstraints extends BaseGzfTest {
       PcodeLabel(insn0.getPcode()(0)),
       cfg.edges
         .find(e =>
-          e.source == insn0.getPcode()(0) && e.target == insn1.getPcode()(0)
+          e.source == insn0.getPcode()(0) && e.target == InstructionEntry(insn1)
         )
         .get
         .label
