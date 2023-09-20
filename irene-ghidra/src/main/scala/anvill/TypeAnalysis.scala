@@ -4,7 +4,7 @@ import CompleteLifting.given
 import MappingDomain.given
 import ReachingDefinitions.given
 import IdealIntervalDom.given
-import anvill.ForwardEdgeFixpoint.Solution
+import anvill.Fixpoint.Solution
 import ghidra.program.model.address.AddressSetView
 import ghidra.program.model.pcode.PcodeOp
 
@@ -38,24 +38,23 @@ class SplitContext[R, P](
 class TypeAnalysis(val func: GFunction) {
   val cfg: ComputeNodeContext.CFG = ComputeNodeContext.func_to_cfg(func)
 
-  def entries(): Iterable[ComparablePcodeOp] = cfg.nodes
+  def entries(): Iterable[CfgNode] = cfg.nodes
     .filter(_.incoming.isEmpty)
     .map(x => {
       x.outer
     })
 
-  def analyzePointsTo(): Solution[ComparablePcodeOp, StackPointsTo.D] = {
+  def analyzePointsTo(): Solution[CfgNode, StackPointsTo.D] = {
     val ent_points_to = StackPointsTo.func_entry_value(func)
-    implicit val res: PcodeForwardFixpoint[StackPointsTo.D] =
+    implicit val res: PcodeFixpoint[StackPointsTo.D] =
       StackPointsTo.apply(func.getProgram)
     ComputeNodeContext
       .node_fixpoint[StackPointsTo.D](cfg, entries().map((_, ent_points_to)))
   }
 
-  def analyzeReachingDefs()
-      : Solution[ComparablePcodeOp, ReachingDefinitions.Dom] = {
+  def analyzeReachingDefs(): Solution[CfgNode, ReachingDefinitions.Dom] = {
     val ent_rdefs = ReachingDefinitions.entry_state(func)
-    implicit val reachind_defs: PcodeForwardFixpoint[ReachingDefinitions.Dom] =
+    implicit val reachind_defs: PcodeFixpoint[ReachingDefinitions.Dom] =
       ReachingDefinitions(func.getProgram)
     ComputeNodeContext.node_fixpoint[ReachingDefinitions.Dom](
       cfg,
@@ -76,8 +75,7 @@ class TypeAnalysis(val func: GFunction) {
     val fix_points_to = analyzePointsTo()
     val reg_analysis = analyzeReachingDefs()
 
-    val mixed
-        : Map[ComparablePcodeOp, (ReachingDefinitions.Dom, StackPointsTo.D)] =
+    val mixed: Map[CfgNode, (ReachingDefinitions.Dom, StackPointsTo.D)] =
       mixMapping(reg_analysis, fix_points_to)
 
     implicit val cont: NodeContext[(ReachingDefinitions.Dom, StackPointsTo.D)] =

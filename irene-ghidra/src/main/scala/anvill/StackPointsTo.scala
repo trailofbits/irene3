@@ -225,7 +225,7 @@ trait Widen[D] {
 
 class StackPointsTo(val prog: Program)(using wd: Widen[D])
     extends ProgramAnalysisUtilMixin
-    with PcodeForwardFixpoint[StackPointsTo.D] {
+    with PcodeFixpoint[StackPointsTo.D] {
 
   override def step(
       prev: StackPointsTo.D,
