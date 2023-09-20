@@ -8,8 +8,10 @@
 
 name: Metrics Nightly
 on:
-  schedule:
-    - cron: '0 0 * * *'
+  workflow_dispatch:
+  # TODO: re-enable when it's less costly / or switch to self hosted runner
+  # schedule:
+  #   - cron: '0 0 * * *'
 
 jobs:
   test-anvill:
