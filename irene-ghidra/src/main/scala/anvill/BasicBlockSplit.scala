@@ -169,7 +169,9 @@ object BasicBlockSplit {
     var addr: Option[Address] = None
     while (iter.hasNext) {
       val ins = iter.next
-      addr = Some(ins.getAddress)
+      if (!ins.isInDelaySlot) {
+        addr = Some(ins.getAddress)
+      }
       if (!block.contains(ins.getAddress())) {
         // If we reach the next block, the entire block is a prologue and we have nothing to do.
         return None
@@ -220,7 +222,9 @@ object BasicBlockSplit {
       if (decomp_addrs.contains(ins.getAddress)) {
         return addr
       }
-      addr = Some(ins.getAddress)
+      if (!ins.isInDelaySlot) {
+        addr = Some(ins.getAddress)
+      }
     }
     None
   }
