@@ -6,12 +6,11 @@
 # the LICENSE file found in the root directory of this source tree.
 #
 
-name: Metrics Nightly
+name: Metrics Weekly
 on:
   workflow_dispatch:
-  # TODO: re-enable when it's less costly / or switch to self hosted runner
-  # schedule:
-  #   - cron: '0 0 * * *'
+  schedule:
+    - cron: '0 0 * * 0'
 
 jobs:
   test-anvill:
