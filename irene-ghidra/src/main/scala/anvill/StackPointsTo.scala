@@ -318,7 +318,10 @@ class StackPointsTo(val prog: Program)(using wd: Widen[D])
           )
         )
         f.flatMap(f => {
-          f.getCallingConvention.getLikelyTrash.toList
+          Option(f.getCallingConvention)
+            .getOrElse(prog.getCompilerSpec.getDefaultCallingConvention)
+            .getLikelyTrash
+            .toList
             .flatMap(rv => vnodeToBasRegVnodeOrUnique(rv))
             .foldLeft(pred)((tot, r) => writeRegister(tot, r, Top()))
         })

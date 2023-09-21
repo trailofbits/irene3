@@ -58,11 +58,16 @@ lint-irene3-ghidra:
 format-irene3-ghidra:
     ./gradlew spotlessApply
 
-test-irene3-ghidra:
+irene3-unpack-ghidra-dbs: 
+    ./scripts/download_and_unpack_ghidra_dbs.sh
+
+
+test-irene3-ghidra: irene3-unpack-ghidra-dbs
     ./gradlew test
 
 install-cxx-common:
     #!/usr/bin/env bash
+    set -euxo pipefail
     if [[ ! -d "deps/{{CXX_COMMON_NAME}}" ]]
     then
         mkdir -p deps
@@ -103,7 +108,7 @@ install-prereqs: install-cxx-common install-ghidra install-cmake install-clang i
           "$( [ "$(uname -m)" != "aarch64" ] && echo "g++-multilib")" \
           "$( [ "$(uname -m)" = "aarch64" ] && echo "libstdc++-*-dev:armhf")"
     fi
-
+ 
 install-clang:
     #!/usr/bin/env bash
     # sanity check: do not overwrite a clang-{{LLVM_VERSION}} installation

@@ -1,21 +1,30 @@
 import org.junit.Test
 import anvill.{
   ARAValue,
+  BaseVariable,
   CfgEdge,
   ComparablePcodeOp,
   ComputeNodeContext,
   Const,
+  DerivedTypeVariable,
   Elem,
+  EntDefiner,
+  EntryRegValue,
   GuardLabel,
   InstructionEntry,
   IntRange,
   MappingDomain,
   NopLabel,
   PcodeFixpoint,
+  Op,
   PcodeLabel,
+  ReachingDefinitions,
   RegDisp,
   StackPointsTo,
-  TypeAnalysis
+  SubTypeConstraint,
+  TypeAnalysis,
+  TypeAtom,
+  TypeSolvingContext
 }
 import ghidra.program.model.address.{AddressRange, AddressSet}
 import ghidra.program.model.block.BasicBlockModel
@@ -26,7 +35,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
 import org.junit.Before
-import ghidra.program.model.listing.{Program, Function as GFunction}
+import ghidra.program.model.listing.{
+  Instruction,
+  Program,
+  Function as GFunction
+}
 import ghidra.program.model.pcode.{PcodeOp, Varnode}
 import ghidra.util.task.TaskMonitor
 import ghidra.program.model.address.AddressRangeImpl
@@ -180,9 +193,12 @@ class TestTypeConstraints extends BaseGzfTest {
     typ_a.analyze()
   }
 
-  def getInstructionAddressRange(addrs: String): AddressRange =
+  def instructionAt(addrs: String): Instruction =
     val addr = create_conn_prog.getAddressFactory.getAddress(addrs)
     val insn = create_conn_prog.getListing.getInstructionAt(addr)
+    insn
+  def getInstructionAddressRange(addrs: String): AddressRange =
+    val insn = instructionAt(addrs)
     AddressRangeImpl(insn.getMinAddress, insn.getMaxAddress)
 
   /*
@@ -215,7 +231,110 @@ class TestTypeConstraints extends BaseGzfTest {
     rng.add(getInstructionAddressRange("0000000e"))
 
     // from the load and the store + the function entry constraints we should have enough to prove our entailment
-    typ_a.analyzeWithAddressSetView(rng).foreach(println(_))
+    // typ_a.analyzeWithAddressSetView(rng).foreach(println(_))
+  }
+
+  // Now we test a solution to these type constraints
+  @Test def testTypeConsSolution(): Unit = {
+    val typ_a = TypeAnalysis(
+      create_conn_func
+    )
+
+    val rng = AddressSet()
+    rng.add(getInstructionAddressRange("000000062"))
+    rng.add(getInstructionAddressRange("0000000e"))
+
+    val r7_tv = Op(instructionAt("000000062").getPcode.last)
+
+    val cons = typ_a.analyzeWithAddressSetView(rng, false)
+
+    val r3 = create_conn_prog.getLanguage.getRegister("r3")
+    // we add an additional constraint to simulate the parameter let the entry reg r3
+    val extra_cons = cons.appended(
+      SubTypeConstraint(
+        DerivedTypeVariable(
+          EntryRegValue(Varnode(r3.getAddress, r3.getNumBytes)),
+          List()
+        ),
+        DerivedTypeVariable(
+          TypeAtom(create_conn_func.getParameter(0).getDataType),
+          List()
+        )
+      )
+    )
+
+    // get the type solution for the load it should be equal to our in parameter and consequently a pointer to a struct
+    assertTrue(
+      "should have a concrete type for the loaded r7",
+      TypeSolvingContext().solve(extra_cons).get_sol(r7_tv).isDefined
+    )
+  }
+
+  // Now we test a solution to these type constraints without a manual added type.
+  @Test def testTypeConsSolutionWithSubProcTypes(): Unit = {
+    val typ_a = TypeAnalysis(
+      create_conn_func
+    )
+
+    val rng = AddressSet()
+    rng.add(getInstructionAddressRange("000000062"))
+    rng.add(getInstructionAddressRange("0000000e"))
+
+    val r7_tv = Op(instructionAt("000000062").getPcode.last)
+
+    val cons = typ_a.analyzeWithAddressSetView(rng, true)
+
+    // get the type solution for the load it should be equal to our in parameter and consequently a pointer to a struct
+    assertTrue(
+      "should have a concrete type for the loaded r7",
+      TypeSolvingContext().solve(cons).get_sol(r7_tv).isDefined
+    )
+  }
+
+  @Test def entryConstraints(): Unit = {
+    val typ_a = TypeAnalysis(
+      create_conn_func
+    )
+
+    val rng = AddressSet()
+    val cons = typ_a.analyzeWithAddressSetView(rng, true)
+    cons.foreach(println(_))
+    assertTrue(
+      "One of the constraints should have an entryreg representing the parameter, otherwise we missed the mark",
+      cons
+        .collect({ case SubTypeConstraint(lhs, rhs) => List(lhs, rhs) })
+        .flatten
+        .exists(_.base.isInstanceOf[EntryRegValue])
+    )
+  }
+
+  def registerToVarnode(r: String): Varnode = {
+    val reg = create_conn_prog.getRegister("_r3")
+    Varnode(reg.getAddress, reg.getNumBytes)
+  }
+
+  @Test def reachingDefsEntryValForR3(): Unit = {
+    val ent_state = ReachingDefinitions.entry_state(create_conn_func)
+
+    assertTrue(
+      "We should have an entry definer for the register we are referencing",
+      ent_state(registerToVarnode("_r3")).contains(
+        EntDefiner(registerToVarnode("_r3"))
+      )
+    )
+
+    val typ_a = TypeAnalysis(
+      create_conn_func
+    )
+    assertEquals(
+      typ_a.analyzeReachingDefs()(
+        create_conn_prog.getListing
+          .getInstructionAt(create_conn_func.getEntryPoint)
+          .getPcode()
+          .head
+      ),
+      ent_state
+    )
   }
 
   @Test def intLeftStackPts(): Unit = {

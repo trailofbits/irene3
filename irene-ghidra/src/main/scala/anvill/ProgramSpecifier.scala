@@ -1,7 +1,7 @@
 package anvill;
 
-import java.{util => ju}
-import collection.JavaConverters._
+import java.util as ju
+import collection.JavaConverters.*
 import com.google.protobuf.ByteString
 import ghidra.program.model.data.DataType
 import ghidra.program.model.data.VoidDataType
@@ -20,26 +20,26 @@ import ghidra.program.model.mem.Memory
 import ghidra.program.model.mem.MemoryBlock
 import ghidra.program.model.symbol.Symbol
 import ghidra.program.model.symbol.SymbolType.GLOBAL_VAR
-import scalaz._
-import Scalaz._
+import scalaz.*
+import Scalaz.*
 import specification.specification.FunctionLinkage
-import specification.specification.{Function => FuncSpec}
-import specification.specification.{Memory => MemSpec}
-import specification.specification.{Parameter => ParamSpec}
-import specification.specification.{Value => ValueSpec}
-import specification.specification.{Variable => VariableSpec}
-import specification.specification.{BlockContext => BlockContextSpec}
+import specification.specification.Function as FuncSpec
+import specification.specification.Memory as MemSpec
+import specification.specification.Parameter as ParamSpec
+import specification.specification.Value as ValueSpec
+import specification.specification.Variable as VariableSpec
+import specification.specification.BlockContext as BlockContextSpec
 import specification.specification.MemoryRange
 import specification.specification.Specification
-import specification.specification.{Symbol => SymbolSpec}
+import specification.specification.Symbol as SymbolSpec
 import specification.specification.GlobalVariable
 import specification.specification.Value.InnerValue
 import specification.specification.Value.InnerValue.Reg
 import specification.specification.Value.InnerValue.Mem
-import specification.specification.BaseType._
+import specification.specification.BaseType.*
 import specification.specification.TypeSpec
 import specification.specification.TypeSpec.Type
-import specification.specification.{Register => RegSpec}
+import specification.specification.Register as RegSpec
 import specification.specification.ReturnStackPointer
 import specification.specification.ControlFlowOverrides
 import specification.specification.Jump
@@ -47,14 +47,14 @@ import specification.specification.JumpTarget
 import specification.specification.Call
 import specification.specification.Return
 import specification.specification.Other
-import specification.specification.CallingConvention._
+import specification.specification.CallingConvention.*
 import specification.specification.OS
-import specification.specification.OS._
+import specification.specification.OS.*
 import specification.specification.Arch
-import specification.specification.Arch._
+import specification.specification.Arch.*
 import specification.specification.CallingConvention
 import specification.specification.Callable
-import specification.specification.{CodeBlock => CodeBlockSpec}
+import specification.specification.CodeBlock as CodeBlockSpec
 import specification.specification.StackEffects
 import specification.specification.Variables
 import ghidra.program.model.data.GenericCallingConvention
@@ -63,26 +63,33 @@ import ghidra.program.model.block.BasicBlockModel
 import ghidra.program.model.block.CodeBlock
 import ghidra.program.model.block.CodeBlockReference
 import ghidra.util.task.TimeoutTaskMonitor
+
 import java.util.concurrent.TimeUnit
 import ghidra.program.model.listing.Instruction
+
 import scala.collection.mutable.ListBuffer
 import ghidra.program.model.pcode.PcodeOp
 import ghidra.program.model.symbol.RefType
 import ghidra.program.model.lang.BasicCompilerSpec
+
 import javax.xml.parsers.DocumentBuilderFactory
 import org.xml.sax.InputSource
+
 import java.io.StringReader
 import org.w3c.dom.Element
 import org.w3c.dom.Node
-import scala.util.control.Breaks._
+
+import scala.util.control.Breaks.*
 import com.fasterxml.jackson.databind.introspect.TypeResolutionContext.Basic
 import ghidra.program.model.listing.Variable
 import ghidra.program.model.listing.Variable
 import ghidra.program.model.listing.VariableStorage
 import ghidra.program.model.pcode.Varnode
-import scala.collection.mutable.{Map => MutableMap}
+
+import scala.collection.mutable.Map as MutableMap
 import ghidra.program.model.address.Address
 import ghidra.program.model.listing.ThunkFunction
+
 import java.util.ResourceBundle.Control
 import ghidra.program.model.lang.Register
 import ghidra.util.Msg
@@ -98,14 +105,17 @@ import ghidra.program.model.pcode.HighVariable
 import ghidra.program.model.pcode.HighParam
 import ghidra.program.model.pcode.HighSymbol
 import specification.specification.Callsite
+import specification.specification.TypeHint
+
 import java.util.Objects
 import ghidra.program.model.data.AbstractStringDataType
 import specification.specification.StackFrame
 import ghidra.app.cmd.function.CallDepthChangeInfo
 import ghidra.util.task.TaskMonitor
-import scala.collection.mutable.{Map => MutableMap}
-import scala.collection.mutable.{Set => MutableSet}
-import anvill.Util.getReachableCodeBlocks
+
+import scala.collection.mutable.Map as MutableMap
+import scala.collection.mutable.Set as MutableSet
+import anvill.Util.{getReachableCodeBlocks, registerToVariable}
 import ghidra.program.model.address.AddressSet
 import ghidra.program.model.pcode.VarnodeTranslator
 import ghidra.program.model.pcode.SequenceNumber
@@ -550,6 +560,73 @@ object ProgramSpecifier {
     in_scope
   }
 
+  def outputRegAssignersForInstruction(insn: Instruction): Seq[PcodeOp] =
+    val out_regs =
+      insn.getResultObjects.collect({ case x: Register => x }).toSet
+    val seen_set: collection.mutable.Set[Register] = collection.mutable.Set()
+    val unique_set: collection.mutable.Set[Register] = collection.mutable.Set()
+    for (x <- insn.getPcode()) {
+      if (Option(x.getOutput).isDefined && x.getOutput.isRegister) {
+        val reg = insn.getProgram.getRegister(x.getOutput)
+        if (seen_set.contains(reg)) {
+          unique_set.remove(reg)
+        } else {
+          unique_set.add(reg)
+          seen_set.add(reg)
+        }
+      }
+    }
+
+    insn
+      .getPcode()
+      .toSeq
+      .filter(pc => {
+        Option(pc.getOutput)
+          .map(insn.getProgram.getRegister(_))
+          .exists(r => out_regs.contains(r) && unique_set.contains(r))
+      })
+
+  def insnHasLoad(insn: Instruction): Boolean =
+    insn.getPcode().exists(pc => pc.getOpcode == PcodeOp.LOAD)
+
+  def pcodeOpToTypeHint(
+      program: Program,
+      pc: PcodeOp,
+      sol: TypeSolution,
+      aliases: MutableMap[Long, TypeSpec]
+  ): Option[TypeHint] =
+    sol
+      .get_sol(Op(pc))
+      .flatMap(dty => {
+        val reg = program.getRegister(pc.getOutput)
+        val valspec = ValueSpec(
+          ValueSpec.InnerValue.Reg(RegSpec(getRegisterName(reg)))
+        )
+
+        val typespec = getTypeSpec(dty, aliases)
+        typespec.map(ty => {
+          val varspec = VariableSpec(Seq(valspec), Some(ty))
+          TypeHint(pc.getSeqnum.getTarget.getOffset, Some(varspec))
+        })
+      })
+
+  def computeTypeHints(
+      func: Function,
+      aliases: MutableMap[Long, TypeSpec]
+  ): List[TypeHint] =
+    val cons = TypeAnalysis(func).analyze()
+    val sol = TypeSolvingContext().solve(cons)
+    // now we get all pcodeops that assign an output register, are the unique assigner of the output register,
+    // the instruction contains a load, and have a type
+    val func_insns: ju.Iterator[Instruction] = func.getProgram.getListing
+      .getInstructions(func.getBody, true)
+    val res = func_insns.asScala
+      .filter(insnHasLoad)
+      .flatMap(outputRegAssignersForInstruction)
+      .flatMap(pcodeOpToTypeHint(func.getProgram, _, sol, aliases))
+      .toList
+    res
+
   def specifyFunction(
       func: Function,
       defaultRetAddr: Option[ValueSpec],
@@ -588,6 +665,7 @@ object ProgramSpecifier {
       )
     })
 
+    val ty_hints = computeTypeHints(func, aliases)
     FuncSpec(
       getThunkRedirection(func.getProgram(), func.getEntryPoint())
         .getOffset(),
@@ -621,7 +699,8 @@ object ProgramSpecifier {
           func.getStackFrame.getParameterOffset
         )
       ),
-      getInScopeVars(func.getProgram(), block_ctxts).toSeq
+      getInScopeVars(func.getProgram(), block_ctxts).toSeq,
+      ty_hints
     )
   }
 
@@ -893,10 +972,7 @@ object ProgramSpecifier {
       case _ => FunctionLinkage.FUNCTION_LINKAGE_NORMAL_UNSPECIFIED
     }
 
-    var spec =
-      specifyFunction(func, defaultRetAddr, aliases, linkage, func_split_addrs)
-
-    spec
+    specifyFunction(func, defaultRetAddr, aliases, linkage, func_split_addrs)
   }
 
   def applyThunkRedirections(

@@ -71,7 +71,10 @@ class TypeAnalysis(val func: GFunction) {
       .toMap
       .withDefault(_ => (j1.bot, j2.bot))
 
-  def analyzeWithAddressSetView(addrs: AddressSetView): List[TypeConstraint] = {
+  def analyzeWithAddressSetView(
+      addrs: AddressSetView,
+      include_formal_types: Boolean
+  ): List[TypeConstraint] = {
     val fix_points_to = analyzePointsTo()
     val reg_analysis = analyzeReachingDefs()
 
@@ -84,9 +87,15 @@ class TypeAnalysis(val func: GFunction) {
         StackPointsToSol(func.getProgram)
       )
 
-    TypeConstraints(func, mixed).produceConstraintsFromAddrRange(addrs)
+    val tcons = TypeConstraints(func, mixed)
+    tcons
+      .produceConstraintsFromAddrRange(addrs) ++ (if include_formal_types then
+                                                    tcons
+                                                      .produceEntryConstraints()
+                                                  else List())
+
   }
   def analyze(): List[TypeConstraint] = {
-    analyzeWithAddressSetView(func.getBody)
+    analyzeWithAddressSetView(func.getBody, true)
   }
 }

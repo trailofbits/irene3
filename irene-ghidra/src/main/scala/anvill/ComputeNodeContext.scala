@@ -14,7 +14,7 @@ import scalax.collection.generic.{AbstractDiEdge, AnyDiEdge, AnyEdge, Edge}
 import scalax.collection.immutable.{Graph, TypedGraphFactory}
 import ghidra.program.model.address.AddressFactory
 import specification.SpecificationOuterClass.ParameterOrBuilder
-
+import scala.collection.Traversable
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 import scala.collection.mutable.Map as MMap
@@ -91,18 +91,21 @@ object Fixpoint {
   def edge_solution_to_node_sol[N, E <: AnyDiEdge[N], D](
       g: Graph[N, E],
       sol: Solution[E, D],
+      ent_vals: Iterable[(N, D)],
       traversal: FixpointTraversal[N, E]
-  )(using
-      joinSemiLattice: JoinSemiLattice[D]
-  ): Solution[N, D] = {
+  )(using joinSemiLattice: JoinSemiLattice[D]): Solution[N, D] = {
+    val eval_lookups = Map.from(ent_vals)
     g.nodes
       .map(n => {
+        val v = traversal
+          .prev_edges(n)
+          .map(sol(_))
+          .fold(eval_lookups.getOrElse(n, joinSemiLattice.bot))(
+            joinSemiLattice.join
+          )
         (
           n.outer,
-          traversal
-            .prev_edges(n)
-            .map(sol(_))
-            .fold(joinSemiLattice.bot)(joinSemiLattice.join)
+          v
         )
       })
       .toMap
@@ -121,7 +124,10 @@ object Fixpoint {
     val state: MMap[E, D] = MMap.empty.withDefault(_ => joinSemiLattice.bot)
     val ctrs: MMap[E, Long] = MMap.empty.withDefault(_ => 0)
     // TODO(Ian) pq based on RPO
-    val worklist: mutable.Queue[N] = mutable.Queue.from(entrypoints.map(_._1))
+    implicit val scoped: Ordering[N] = traversal
+    val worklist: mutable.PriorityQueue[N] =
+      mutable.PriorityQueue.from(entrypoints.map((n, _) => n))
+
     while (worklist.nonEmpty) {
       val next = worklist.dequeue()
 
@@ -139,31 +145,33 @@ object Fixpoint {
         val next_val = prob.update_edge(pred, e)
         val prev_val = state(e)
         if (next_val != prev_val) {
-          if (joinSemiLattice.lteq(next_val, prev_val)) {
-            println("eq? " + next_val.equals(prev_val))
-            println("next:" + next)
-            println("pred: " + pred)
-            println("nval: " + next_val)
-            println("prev_val: " + prev_val)
-          }
-          assert(
-            joinSemiLattice.gt(next_val, prev_val),
-            "Transfer functions should be monotonic"
-          )
+
           val curr_step = ctrs(e) + 1
           val widened = prob.step(prev_val, next_val, e, curr_step)
           assert(
             joinSemiLattice.lteq(next_val, widened),
             "Widening should not decrease"
           )
+
+          if (!joinSemiLattice.lteq(prev_val, widened)) {
+            Msg.debug(this, "eq? " + widened.equals(prev_val))
+            Msg.debug(this, "next:" + next)
+            Msg.debug(this, "pred: " + pred)
+            Msg.debug(this, "nval: " + widened)
+            Msg.debug(this, "prev_val: " + prev_val)
+          }
+          assert(
+            joinSemiLattice.lteq(prev_val, widened),
+            "Transfer functions should be monotonic"
+          )
+
           state.addOne(e, widened)
           ctrs.addOne(e, curr_step)
-          worklist.prepend(traversal.next_node(e))
 
+          worklist += traversal.next_node(e)
         }
       }
     }
-
     state.toMap.withDefault(_ => joinSemiLattice.bot)
   }
 
@@ -192,7 +200,10 @@ given [D](using
   override def step(prev: D, next: D, edge: CfgEdge, curr_step: Long): D =
     pcodeAnalysis.step(prev, next, curr_step)
 
-trait FixpointTraversal[N, E <: AnyDiEdge[N]] {
+abstract class FixpointTraversal[N, E <: AnyDiEdge[N]](g: Graph[N, E])
+    extends Ordering[N] {
+  val priority: Map[N, Int] = ComputeNodeContext.postorder_traversal(g)
+
   def next_node(e: E): N
 
   def next_edges(n: Graph[N, E]#NodeT): Set[E]
@@ -200,8 +211,13 @@ trait FixpointTraversal[N, E <: AnyDiEdge[N]] {
   def prev_edges(n: Graph[N, E]#NodeT): Set[E]
 }
 
-class ForwardFixpointTraversal[N, E <: AnyDiEdge[N]]
-    extends FixpointTraversal[N, E] {
+class ForwardFixpointTraversal[N, E <: AnyDiEdge[N]](
+    g: Graph[N, E]
+) extends FixpointTraversal[N, E](g) {
+
+  override def compare(x: N, y: N): Int =
+    priority(x).compare(priority(y))
+
   override def next_node(e: E): N = e.target
 
   override def next_edges(n: Graph[N, E]#NodeT): Set[E] =
@@ -211,8 +227,14 @@ class ForwardFixpointTraversal[N, E <: AnyDiEdge[N]]
     n.incoming.map(_.outer)
 }
 
-class ReverseFixpointTraversal[N, E <: AnyDiEdge[N]]
-    extends FixpointTraversal[N, E] {
+class ReverseFixpointTraversal[N, E <: AnyDiEdge[N]](
+    g: Graph[N, E]
+) extends FixpointTraversal[N, E](g) {
+
+  override def compare(x: N, y: N): Int =
+    // we want the lowest elements first
+    -priority(x).compare(priority(y))
+
   override def next_node(e: E): N = e.source
 
   override def next_edges(n: Graph[N, E]#NodeT): Set[E] =
@@ -224,7 +246,30 @@ class ReverseFixpointTraversal[N, E <: AnyDiEdge[N]]
 
 object ComputeNodeContext {
 
+  def postorder_traversal[N, E <: AnyDiEdge[N]](
+      g: Graph[N, E]
+  ): Map[N, Int] = {
+    val roots = g.nodes.filter(n => n.incoming.isEmpty)
+    val seen: mutable.Set[N] = mutable.Set.empty
+    val ordering_buf = List.newBuilder[N]
+
+    roots.foreach(r => {
+      g.outerNodeDownUpTraverser(r)
+        .foreach((down, node) => {
+          if (!down && !seen.contains(node)) {
+            seen += node
+            ordering_buf += node
+          }
+        })
+    })
+
+    val res = ordering_buf.result().zipWithIndex.toMap
+    assert(g.nodes.forall(n => res.contains(n.outer)))
+    res
+  }
+
   type CFG = Graph[CfgNode, CfgEdge]
+
   object CFG extends TypedGraphFactory[CfgNode, CfgEdge]
 
   def normalControlFlow(op: PcodeOp): Boolean =
@@ -373,7 +418,9 @@ object ComputeNodeContext {
     Fixpoint.fixpoint(
       g,
       entrypoints,
-      new ForwardFixpointTraversal[CfgNode, CfgEdge]
+      new ForwardFixpointTraversal[CfgNode, CfgEdge](
+        g
+      )
     )
 
   def node_fixpoint[D](g: CFG, entrypoints: Iterable[(CfgNode, D)])(using
@@ -383,7 +430,10 @@ object ComputeNodeContext {
     Fixpoint.edge_solution_to_node_sol(
       g,
       fixpoint(g, entrypoints),
-      new ForwardFixpointTraversal[CfgNode, CfgEdge]
+      entrypoints,
+      new ForwardFixpointTraversal[CfgNode, CfgEdge](
+        g
+      )
     )
 
   def reverse_fixpoint[D](
@@ -396,7 +446,9 @@ object ComputeNodeContext {
     Fixpoint.fixpoint(
       g,
       entrypoints,
-      new ReverseFixpointTraversal[CfgNode, CfgEdge]
+      new ReverseFixpointTraversal[CfgNode, CfgEdge](
+        g
+      )
     )
 
   def reverse_node_fixpoint[D](
@@ -409,6 +461,9 @@ object ComputeNodeContext {
     Fixpoint.edge_solution_to_node_sol(
       g,
       reverse_fixpoint(g, entrypoints),
-      new ReverseFixpointTraversal[CfgNode, CfgEdge]
+      entrypoints,
+      new ReverseFixpointTraversal[CfgNode, CfgEdge](
+        g
+      )
     )
 }

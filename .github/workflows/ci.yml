@@ -33,10 +33,14 @@ jobs:
         run: |
           just lint-irene3-ghidra
       - name: "IRENE Ghidra tests"
+        shell: bash
+        env:
+          TOB_AMP_PASSPHRASE: ${{secrets.TOB_AMP_PASSPHRASE}}
         run: |
           Xvfb :99 -nolisten tcp &
           export DISPLAY=:99
           just test-irene3-ghidra
+
       - name: "Tar test logs"
         if: ${{ failure() }}
         run: |
