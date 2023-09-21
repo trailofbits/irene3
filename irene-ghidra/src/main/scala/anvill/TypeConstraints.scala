@@ -1,15 +1,23 @@
 package anvill
 
+import anvill.Util.ProgramAnalysisUtilMixin
 import ghidra.program.model.address.{Address, AddressSetView}
 import ghidra.program.model.data.{
   AbstractIntegerDataType,
   DataType,
   IntegerDataType
 }
-import ghidra.program.model.listing.Function as GFunction
+import ghidra.program.model.listing.{
+  Instruction,
+  Parameter,
+  Program,
+  VariableStorage,
+  Function as GFunction
+}
 import ghidra.program.model.pcode.{PcodeOp, Varnode}
 import cats.{Applicative, Monad}
 import cats.syntax.all.*
+import cats.data.Writer
 
 import scala.jdk.CollectionConverters.*
 
@@ -40,9 +48,17 @@ case class TypeAtom(dataType: DataType) extends TypeVariable
 
 case object AbstractStack extends TypeVariable
 
-case class TaggedProcedure(func: GFunction, callsite: PcodeOp)
-    extends TypeVariable
-case class Op(op: PcodeOp) extends TypeVariable
+// A procedure has an optional callsite tag for polymorphism. a formal does not have a tag
+case class TaggedProcedure(func: GFunction, callsite: Option[PcodeOp])
+    extends TypeVariable:
+  val is_formal: Boolean = callsite.isEmpty
+end TaggedProcedure
+
+case class Op(op: ComparablePcodeOp) extends TypeVariable {
+  override def toString: String = {
+    s"Op(${op.getSeqnum}: $op)"
+  }
+}
 
 case class EntryRegValue(r: Varnode) extends TypeVariable
 
@@ -52,11 +68,11 @@ case class Tmp(id: Int) extends TypeVariable
 
 abstract class FieldLabel
 
-class Load extends FieldLabel
+case object Load extends FieldLabel
 
 case class Field(offset_bytes: ByteSize, sz_bits: BitSize) extends FieldLabel
 
-class Store extends FieldLabel
+case object Store extends FieldLabel
 
 case class InParam(ind: Int) extends FieldLabel
 
@@ -112,46 +128,8 @@ trait NodeContext[N]
       RegisterContext[N],
       PointsToContext[N] {}
 
-case class ConstrainedValue[T](repr: T, constraints: Set[TypeConstraint])
-given cvapp: Applicative[ConstrainedValue] with
-  def pure[A](a: A): ConstrainedValue[A] = ConstrainedValue(a, Set())
+type ConstrainedValue[T] = Writer[Set[TypeConstraint], T]
 
-  def ap[A, B](
-      ff: ConstrainedValue[A => B]
-  )(fa: ConstrainedValue[A]): ConstrainedValue[B] = {
-    val res = ff.repr(fa.repr)
-    ConstrainedValue(res, fa.constraints ++ ff.constraints)
-  }
-
-given Monad[ConstrainedValue] with
-
-  override def pure[A](a: A): ConstrainedValue[A] = cvapp.pure(a)
-
-  override def flatten[A](
-      ffa: ConstrainedValue[ConstrainedValue[A]]
-  ): ConstrainedValue[A] =
-    ConstrainedValue(ffa.repr.repr, ffa.constraints ++ ffa.repr.constraints)
-
-  override def flatMap[A, B](fa: ConstrainedValue[A])(
-      f: A => ConstrainedValue[B]
-  ): ConstrainedValue[B] =
-    val nested: ConstrainedValue[ConstrainedValue[B]] = cvapp.map(fa)(f)
-    nested.flatten
-
-  override def tailRecM[A, B](a: A)(
-      f: A => ConstrainedValue[Either[A, B]]
-  ): ConstrainedValue[B] =
-    val buf = List.newBuilder[TypeConstraint]
-    @annotation.tailrec
-    def go(currv: A): B = f(currv) match {
-      case ConstrainedValue(Right(repr), constraints) =>
-        buf ++= constraints
-        repr
-      case ConstrainedValue(Left(repr), constraints) =>
-        buf ++= constraints
-        go(repr)
-    }
-    ConstrainedValue(go(a), buf.result().toSet)
 trait FreshVars {
   def fresh(): Tmp
 }
@@ -163,13 +141,10 @@ class PcodeEvaluator[N](val cont: N)(using
   def eval_var(vnode: Varnode): ConstrainedValue[DerivedTypeVariable] = {
     val defining_vars = abs_interp.access(cont, vnode)
     if (defining_vars.size == 1) {
-      ConstrainedValue(DerivedTypeVariable(defining_vars.head, List()), Set())
+      Writer(Set(), DerivedTypeVariable(defining_vars.head, List()))
     } else {
       val target = fresh.fresh()
-      ConstrainedValue(
-        target,
-        defining_vars.map(SubTypeConstraint(_, target))
-      )
+      Writer(defining_vars.map(SubTypeConstraint(_, target)), target)
     }
   }
 
@@ -186,19 +161,23 @@ class PcodeEvaluator[N](val cont: N)(using
     val addr_tv: ConstrainedValue[DerivedTypeVariable] =
       eval_var(addr).fmap(_.add(List[FieldLabel](lbl, Field(ByteSize(0), sz))))
 
-    ConstrainedValue[DerivedTypeVariable](
-      addr_tv.repr,
-      addr_tv.constraints ++ abs_interp
-        .pointsTo(cont, addr, sz)
-        .map(acc => {
-          val abs_obj = DerivedTypeVariable(acc.tv, List(Field(acc.off, sz)))
-          if (addr_is_subtype) {
-            SubTypeConstraint(addr_tv.repr, abs_obj)
-          } else {
-            SubTypeConstraint(abs_obj, addr_tv.repr)
-          }
-        })
-        .toSet
+    addr_tv.flatMap(repr =>
+      Writer
+        .tell(
+          abs_interp
+            .pointsTo(cont, addr, sz)
+            .map(acc => {
+              val abs_obj =
+                DerivedTypeVariable(acc.tv, List(Field(acc.off, sz)))
+              if (addr_is_subtype) {
+                SubTypeConstraint(repr, abs_obj)
+              } else {
+                SubTypeConstraint(abs_obj, repr)
+              }
+            })
+            .toSet
+        )
+        .map(_ => repr)
     )
   }
 }
@@ -210,17 +189,143 @@ object TypeConstraints {
     new TypeConstraints[N](gfunc, 0, mapping)
 }
 
+class TypeTranslator(using freshVars: FreshVars):
+
+  def translateDty(dty: DataType): ConstrainedValue[DerivedTypeVariable] =
+    // TODO(Ian): deconstruct type for precision on fields and pointers
+    val repr = DerivedTypeVariable(TypeAtom(dty), List())
+    Writer(Set(), repr)
+
+end TypeTranslator
+
 class TypeConstraints[N](
     private val gfunc: GFunction,
     private var counter: Int,
     private val mapping: Map[CfgNode, N]
-)(using NodeContext[N]) {
+)(using NodeContext[N])
+    extends ProgramAnalysisUtilMixin {
+
+  override val prog: Program = gfunc.getProgram
 
   given id_gen: FreshVars with
     def fresh(): Tmp = {
       counter += 1
       Tmp(counter)
     }
+
+  def stackStorageToVariable(varstor: VariableStorage): DerivedTypeVariable =
+    // Assumption here, the stack offset is always displacement from the stack register upon entry to the function.
+    DerivedTypeVariable(
+      AbstractStack,
+      List(Field(ByteSize(varstor.getStackOffset), ByteSize(varstor.size())))
+    )
+
+  def registerToVariable(
+      context: PcodeEvaluator[N],
+      varstor: VariableStorage
+  ): ConstrainedValue[DerivedTypeVariable] =
+    context.eval_var(
+      Varnode(varstor.getRegister.getAddress, varstor.getRegister.getNumBytes)
+    )
+
+  // Returns a type variable representing storage, and the dty.
+  def paramConstraint(
+      context: PcodeEvaluator[N],
+      param: Parameter
+  ): ConstrainedValue[(DerivedTypeVariable, DerivedTypeVariable)] =
+    val stor = param.getVariableStorage
+    val storage_var: Option[ConstrainedValue[DerivedTypeVariable]] =
+      if stor.isStackStorage then
+        Some(Writer(Set(), stackStorageToVariable(stor)))
+      else if stor.isRegisterStorage then
+        Some(registerToVariable(context, stor))
+      else None
+
+    val dty = TypeTranslator().translateDty(param.getDataType)
+    storage_var
+      .map(loc => {
+        (loc, dty).mapN((loc_dtv, dty_dtv) => {
+          (loc_dtv, dty_dtv)
+        })
+      })
+      .getOrElse((freshTvar(), dty).mapN((_, _)))
+
+  def inConstraints(
+      in_context: PcodeEvaluator[N],
+      gfunc: GFunction,
+      callsite_tag: Option[PcodeOp]
+  ): ConstrainedValue[Unit] =
+    val base_type_variable =
+      DerivedTypeVariable(TaggedProcedure(gfunc, callsite_tag), List())
+
+    val in_cons: ConstrainedValue[Unit] =
+      gfunc.getParameters.zipWithIndex.toList.foldM(())((_, param_ind) => {
+        val full_param_dtv = base_type_variable.add(List(InParam(param_ind._2)))
+        val repr_vars = paramConstraint(in_context, param_ind._1)
+        repr_vars.flatMap((stor, dty) => {
+          val constraints: Set[TypeConstraint] =
+            if callsite_tag.isDefined then
+              // if formal the ins are less than storage
+              Set(
+                SubTypeConstraint(dty, full_param_dtv),
+                SubTypeConstraint(full_param_dtv, stor)
+              )
+            else
+              Set(
+                SubTypeConstraint(stor, full_param_dtv),
+                SubTypeConstraint(full_param_dtv, dty)
+              )
+          Writer.tell(constraints)
+        })
+      })
+    in_cons
+
+  def outCons(
+      out_context: PcodeEvaluator[N],
+      gfunc: GFunction,
+      callsite_tag: Option[PcodeOp]
+  ): ConstrainedValue[Unit] =
+    val base_type_variable =
+      DerivedTypeVariable(TaggedProcedure(gfunc, callsite_tag), List())
+    Option(gfunc.getReturn)
+      .map(r => {
+        val full_out_param_dtv = base_type_variable.add(List(OutParam(0)))
+        val repr_vars = paramConstraint(out_context, r)
+        repr_vars
+          .flatMap((stor, dty) => {
+            val constraints: Set[TypeConstraint] =
+              if callsite_tag.isDefined then
+                // if formal then out is greater than storage
+                Set(
+                  SubTypeConstraint(stor, full_out_param_dtv),
+                  SubTypeConstraint(full_out_param_dtv, dty)
+                )
+              else
+                Set(
+                  SubTypeConstraint(dty, full_out_param_dtv),
+                  SubTypeConstraint(full_out_param_dtv, stor)
+                )
+            Writer.tell(constraints)
+          })
+      })
+      .getOrElse(Writer(Set(), ()))
+  // gets constraints for a procedure if it is a formal we want:
+  // dty <= in <= storage
+  // storage <= out <= dty
+  /// for an actual we want:
+  /// storage <= in <= dty
+  /// dty <= out <= storage
+  def typeConstraintsForCall(
+      in_context: PcodeEvaluator[N],
+      out_context: PcodeEvaluator[N],
+      gfunc: GFunction,
+      callsite_tag: Option[PcodeOp]
+  ): ConstrainedValue[Unit] = {
+    val incons = inConstraints(in_context, gfunc, callsite_tag)
+    val outcons = outCons(out_context, gfunc, callsite_tag)
+
+    incons.tell(outcons.run._1)
+  }
 
   def isConst(vnode: Varnode): Boolean = vnode.isConstant
 
@@ -231,8 +336,7 @@ class TypeConstraints[N](
       vnode: Varnode
   ): ConstrainedValue[DerivedTypeVariable] = {
     val res = id_gen.fresh()
-    ConstrainedValue(
-      res,
+    Writer(
       Set(
         SubTypeConstraint(
           res,
@@ -243,12 +347,13 @@ class TypeConstraints[N](
             )
           )
         )
-      )
+      ),
+      res
     )
   }
 
   def freshTvar(): ConstrainedValue[DerivedTypeVariable] =
-    ConstrainedValue(id_gen.fresh(), Set.empty)
+    Writer(Set.empty, id_gen.fresh())
 
   def evaluate(pc: PcodeOp): Set[TypeConstraint] = {
     val eval = PcodeEvaluator(mapping(pc))
@@ -263,7 +368,8 @@ class TypeConstraints[N](
         rhs: ConstrainedValue[DerivedTypeVariable]
     ): Set[TypeConstraint] = {
       val res = (rhs, lhs).mapN(SubTypeConstraint(_, _))
-      res.constraints + res.repr
+      val (cons, repr) = res.run
+      cons + repr
     }
 
     def assign_to_output(
@@ -291,12 +397,19 @@ class TypeConstraints[N](
         create_const_dtc(inputs(0), pc.getInput(0).getOffset)
       } else {
         (inputs(0), inputs(1), freshTvar()).flatMapN((lhs, rhs, res) =>
-          ConstrainedValue(res, Set(AddCons(lhs, rhs, res)))
+          Writer(Set(AddCons(lhs, rhs, res)), res)
         )
       }
     }
 
     pc.getOpcode match {
+      case PcodeOp.CALL =>
+        val target = getUniqueCallTarget(pc)
+        target
+          .map(t =>
+            typeConstraintsForCall(eval, eval.execute(pc), t, Some(pc)).run._1
+          )
+          .getOrElse(Set())
       // hack to handle situations like a = zext ptr b = trunc a...
       case PcodeOp.COPY | PcodeOp.INT_ZEXT =>
         assign_to_output(inputs(0))
@@ -316,7 +429,7 @@ class TypeConstraints[N](
         val access_repr = eval.address_repr(
           pc.getInput(1),
           ByteSize(pc.getOutput.getSize),
-          Load(),
+          Load,
           false
         )
         assign_to_output(access_repr)
@@ -325,7 +438,7 @@ class TypeConstraints[N](
         val access_repr = eval.address_repr(
           pc.getInput(1),
           ByteSize(tostore.getSize),
-          Store(),
+          Store,
           true
         )
         assign(access_repr, inputs(2))
@@ -336,8 +449,25 @@ class TypeConstraints[N](
 
   }
 
+  def produceEntryConstraints(): List[TypeConstraint] =
+    val func_insns: java.util.Iterator[Instruction] = gfunc.getProgram
+      .getListing()
+      .getInstructions(gfunc.getBody, true)
+    Option(gfunc.getProgram.getListing.getInstructionAt(gfunc.getEntryPoint))
+      .flatMap(i => i.getPcode().headOption)
+      .map(pc => PcodeEvaluator(mapping(pc)))
+      .toList
+      .flatMap(cont => {
+        inConstraints(cont, gfunc, None).run._1.toList
+      }) ++ func_insns.asScala
+      .flatMap(i => i.getPcode())
+      .filter(p => p.getOpcode == PcodeOp.RETURN)
+      .flatMap(r => {
+        outCons(PcodeEvaluator(mapping(r)), gfunc, None).run._1
+      })
+
   def produceConstraints(): List[TypeConstraint] =
-    produceConstraintsFromAddrRange(gfunc.getBody)
+    produceConstraintsFromAddrRange(gfunc.getBody) ++ produceEntryConstraints()
 
   def produceConstraintsFromAddrRange(
       addrset: AddressSetView

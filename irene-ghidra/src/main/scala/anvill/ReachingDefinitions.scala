@@ -19,7 +19,7 @@ Super simple and standard reaching definitions.
 
 sealed trait DefiningTerm
 
-case class OpDefiner(pc: PcodeOp) extends DefiningTerm
+case class OpDefiner(pc: ComparablePcodeOp) extends DefiningTerm
 case class EntDefiner(reg: Varnode) extends DefiningTerm
 
 object ReachingDefinitions {
@@ -49,13 +49,18 @@ object ReachingDefinitions {
       else if y.subsetOf(x) then Some(1)
       else None
 
+  def bot(using lat: JoinSemiLattice[Dom]): Dom = lat.bot
+
+  def join(using lat: JoinSemiLattice[Dom]): (Dom, Dom) => Dom = lat.join
 }
 class ReachingDefinitions(val prog: Program)
     extends ProgramAnalysisUtilMixin
     with PcodeFixpoint[ReachingDefinitions.Dom] {
 
   def paramToDefinedRegisters(param: Parameter): Iterator[Register] =
-    param.getRegisters.asScala.iterator
+    Option(param.getRegisters)
+      .map(_.asScala.iterator)
+      .getOrElse(List().iterator)
 
   def update_guard(
       vnode: ghidra.program.model.pcode.Varnode,
@@ -92,8 +97,10 @@ class ReachingDefinitions(val prog: Program)
 }
 
 class ReachingDefsNodeSol(val prog: Program)
-    extends RegisterContext[ReachingDefinitions.Dom]
+    extends ProgramAnalysisUtilMixin
+    with RegisterContext[ReachingDefinitions.Dom]
     with LinearlyExecutable[ReachingDefinitions.Dom] {
+
   // Members declared in anvill.LinearlyExecutable
   override def execute(
       cont: ReachingDefinitions.Dom,
@@ -106,7 +113,11 @@ class ReachingDefsNodeSol(val prog: Program)
       cont: ReachingDefinitions.Dom,
       vnode: ghidra.program.model.pcode.Varnode
   ): Set[TypeVariable] =
-    cont(vnode).map {
+    val base_vnode =
+      if vnode.isRegister then
+        vnodeToBasRegVnodeOrUnique(vnode).getOrElse(vnode)
+      else vnode
+    cont(base_vnode).map {
       case OpDefiner(pc) => Op.apply(pc)
       case EntDefiner(v) => EntryRegValue.apply(v)
     }

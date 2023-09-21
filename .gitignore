@@ -23,4 +23,4 @@ compile_commands.json
 .devcontainer
 deps/
 venv/
-irene-ghidra/src/test/resources/ghidra_dbs/chal10-ppc-vle.gzf
+irene-ghidra/src/test/resources/ghidra_dbs/

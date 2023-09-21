@@ -1,7 +1,7 @@
 buildscript {
     repositories { mavenCentral() }
     dependencies {
-        classpath 'ch.epfl.scala:gradle-bloop_2.12:1.5.3'
+        classpath 'ch.epfl.scala:gradle-bloop_2.13:1.6.1'
     }
 }
 
