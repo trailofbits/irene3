@@ -176,69 +176,11 @@ void FuncToSpec(
     patch_vars.push_back(std::move(var));
 }
 
-namespace
-{
-    struct StackOffsets {
-        std::int64_t stack_depth_at_entry;
-        std::int64_t stack_depth_at_exit;
-    };
-
-    std::optional< std::int64_t > GetDepthForBlockEntry(
-        const remill::Register *stack_reg, const anvill::BasicBlockContext &bbcont) {
-        for (const auto &c : bbcont.GetStackOffsetsAtEntry().affine_equalities) {
-            if (c.target_value.oredered_locs.size() == 1 && c.target_value.oredered_locs[0].reg
-                && c.target_value.oredered_locs[0].reg == stack_reg) {
-                return c.stack_offset;
-            }
-        }
-        return std::nullopt;
-    }
-
-    std::optional< std::int64_t > GetDepthForBlockExit(
-        const remill::Register *stack_reg, const anvill::FunctionDecl &decl, uint64_t bbaddr) {
-        auto nd = decl.cfg.at(bbaddr);
-
-        if (nd.outgoing_edges.empty()) {
-            return 0;
-        }
-
-        for (auto e : nd.outgoing_edges) {
-            // NOTE(Ian): This assumes that the stack depth at entry to all successor blocks is the
-            // same otherwise we would have to have path sensitive variable expressions ie. (down cf
-            // edge 1 the variable is at RSP+2 and the other RSP+4). This gets super messy and we
-            // dont have downstream support. For now we only use entry offsets anyways, we need a
-            // long convo about how to actually represent variable locations.
-            auto blk_depth = GetDepthForBlockEntry(stack_reg, decl.GetBlockContext(e));
-            if (blk_depth) {
-                return blk_depth;
-            }
-        }
-
-        return std::nullopt;
-    }
-    StackOffsets ComputeStackOffsets(
-        const remill::Register *stack_reg, const anvill::FunctionDecl &decl, uint64_t bbaddr) {
-        auto cont       = decl.GetBlockContext(bbaddr);
-        auto ent_depth  = GetDepthForBlockEntry(stack_reg, cont);
-        auto exit_depth = GetDepthForBlockExit(stack_reg, decl, bbaddr);
-
-        if (!ent_depth) {
-            LOG(ERROR) << "Overriding entry depth with 0";
-        }
-
-        if (!exit_depth) {
-            LOG(ERROR) << "Overriding exit depth with 0";
-        }
-
-        return { ent_depth.value_or(0), exit_depth.value_or(0) };
-    }
-
-} // namespace
 std::optional< llvm::json::Array > LowLocToStorage(
     const anvill::BasicBlockVariable &bb_param,
     const anvill::LowLoc &loc,
     const remill::Register *stack_pointer_reg,
-    const StackOffsets &block_stack_disp,
+    const irene3::StackOffsets &block_stack_disp,
     bool isVibes,
     bool unsafe,
     uint64_t address_size) {
@@ -299,7 +241,7 @@ std::optional< llvm::json::Array > LowLocToStorage(
 void ParamToSpecVibes(
     const anvill::BasicBlockVariable &bb_param,
     const remill::Register *stack_pointer_reg,
-    const StackOffsets &block_stack_disp,
+    const irene3::StackOffsets &block_stack_disp,
     llvm::json::Array &patch_vars,
     uint64_t address_size,
     bool unsafe = false) {
@@ -329,7 +271,7 @@ void ParamToSpecVibes(
 void ParamToSpec(
     const anvill::BasicBlockVariable &bb_param,
     const remill::Register *stack_pointer_reg,
-    const StackOffsets &block_stack_disp,
+    const irene3::StackOffsets &block_stack_disp,
     llvm::json::Array &patch_vars,
     uint64_t address_size,
     bool unsafe = false) {
@@ -358,26 +300,6 @@ void ParamToSpec(
     }
 
     patch_vars.push_back(std::move(var));
-}
-
-static int64_t GetStackOffset(
-    const remill::Arch &arch, const anvill::SpecStackOffsets &stack_offs) {
-    auto sp_reg = arch.RegisterByName(arch.StackPointerRegisterName());
-    for (auto &eq : stack_offs.affine_equalities) {
-        if (eq.target_value.oredered_locs.size() != 1) {
-            continue;
-        }
-
-        if (eq.target_value.oredered_locs[0].mem_reg) {
-            continue;
-        }
-
-        if (eq.target_value.oredered_locs[0].reg == sp_reg) {
-            return eq.stack_offset;
-        }
-    }
-    LOG(ERROR) << "Couldn't find stack pointer";
-    return 0;
 }
 
 rellic::Result< llvm::json::Object, std::string > ProcessSpecification(
@@ -426,8 +348,8 @@ rellic::Result< llvm::json::Object, std::string > ProcessSpecification(
         auto cb             = func_decl->cfg.find(addr)->second;
         patch["patch-size"] = cb.size;
 
-        patch["sp-align"] = GetStackOffset(*spec.Arch(), block.GetStackOffsetsAtExit())
-                            - GetStackOffset(*spec.Arch(), block.GetStackOffsetsAtEntry());
+        patch["sp-align"] = irene3::GetStackOffset(*spec.Arch(), block.GetStackOffsetsAtExit())
+                            - irene3::GetStackOffset(*spec.Arch(), block.GetStackOffsetsAtEntry());
 
         if (add_edges) {
             llvm::json::Array edges;
@@ -444,7 +366,7 @@ rellic::Result< llvm::json::Object, std::string > ProcessSpecification(
         llvm::json::Array patch_vars;
 
         auto fdecl     = spec.FunctionAt(block.GetParentFunctionAddress());
-        auto stackoffs = ComputeStackOffsets(stack_pointer_reg, *fdecl, addr);
+        auto stackoffs = irene3::ComputeStackOffsets(stack_pointer_reg, *fdecl, addr);
 
         if (!unsafe_stack_locations) {
             patch_vars.push_back(llvm::json::Object{

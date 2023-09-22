@@ -3,6 +3,7 @@
 #include <iostream>
 #include <irene3/DecompileSpec.h>
 #include <irene3/TypeDecoder.h>
+#include <irene3/Util.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/Support/JSON.h>
 #include <llvm/Support/MemoryBuffer.h>
@@ -68,5 +69,75 @@ namespace irene3
         auto cval = llvm::cast< llvm::ConstantAsMetadata >(cop)->getValue();
 
         return llvm::cast< llvm::ConstantInt >(cval)->getValue().getZExtValue();
+    }
+
+    std::optional< std::int64_t > GetDepthForBlockEntry(
+        const remill::Register* stack_reg, const anvill::BasicBlockContext& bbcont) {
+        for (const auto& c : bbcont.GetStackOffsetsAtEntry().affine_equalities) {
+            if (c.target_value.oredered_locs.size() == 1 && c.target_value.oredered_locs[0].reg
+                && c.target_value.oredered_locs[0].reg == stack_reg) {
+                return c.stack_offset;
+            }
+        }
+        return std::nullopt;
+    }
+
+    std::optional< std::int64_t > GetDepthForBlockExit(
+        const remill::Register* stack_reg, const anvill::FunctionDecl& decl, uint64_t bbaddr) {
+        auto nd = decl.cfg.at(bbaddr);
+
+        if (nd.outgoing_edges.empty()) {
+            return 0;
+        }
+
+        for (auto e : nd.outgoing_edges) {
+            // NOTE(Ian): This assumes that the stack depth at entry to all successor blocks is the
+            // same otherwise we would have to have path sensitive variable expressions ie. (down cf
+            // edge 1 the variable is at RSP+2 and the other RSP+4). This gets super messy and we
+            // dont have downstream support. For now we only use entry offsets anyways, we need a
+            // long convo about how to actually represent variable locations.
+            auto blk_depth = GetDepthForBlockEntry(stack_reg, decl.GetBlockContext(e));
+            if (blk_depth) {
+                return blk_depth;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    StackOffsets ComputeStackOffsets(
+        const remill::Register* stack_reg, const anvill::FunctionDecl& decl, uint64_t bbaddr) {
+        auto cont       = decl.GetBlockContext(bbaddr);
+        auto ent_depth  = GetDepthForBlockEntry(stack_reg, cont);
+        auto exit_depth = GetDepthForBlockExit(stack_reg, decl, bbaddr);
+
+        if (!ent_depth) {
+            LOG(ERROR) << "Overriding entry depth with 0";
+        }
+
+        if (!exit_depth) {
+            LOG(ERROR) << "Overriding exit depth with 0";
+        }
+
+        return { ent_depth.value_or(0), exit_depth.value_or(0) };
+    }
+
+    int64_t GetStackOffset(const remill::Arch& arch, const anvill::SpecStackOffsets& stack_offs) {
+        auto sp_reg = arch.RegisterByName(arch.StackPointerRegisterName());
+        for (auto& eq : stack_offs.affine_equalities) {
+            if (eq.target_value.oredered_locs.size() != 1) {
+                continue;
+            }
+
+            if (eq.target_value.oredered_locs[0].mem_reg) {
+                continue;
+            }
+
+            if (eq.target_value.oredered_locs[0].reg == sp_reg) {
+                return eq.stack_offset;
+            }
+        }
+        LOG(ERROR) << "Couldn't find stack pointer";
+        return 0;
     }
 } // namespace irene3

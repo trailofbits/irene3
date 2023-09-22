@@ -56,4 +56,17 @@ namespace irene3
     }
 
     llvm::Function* GetOrCreateGotoInstrinsic(llvm::Module* mod, llvm::IntegerType* addr_ty);
+
+    std::optional< std::int64_t > GetDepthForBlockEntry(
+        const remill::Register* stack_reg, const anvill::BasicBlockContext& bbcont);
+    std::optional< std::int64_t > GetDepthForBlockExit(
+        const remill::Register* stack_reg, const anvill::FunctionDecl& decl, uint64_t bbaddr);
+
+    struct StackOffsets {
+        std::int64_t stack_depth_at_entry;
+        std::int64_t stack_depth_at_exit;
+    };
+    StackOffsets ComputeStackOffsets(
+        const remill::Register* stack_reg, const anvill::FunctionDecl& decl, uint64_t bbaddr);
+    int64_t GetStackOffset(const remill::Arch& arch, const anvill::SpecStackOffsets& stack_offs);
 } // namespace irene3
