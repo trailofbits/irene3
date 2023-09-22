@@ -51,6 +51,8 @@ target_include_directories(
 
 add_dependencies(irene3 check_git_irene3)
 
+add_subdirectory(PatchIR)
+
 if(IRENE3_ENABLE_INSTALL)
   include(GNUInstallDirs)
 
