@@ -27,6 +27,7 @@ namespace std
         qt.print(os, { {} });
         return s;
     }
+
 } // namespace std
 
 namespace irene3
@@ -34,6 +35,30 @@ namespace irene3
     struct TypeDecoder::Impl {
         std::unordered_map< anvill::TypeSpec, clang::QualType > types;
     };
+
+    clang::QualType CreateArray(
+        DecompilationContext& ctx,
+        clang::QualType elem_ty,
+        uint32_t num_elems,
+        bool should_wrap_arrays_in_struct) {
+        if (should_wrap_arrays_in_struct) {
+            auto tudecl = ctx.ast_ctx.getTranslationUnitDecl();
+            auto name   = "arr" + std::to_string(ctx.num_declared_structs++);
+            auto sdecl  = ctx.ast.CreateStructDecl(tudecl, name);
+
+            for (unsigned i = 0; i < num_elems; i++) {
+                sdecl->addDecl(
+                    ctx.ast.CreateFieldDecl(sdecl, elem_ty, "field" + std::to_string(i)));
+            }
+            sdecl->completeDefinition();
+            tudecl->addDecl(sdecl);
+            return ctx.ast_ctx.getRecordType(sdecl);
+        } else {
+            return ctx.ast_ctx.getConstantArrayType(
+                elem_ty, llvm::APInt(32, num_elems), nullptr,
+                clang::ArrayType::ArraySizeModifier::Normal, 0);
+        }
+    }
 
     TypeDecoder::TypeDecoder()
         : impl(std::make_unique< Impl >()) {}
@@ -119,10 +144,10 @@ namespace irene3
         } else if (std::holds_alternative< std::shared_ptr< anvill::VectorType > >(type_spec)) {
             auto vec = std::get< std::shared_ptr< anvill::VectorType > >(type_spec);
             type     = ctx.ast_ctx.getVectorType(
-                    Decode(
-                        ctx, spec, vec->base, llvm::cast< llvm::VectorType >(ir_type)->getElementType(),
-                        false),
-                    vec->size, clang::VectorType::VectorKind::GenericVector);
+                Decode(
+                    ctx, spec, vec->base, llvm::cast< llvm::VectorType >(ir_type)->getElementType(),
+                    false),
+                vec->size, clang::VectorType::VectorKind::GenericVector);
         } else if (std::holds_alternative< std::shared_ptr< anvill::ArrayType > >(type_spec)) {
             // CHECK(type.isNull());
             auto strct   = std::get< std::shared_ptr< anvill::ArrayType > >(type_spec);
@@ -132,24 +157,7 @@ namespace irene3
             if (elem_ty.isNull()) {
                 elem_ty = ctx.GetQualType(arr->getElementType());
             }
-            if (should_wrap_arrays_in_struct) {
-                auto tudecl = ctx.ast_ctx.getTranslationUnitDecl();
-                auto name   = "arr" + std::to_string(ctx.num_declared_structs++);
-                auto sdecl  = ctx.ast.CreateStructDecl(tudecl, name);
-
-                for (unsigned i = 0; i < strct->size; i++) {
-                    sdecl->addDecl(
-                        ctx.ast.CreateFieldDecl(sdecl, elem_ty, "field" + std::to_string(i++)));
-                }
-                sdecl->completeDefinition();
-                tudecl->addDecl(sdecl);
-                type = ctx.ast_ctx.getRecordType(sdecl);
-            } else {
-                type = ctx.ast_ctx.getConstantArrayType(
-                    elem_ty, llvm::APInt(32, strct->size), nullptr,
-                    clang::ArrayType::ArraySizeModifier::Normal, 0);
-            }
-
+            type = CreateArray(ctx, elem_ty, strct->size, should_wrap_arrays_in_struct);
         } else if (std::holds_alternative< std::shared_ptr< anvill::StructType > >(type_spec)) {
             auto& tdecl = ctx.type_decls[ir_type];
             if (tdecl) {
@@ -190,7 +198,12 @@ namespace irene3
         } else if (std::holds_alternative< anvill::UnknownType >(type_spec)) {
             auto unk = std::get< anvill::UnknownType >(type_spec);
             if (unk.size != UINT32_MAX) {
-                type = ctx.ast_ctx.getIntTypeForBitwidth(unk.size * 8, false);
+                if (unk.size == 4 || unk.size == 8) {
+                    type = ctx.ast_ctx.getIntTypeForBitwidth(unk.size * 8, false);
+                } else {
+                    type = CreateArray(
+                        ctx, ctx.ast_ctx.CharTy, unk.size, should_wrap_arrays_in_struct);
+                }
             }
         }
         return type;
