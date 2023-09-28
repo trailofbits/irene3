@@ -68,7 +68,7 @@ jobs:
         image:
           - { name: "ubuntu", tag: "22.04" }
         llvm: ["16"]
-        cxxcommon_version: ["0.4.1"]
+        cxxcommon_version: ["0.6.0"]
 
     runs-on:
       labels: gha-ubuntu-32
