@@ -1,10 +1,10 @@
 set dotenv-load
 LLVM_VERSION := "16"
-CXX_COMMON_VERSION := "0.4.1"
+CXX_COMMON_VERSION := "0.6.0"
 CXX_COMMON_ARCH := if "x86_64" == arch() { "amd64" } else { "arm64" }
-XCODE_VERSION := "14.2"
+XCODE_VERSION := "15.0"
 CXX_COMMON_NAME := if "macos" == os() {
-      "vcpkg_macos-12_llvm-" + LLVM_VERSION + "_xcode-" + XCODE_VERSION + "_" + CXX_COMMON_ARCH
+      "vcpkg_macos-13_llvm-" + LLVM_VERSION + "_xcode-" + XCODE_VERSION + "_" + CXX_COMMON_ARCH
     } else {
       "vcpkg_ubuntu-22.04_llvm-" + LLVM_VERSION + "_" + CXX_COMMON_ARCH
     }
