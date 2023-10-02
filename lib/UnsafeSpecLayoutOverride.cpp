@@ -175,6 +175,7 @@ namespace irene3
                     ftype->arguments.push_back(param.spec_type);
                 }
                 ftype->return_type = var->returns.spec_type;
+                ftype->is_variadic = var->is_variadic;
 
                 auto type = type_decoder.Decode(ctx, spec, ftype, gv->getValueType(), true);
                 if (!type.isNull()) {
