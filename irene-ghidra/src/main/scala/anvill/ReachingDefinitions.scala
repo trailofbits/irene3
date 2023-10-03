@@ -89,7 +89,7 @@ class ReachingDefinitions(val prog: Program)
       // apply abi
       // default case where output is written
       case (_, Some(out)) if out.isRegister || out.isUnique =>
-        vnodeToBasRegVnodeOrUnique(out)
+        vnodeToBaseRegNodeOrUnique(out)
           .map(pred.updated(_, Set(OpDefiner(op))))
           .getOrElse(pred)
       case _ => pred
@@ -115,7 +115,7 @@ class ReachingDefsNodeSol(val prog: Program)
   ): Set[TypeVariable] =
     val base_vnode =
       if vnode.isRegister then
-        vnodeToBasRegVnodeOrUnique(vnode).getOrElse(vnode)
+        vnodeToBaseRegNodeOrUnique(vnode).getOrElse(vnode)
       else vnode
     cont(base_vnode).map {
       case OpDefiner(pc) => Op.apply(pc)
