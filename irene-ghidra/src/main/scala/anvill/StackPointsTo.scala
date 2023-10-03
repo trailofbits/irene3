@@ -301,7 +301,7 @@ class StackPointsTo(val prog: Program)(using wd: Widen[D])
       dom: ARADom.D,
       d: MappingDomain[Varnode, ARADom.D]
   ): MappingDomain[Varnode, ARADom.D] =
-    val tgt = vnodeToBasRegVnodeOrUnique(varnode)
+    val tgt = vnodeToBaseRegNodeOrUnique(varnode)
     tgt match
       case Some(breg) =>
         val cv = d(breg)
@@ -322,7 +322,7 @@ class StackPointsTo(val prog: Program)(using wd: Widen[D])
             .getOrElse(prog.getCompilerSpec.getDefaultCallingConvention)
             .getLikelyTrash
             .toList
-            .flatMap(rv => vnodeToBasRegVnodeOrUnique(rv))
+            .flatMap(rv => vnodeToBaseRegNodeOrUnique(rv))
             .foldLeft(pred)((tot, r) => writeRegister(tot, r, Top()))
         })
       case PcodeOp.BRANCH | PcodeOp.BRANCHIND => pred
@@ -364,7 +364,7 @@ class StackPointsToSol(val prog: Program)
       sz: anvill.ByteSize
   ): List[anvill.TypeVariableAccess] =
     (for {
-      r <- vnodeToBasRegVnodeOrUnique(vnode)
+      r <- vnodeToBaseRegNodeOrUnique(vnode)
       mp <- lift_to_op(cont)
       ara <- lift_to_op(mp(r))
       soffset <- getStackOffset(ara)

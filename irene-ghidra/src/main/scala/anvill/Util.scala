@@ -37,6 +37,7 @@ import specification.specification.CodeBlock as CodeBlockSpec
 import anvill.ProgramSpecifier.specifyContextAssignments
 import ghidra.program.model.block.CodeBlockModel
 import aQute.bnd.service.progress.ProgressPlugin.Task
+import com.google.common.collect.{ImmutableRangeMap, Range, RangeMap}
 import ghidra.program.model.pcode.{PcodeOp, Varnode}
 import ghidra.program.model.listing.Function as GFunction
 
@@ -44,6 +45,25 @@ object Util {
 
   abstract class ProgramAnalysisUtilMixin {
     val prog: Program
+
+    lazy val base_reg_map: RangeMap[Address, Register] = {
+      val map_builder: ImmutableRangeMap.Builder[Address, Register] =
+        ImmutableRangeMap.builder()
+      this.prog.getLanguage
+        .getRegisters()
+        .asScala
+        .filter(_.isBaseRegister)
+        .foreach(base_reg => {
+          // Calculate the address range for each base register.
+          val base_reg_end_addr = base_reg.getAddress.add(base_reg.getNumBytes)
+          map_builder.put(
+            Range.closedOpen(base_reg.getAddress, base_reg_end_addr),
+            base_reg
+          )
+        })
+      map_builder.build()
+    }
+
     def getInstruction(op: PcodeOp): Option[Instruction] =
       Option(prog.getListing.getInstructionAt(op.getSeqnum.getTarget))
 
@@ -60,12 +80,12 @@ object Util {
       Varnode(base.getAddress, base.getNumBytes)
     }
 
-    def vnodeToBasRegVnodeOrUnique(vnode: Varnode): Option[Varnode] =
+    def vnodeToBaseRegNodeOrUnique(vnode: Varnode): Option[Varnode] =
       Option
         .when(vnode.isUnique)(vnode)
         .orElse(
           Option.when(vnode.isRegister)(
-            registerToDefinedVnode(prog.getRegister(vnode))
+            registerToDefinedVnode(base_reg_map.get(vnode.getAddress))
           )
         )
   }
