@@ -324,10 +324,10 @@ object ComputeNodeContext {
       dst.map(CfgEdge(op, PcodeLabel(op), _)).toList
 
     op.getOpcode match {
-      case PcodeOp.CALL | PcodeOp.CALLIND | PcodeOp.BRANCHIND
-          if is_overriden_to_return =>
+      case PcodeOp.CALL | PcodeOp.CALLIND | PcodeOp.CALLOTHER |
+          PcodeOp.BRANCHIND if is_overriden_to_return =>
         List()
-      case PcodeOp.CALL | PcodeOp.CALLIND =>
+      case PcodeOp.CALL | PcodeOp.CALLIND | PcodeOp.CALLOTHER =>
         defaultEdge(getFallThroughInstructionNode(instruction))
       case PcodeOp.BRANCHIND =>
         defaultEdge(
@@ -358,6 +358,11 @@ object ComputeNodeContext {
       case PcodeOp.RETURN =>
         List() // TODO(Ian) we could technically have a control flow override... we should probably,
       // handle these better, same for blr
+      case default =>
+        throw RuntimeException(
+          "Unhandled pcode op: " + default + " at address " + instruction
+            .getAddress()
+        )
     }
   }
 
