@@ -204,6 +204,11 @@ abstract class FixpointTraversal[N, E <: AnyDiEdge[N]](g: Graph[N, E])
     extends Ordering[N] {
   val priority: Map[N, Int] = ComputeNodeContext.postorder_traversal(g)
 
+  val default: Int
+
+  def get_priority(x: N): Int =
+    priority.getOrElse(x, default)
+
   def next_node(e: E): N
 
   def next_edges(n: Graph[N, E]#NodeT): Set[E]
@@ -215,8 +220,10 @@ class ForwardFixpointTraversal[N, E <: AnyDiEdge[N]](
     g: Graph[N, E]
 ) extends FixpointTraversal[N, E](g) {
 
+  val default: Int = Int.MinValue
+
   override def compare(x: N, y: N): Int =
-    priority(x).compare(priority(y))
+    get_priority(x).compare(get_priority(y))
 
   override def next_node(e: E): N = e.target
 
@@ -231,9 +238,11 @@ class ReverseFixpointTraversal[N, E <: AnyDiEdge[N]](
     g: Graph[N, E]
 ) extends FixpointTraversal[N, E](g) {
 
+  val default: Int = Int.MaxValue
+
   override def compare(x: N, y: N): Int =
     // we want the lowest elements first
-    -priority(x).compare(priority(y))
+    -get_priority(x).compare(get_priority(y))
 
   override def next_node(e: E): N = e.source
 
@@ -263,9 +272,7 @@ object ComputeNodeContext {
         })
     })
 
-    val res = ordering_buf.result().zipWithIndex.toMap
-    assert(g.nodes.forall(n => res.contains(n.outer)))
-    res
+    ordering_buf.result().zipWithIndex.toMap
   }
 
   type CFG = Graph[CfgNode, CfgEdge]
