@@ -59,18 +59,27 @@ class IreneImpl final : public Irene::Service {
         ServerContext *context,
         ::grpc::ServerReader< ::irene::server::SpecChunk > *reader,
         Codegen *response) override {
-        LOG(INFO) << "Processing specification.";
+        LOG(INFO) << "-------------- ProcessSpecification --------------";
+        LOG(INFO) << "Reading specification...";
         std::unordered_set< uint64_t > target_funcs;
         irene::server::SpecChunk chunk;
         std::vector< uint8_t > bytes;
+        int ctr = 0;
         while (reader->Read(&chunk)) {
             for (auto byte : chunk.chunk()) {
                 bytes.push_back(byte);
             }
+            LOG(INFO) << "Stored chunk " << ctr;
+            ctr++;
         }
+        LOG(INFO) << "Done!";
 
+        LOG(INFO) << "Parsing spec...";
         specification::Specification spec;
         spec.ParseFromArray(bytes.data(), bytes.size());
+        LOG(INFO) << "Done!";
+
+        LOG(INFO) << "Processing spec...";
         auto maybe_result = ::ProcessSpecification(
             spec.SerializeAsString(), target_funcs, propagate_types, args_as_locals,
             unsafe_stack_locations, add_edges, this->is_vibes);
@@ -78,12 +87,14 @@ class IreneImpl final : public Irene::Service {
             LOG(ERROR) << "Error ocurred: " << maybe_result.TakeError();
             return { grpc::StatusCode::INTERNAL, maybe_result.TakeError() };
         }
+        LOG(INFO) << "Done!";
 
+        LOG(INFO) << "Sending response...";
         std::string out;
         llvm::raw_string_ostream out_stream(out);
         out_stream << llvm::json::Value(maybe_result.TakeValue());
         response->set_json(out_stream.str());
-        LOG(INFO) << "Done processing specification.";
+        LOG(INFO) << "Done!";
         return Status::OK;
     }
 
@@ -95,14 +106,13 @@ class IreneImpl final : public Irene::Service {
     bool is_vibes               = true;
 };
 
-void RunServer(int32_t port, IreneImpl &service) {
+void RunServer(grpc::ServerBuilder &builder, int32_t port, IreneImpl &service) {
     std::string server_address("0.0.0.0:" + std::to_string(port));
 
-    grpc::ServerBuilder builder;
     builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
     builder.RegisterService(&service);
     std::unique_ptr< grpc::Server > server(builder.BuildAndStart());
-    std::cout << "Server listening on " << server_address << std::endl;
+    std::cerr << "Server listening on " << server_address << "\n";
     server->Wait();
 }
 
@@ -128,7 +138,9 @@ int main(int argc, char *argv[]) {
     IreneImpl service(
         FLAGS_type_propagation, FLAGS_args_as_locals, FLAGS_unsafe_stack_locations,
         FLAGS_add_edges);
-    RunServer(FLAGS_port, service);
+
+    grpc::ServerBuilder builder;
+    RunServer(builder, FLAGS_port, service);
 
     return EXIT_SUCCESS;
 }

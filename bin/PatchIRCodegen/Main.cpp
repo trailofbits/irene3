@@ -290,9 +290,9 @@ class MLIRCodegen {
                     unk_loc, ptr_type, StringAttr(gvar.name), global_loc, global_loc));
             }
 
-            for (auto& [addr, block] : fdecl->cfg) {
+            for (auto& [uid, block] : fdecl->cfg) {
                 const anvill::BasicBlockContext& block_ctx
-                    = block_contexts.GetBasicBlockContextForAddr(addr).value();
+                    = block_contexts.GetBasicBlockContextForUid(uid).value();
                 CreateBlockFunc(fdecl->address, block, block_ctx, gvar_values, func_body);
             }
             return true;

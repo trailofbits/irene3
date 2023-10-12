@@ -190,10 +190,18 @@ class BasicBlockContextProducer(
 
   }
 
+  def getGhidraAddress(addr: Long): Address = {
+    this.gfunc.getProgram.getAddressFactory.getDefaultAddressSpace
+      .getAddress(addr)
+  }
+
   def getBlockContext(
-      block_addr: Address,
-      last_insn_addr: Address
+      blk: CodeBlockSpec
   ): BlockContextSpec = {
+    val block_addr = this.getGhidraAddress(blk.address)
+    val last_insn_addr = this.gfunc.getProgram.getListing
+      .getInstructionBefore(this.getGhidraAddress(blk.address + blk.size))
+      .getAddress()
     Msg.info(this, s"Working on context for $block_addr")
     assert(!liveness_info.isEmpty)
 
@@ -207,7 +215,6 @@ class BasicBlockContextProducer(
         produceSymvals(last_insn_addr, last_insn_disp)
       else Map.empty
     val stack_reg = gfunc.getProgram.getCompilerSpec().getStackPointer()
-    val blk = this.cfg.get(block_addr.getOffset).get
     val live = this.liveness(blk)
 
     BlockContextSpec(

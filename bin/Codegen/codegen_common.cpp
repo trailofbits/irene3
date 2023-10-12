@@ -335,18 +335,19 @@ rellic::Result< llvm::json::Object, std::string > ProcessSpecification(
 
     auto stack_pointer_reg = spec.Arch()->RegisterByName(spec.Arch()->StackPointerRegisterName());
     uint64_t address_size  = spec.Arch()->address_size;
-    for (auto &[addr, compound] : decomp_res.blocks) {
+    for (auto &[uid, compound] : decomp_res.blocks) {
         const anvill::BasicBlockContext &block
-            = block_contexts.GetBasicBlockContextForAddr(addr).value();
+            = block_contexts.GetBasicBlockContextForUid(uid).value();
 
         llvm::json::Object patch;
-        patch["image-name"]  = spec.ImageName();
-        patch["image-base"]  = spec.ImageBase();
-        patch["patch-point"] = to_hex(addr) + ":" + std::to_string(address_size);
+        patch["image-name"] = spec.ImageName();
+        patch["image-base"] = spec.ImageBase();
 
-        auto func_decl      = spec.FunctionAt(block.GetParentFunctionAddress());
-        auto cb             = func_decl->cfg.find(addr)->second;
-        patch["patch-size"] = cb.size;
+        auto func_decl = spec.FunctionAt(block.GetParentFunctionAddress());
+        auto cb        = func_decl->cfg.at(uid);
+
+        patch["patch-point"] = to_hex(cb.addr) + ":" + std::to_string(address_size);
+        patch["patch-size"]  = cb.size;
 
         patch["sp-align"] = irene3::GetStackOffset(*spec.Arch(), block.GetStackOffsetsAtExit())
                             - irene3::GetStackOffset(*spec.Arch(), block.GetStackOffsetsAtEntry());
@@ -355,7 +356,7 @@ rellic::Result< llvm::json::Object, std::string > ProcessSpecification(
             llvm::json::Array edges;
 
             for (auto e : cb.outgoing_edges) {
-                edges.push_back(to_hex(e));
+                edges.push_back(to_hex(func_decl->cfg.at(e).addr));
             }
 
             patch["edges"] = std::move(edges);
@@ -366,7 +367,7 @@ rellic::Result< llvm::json::Object, std::string > ProcessSpecification(
         llvm::json::Array patch_vars;
 
         auto fdecl     = spec.FunctionAt(block.GetParentFunctionAddress());
-        auto stackoffs = irene3::ComputeStackOffsets(stack_pointer_reg, *fdecl, addr);
+        auto stackoffs = irene3::ComputeStackOffsets(stack_pointer_reg, *fdecl, uid);
 
         if (!unsafe_stack_locations) {
             patch_vars.push_back(llvm::json::Object{
@@ -390,11 +391,11 @@ rellic::Result< llvm::json::Object, std::string > ProcessSpecification(
             }
         }
 
-        for (const auto &gv : decomp_res.block_globals[addr]) {
+        for (const auto &gv : decomp_res.block_globals[uid]) {
             GVarToSpec(gv, patch_vars, address_size);
         }
 
-        for (const auto &func : decomp_res.block_functions[addr]) {
+        for (const auto &func : decomp_res.block_functions[uid]) {
             FuncToSpec(func, patch_vars, address_size);
         }
 

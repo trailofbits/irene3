@@ -192,11 +192,18 @@ class LoadAndSpecifyProgramTest extends AbstractGhidraHeadedIntegrationTest { //
     val bmap = runBlockSplitWithSelections(func, Seq(sel1, sel2))
     assertEquals(5, bmap.size)
 
-    assertEquals(6, bmap(0x10003).size)
-    assertEquals(3, bmap(0x10000).size)
-    assertEquals(2, bmap(0x10009).size)
-    assertEquals(3, bmap(0x1000b).size)
-    assertEquals(1, bmap(0x1000e).size)
+    val blockSizes = Map.from(
+      List(
+        (0x10003L, 6),
+        (0x10000L, 3),
+        (0x10009L, 2),
+        (0x1000bL, 3),
+        (0x1000eL, 1)
+      )
+    );
+    bmap.foreach((_, blk) => {
+      assertEquals(blockSizes(blk.address), blk.size)
+    })
   }
 
   @Test def collatzX86Tests(): Unit = {

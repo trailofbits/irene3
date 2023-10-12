@@ -42,9 +42,9 @@ include(TableGen)
 include(AddLLVM)
 include(AddMLIR)
 
-set(ANVILL_ENABLE_TESTS OFF)
+option(ANVILL_ENABLE_TESTS "Enable Anvill tests" OFF)
 add_subdirectory("vendor/anvill" EXCLUDE_FROM_ALL)
-set(RELLIC_ENABLE_TESTING OFF)
+option(RELLIC_ENABLE_TESTING "Enable rellic tests" OFF)
 add_subdirectory("vendor/rellic" EXCLUDE_FROM_ALL)
 
 if(IRENE3_ENABLE_INSTALL)

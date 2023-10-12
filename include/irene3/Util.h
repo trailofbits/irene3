@@ -60,13 +60,13 @@ namespace irene3
     std::optional< std::int64_t > GetDepthForBlockEntry(
         const remill::Register* stack_reg, const anvill::BasicBlockContext& bbcont);
     std::optional< std::int64_t > GetDepthForBlockExit(
-        const remill::Register* stack_reg, const anvill::FunctionDecl& decl, uint64_t bbaddr);
+        const remill::Register* stack_reg, const anvill::FunctionDecl& decl, anvill::Uid uid);
 
     struct StackOffsets {
         std::int64_t stack_depth_at_entry;
         std::int64_t stack_depth_at_exit;
     };
     StackOffsets ComputeStackOffsets(
-        const remill::Register* stack_reg, const anvill::FunctionDecl& decl, uint64_t bbaddr);
+        const remill::Register* stack_reg, const anvill::FunctionDecl& decl, anvill::Uid uid);
     int64_t GetStackOffset(const remill::Arch& arch, const anvill::SpecStackOffsets& stack_offs);
 } // namespace irene3

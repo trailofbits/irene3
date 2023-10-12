@@ -1,8 +1,11 @@
 package anvill;
 
+import java.security as js
 import anvill.ProgramSpecifier.specifyBlock
 import anvill.ProgramSpecifier.getStackRegister
-import collection.JavaConverters._
+import anvill.ProgramSpecifier.createNewUid
+
+import collection.JavaConverters.*
 import ghidra.app.decompiler.*
 import ghidra.program.model.address.Address
 import ghidra.program.model.block.CodeBlock
@@ -15,13 +18,17 @@ import ghidra.program.model.pcode.SequenceNumber
 import ghidra.program.model.pcode.Varnode
 import ghidra.program.model.pcode.VarnodeTranslator
 import ghidra.util.Msg
-import scala.collection.mutable.{Map => MutableMap}
-import scala.collection.mutable.{Set => MutableSet}
-import specification.specification.{CodeBlock => CodeBlockSpec}
+import ghidra.util.task.TaskMonitor
+
+import scala.collection.mutable.Map as MutableMap
+import scala.collection.mutable.Set as MutableSet
+import specification.specification.CodeBlock as CodeBlockSpec
+
 import math.Ordering.Implicits.infixOrderingOps
+import scala.collection.immutable.SortedMap
+import scala.collection.mutable
 
 object BasicBlockSplit {
-
   def createSubblock(
       bounds: (Address, Address),
       preds: Map[Address, Seq[Long]],
@@ -35,7 +42,8 @@ object BasicBlockSplit {
       preds(bounds._1),
       succs(bounds._1),
       (bounds._2.getOffset - bounds._1.getOffset).toInt,
-      spec.contextAssignments
+      spec.contextAssignments,
+      0
     )
   }
 
@@ -83,8 +91,10 @@ object BasicBlockSplit {
       func: Function,
       blks: Iterator[CodeBlock],
       func_split_addrs: Set[Address]
-  ): Map[Long, CodeBlockSpec] = {
-    blks
+  ): SortedMap[Long, CodeBlockSpec] = {
+    val addrToUid = MutableMap[Long, Long]()
+    // Sort for better reproducibility
+    val sorted: Seq[(Long, CodeBlockSpec)] = blks
       .flatMap(blk => {
         val relevant_splits = func_split_addrs.filter(addr =>
           addr >= blk.getFirstStartAddress && addr <= blk.getMaxAddress
@@ -92,7 +102,26 @@ object BasicBlockSplit {
         val blk_spec = specifyBlock(func, blk)
         splitBlock(relevant_splits, blk_spec, blk)
       })
-      .toMap
+      .toSeq
+      .sortWith(_._1 < _._1)
+    // Populate our map
+    sorted.foreach((addr, _) => { addrToUid.put(addr, createNewUid()) })
+    // Add UIDs
+    sorted
+      .map((addr, spec: CodeBlockSpec) => {
+        // Replace addresses with UID
+        val uid = addrToUid(addr)
+        val newSpec = spec
+          .withUid(uid)
+          .withIncomingBlocks(
+            spec.incomingBlocks.flatMap(addrToUid.get)
+          )
+          .withOutgoingBlocks(
+            spec.outgoingBlocks.flatMap(addrToUid.get)
+          )
+        (uid, newSpec)
+      })
+      .to(SortedMap)
   }
 
   def splitBlocksWithPrologueEpiloguePoints(
@@ -112,7 +141,7 @@ object BasicBlockSplit {
     Msg.debug(this, s"Found prologue exits $func: $prologue_exits")
 
     val epilogue_entries = blkseq
-      .filter(blk => specifyBlock(func, blk).outgoingBlocks.isEmpty)
+      .filter(blk => Util.getOutgoingAddresses(func, blk).isEmpty)
       .flatMap(blk => {
         getEpilogueEntryAddr(blk, computeDecompilationMappings(decomp_c, blk))
       })

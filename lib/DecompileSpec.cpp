@@ -229,19 +229,19 @@ namespace irene3
 
         // Functions may share basic blocks, this map makes sure that a basic block at a specific
         // address only has one resulting LLVM function
-        std::unordered_map< std::uint64_t, llvm::Function* > canonical_funcs;
+        std::unordered_map< anvill::Uid, llvm::Function* > canonical_funcs;
         for (auto& func : res.module->functions()) {
-            if (auto addr = anvill::GetBasicBlockAddr(&func)) {
-                canonical_funcs[*addr] = &func;
+            if (auto uid = anvill::GetBasicBlockUid(&func)) {
+                canonical_funcs[*uid] = &func;
             }
         }
 
-        std::unordered_map< std::uint64_t, clang::CompoundStmt* > blocks;
-        for (auto& [addr, func] : canonical_funcs) {
+        std::unordered_map< anvill::Uid, clang::CompoundStmt* > blocks;
+        for (auto& [uid, func] : canonical_funcs) {
             auto fdecl = clang::cast< clang::FunctionDecl >(res.value_to_decl_map[func]);
             auto body  = clang::cast< clang::CompoundStmt >(fdecl->getBody());
 
-            blocks[addr] = body;
+            blocks[uid] = body;
         }
 
         return { context,
@@ -314,9 +314,9 @@ namespace irene3
 
         anvill::OptimizeModule(lifter, *module, spec.GetBlockContexts(), spec);
 
-        std::unordered_map< uint64_t, std::vector< GlobalVarInfo > > gvars;
+        std::unordered_map< anvill::Uid, std::vector< GlobalVarInfo > > gvars;
 
-        std::unordered_map< uint64_t, std::vector< FunctionInfo > > functions;
+        std::unordered_map< anvill::Uid, std::vector< FunctionInfo > > functions;
 
         llvm::FunctionPassManager fpm;
         llvm::FunctionAnalysisManager fam;
@@ -326,8 +326,8 @@ namespace irene3
         fpm.addPass(llvm::SimplifyCFGPass());
 
         for (auto& func : module->functions()) {
-            auto block_addr = anvill::GetBasicBlockAddr(&func);
-            if (!block_addr.has_value()) {
+            auto block_uid = anvill::GetBasicBlockUid(&func);
+            if (!block_uid.has_value()) {
                 auto pc = func.getMetadata("pc");
                 func.deleteBody();
                 if (pc) {
@@ -350,13 +350,13 @@ namespace irene3
                 }
             }
 
-            gvars.insert({ *block_addr, blk_gvars });
+            gvars.insert({ *block_uid, blk_gvars });
 
             std::vector< FunctionInfo > blk_funcs;
             for (auto var :
                  UsedGlobalValue< llvm::Function >(&func, this->spec.GetRequiredGlobals())) {
                 auto pc = lifter.AddressOfEntity(var);
-                if (anvill::GetBasicBlockAddr(var).has_value()) {
+                if (anvill::GetBasicBlockUid(var).has_value()) {
                     continue;
                 }
 
@@ -368,7 +368,7 @@ namespace irene3
                 blk_funcs.push_back({ std::string(var->getName()), *pc });
             }
 
-            functions.insert({ *block_addr, blk_funcs });
+            functions.insert({ *block_uid, blk_funcs });
 
             // Copy instructions to temporary storage so we don't invalidate iterators
             std::vector< llvm::Instruction* > insts;
@@ -382,16 +382,17 @@ namespace irene3
                     if (call->getCalledFunction() == nullptr) {
                         continue;
                     }
-
-                    auto block_addr = anvill::GetBasicBlockAddr(call->getCalledFunction());
-                    if (!block_addr.has_value()) {
+                    auto call_block_uid = anvill::GetBasicBlockUid(call->getCalledFunction());
+                    if (!call_block_uid) {
                         continue;
                     }
+
                     call->replaceAllUsesWith(llvm::UndefValue::get(call->getType()));
                     auto intrinsic = GetOrCreateGotoInstrinsic(&*module, addr_type);
 
-                    auto cc = llvm::CallInst::Create(
-                        intrinsic, { llvm::ConstantInt::get(addr_type, *block_addr) }, "", call);
+                    auto block_addr = spec.BlockAt(*call_block_uid).get()->addr;
+                    auto cc         = llvm::CallInst::Create(
+                        intrinsic, { llvm::ConstantInt::get(addr_type, block_addr) }, "", call);
                     cc->setDoesNotReturn();
                     call->eraseFromParent();
                 }
@@ -449,7 +450,7 @@ namespace irene3
 
         std::unordered_set< uint64_t > target_function_list;
 
-        spec.ForEachFunction([&](std::shared_ptr< const anvill::FunctionDecl > decl) {
+        spec.ForEachFunction([&](const std::shared_ptr< const anvill::FunctionDecl >& decl) {
             target_function_list.emplace(decl->address);
             return true;
         });

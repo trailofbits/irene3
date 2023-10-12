@@ -43,6 +43,29 @@ import ghidra.program.model.listing.Function as GFunction
 
 object Util {
 
+  def getBlockByAddr(
+      blkMap: Map[Long, CodeBlockSpec],
+      addr: Long
+  ): Option[CodeBlockSpec] = {
+    blkMap.find((_, blk) => blk.address == addr).map(_._2)
+  }
+
+  def getIncomingAddresses(func: Function, blk: CodeBlock): Seq[Address] = {
+    getValidAddresses(
+      func,
+      blk.getSources(TaskMonitor.DUMMY),
+      ref => ref.getSourceAddress
+    )
+  }
+
+  def getOutgoingAddresses(func: Function, blk: CodeBlock): Seq[Address] = {
+    getValidAddresses(
+      func,
+      blk.getDestinations(TaskMonitor.DUMMY),
+      ref => ref.getDestinationAddress
+    )
+  }
+
   abstract class ProgramAnalysisUtilMixin {
     val prog: Program
 

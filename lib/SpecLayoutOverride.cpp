@@ -69,23 +69,23 @@ namespace irene3
 
         std::optional< std::reference_wrapper< const anvill::BasicBlockContext > > GetContext(
             llvm::Function& func) {
-            auto block_addr = anvill::GetBasicBlockAddr(&func);
-            if (!block_addr.has_value()) {
+            auto block_uid = anvill::GetBasicBlockUid(&func);
+            if (!block_uid.has_value()) {
                 return std::nullopt;
             }
 
             auto block_contexts = spec.GetBlockContexts();
-            return block_contexts.GetBasicBlockContextForAddr(*block_addr);
+            return block_contexts.GetBasicBlockContextForUid(*block_uid);
         }
 
         bool HasOverride(llvm::Function& func) {
-            auto block_addr = anvill::GetBasicBlockAddr(&func);
-            if (!block_addr.has_value()) {
+            auto block_uid = anvill::GetBasicBlockUid(&func);
+            if (!block_uid.has_value()) {
                 return false;
             }
 
             auto block_contexts = spec.GetBlockContexts();
-            return block_contexts.GetBasicBlockContextForAddr(*block_addr).has_value();
+            return block_contexts.GetBasicBlockContextForUid(*block_uid).has_value();
         }
 
         std::vector< clang::ParmVarDecl* > CreateFunctionParams(
@@ -118,10 +118,10 @@ namespace irene3
         }
 
         std::vector< clang::QualType > GetArguments(llvm::Function& func) {
-            auto block_addr = anvill::GetBasicBlockAddr(&func);
-            CHECK(block_addr.has_value());
+            auto block_uid = anvill::GetBasicBlockUid(&func);
+            CHECK(block_uid.has_value());
             auto block_contexts  = spec.GetBlockContexts();
-            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
+            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForUid(*block_uid);
             CHECK(maybe_block_ctx.has_value());
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
             const auto& available_vars = fspec->in_scope_variables;
@@ -223,7 +223,7 @@ namespace irene3
             for (auto [var, var_offset] : stack_vars) {
                 auto& var_spec = available_vars[var->getArgNo() - first_var_idx];
                 auto type
-                    = type_decoder.Decode(ctx, spec, var_spec.spec_type, var->getType(), false);
+                    = type_decoder.Decode(ctx, spec, var_spec.spec_type, var_spec.type, false);
                 auto name = var->getName().str();
 
                 if (var_offset > current_offset) {
@@ -316,10 +316,10 @@ namespace irene3
         }
 
         void BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) {
-            auto block_addr = anvill::GetBasicBlockAddr(&func);
-            CHECK(block_addr.has_value());
+            auto block_uid = anvill::GetBasicBlockUid(&func);
+            CHECK(block_uid.has_value());
             auto block_contexts  = spec.GetBlockContexts();
-            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
+            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForUid(*block_uid);
             CHECK(maybe_block_ctx.has_value());
             const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
@@ -363,7 +363,7 @@ namespace irene3
                         auto base_stack  = ctx.ast.CreateDeclRef(stack_var);
                         auto base_locals = ctx.ast.CreateFieldAcc(base_stack, locals_field, false);
                         auto local_var   = ctx.ast.CreateVarDecl(
-                              fdecl, ctx.ast_ctx.getPointerType(svar.type), svar.name);
+                            fdecl, ctx.ast_ctx.getPointerType(svar.type), svar.name);
                         local_var->setInit(ctx.ast.CreateAddrOf(
                             ctx.ast.CreateFieldAcc(base_locals, svar.field_decl, false)));
                         decl = local_var;
@@ -384,12 +384,12 @@ namespace irene3
             if (llvm::isa< llvm::AllocaInst >(value)) {
                 return true;
             }
-            auto block_addr = anvill::GetBasicBlockAddr(&func);
-            if (!block_addr.has_value()) {
+            auto block_uid = anvill::GetBasicBlockUid(&func);
+            if (!block_uid.has_value()) {
                 return false;
             }
             auto block_contexts  = spec.GetBlockContexts();
-            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
+            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForUid(*block_uid);
             CHECK(maybe_block_ctx.has_value());
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
             const auto& available_vars = fspec->in_scope_variables;

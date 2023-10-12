@@ -56,23 +56,23 @@ namespace irene3
 
         std::optional< std::reference_wrapper< const anvill::BasicBlockContext > > GetContext(
             llvm::Function& func) {
-            auto block_addr = anvill::GetBasicBlockAddr(&func);
-            if (!block_addr.has_value()) {
+            auto block_uid = anvill::GetBasicBlockUid(&func);
+            if (!block_uid.has_value()) {
                 return std::nullopt;
             }
 
             auto block_contexts = spec.GetBlockContexts();
-            return block_contexts.GetBasicBlockContextForAddr(*block_addr);
+            return block_contexts.GetBasicBlockContextForUid(*block_uid);
         }
 
         bool HasOverride(llvm::Function& func) {
-            auto block_addr = anvill::GetBasicBlockAddr(&func);
-            if (!block_addr.has_value()) {
+            auto block_uid = anvill::GetBasicBlockUid(&func);
+            if (!block_uid.has_value()) {
                 return false;
             }
 
             auto block_contexts = spec.GetBlockContexts();
-            return block_contexts.GetBasicBlockContextForAddr(*block_addr).has_value();
+            return block_contexts.GetBasicBlockContextForUid(*block_uid).has_value();
         }
 
         clang::QualType CreateCharArray(unsigned size) {
@@ -108,10 +108,10 @@ namespace irene3
         }
 
         std::vector< clang::QualType > GetArguments(llvm::Function& func) {
-            auto block_addr = anvill::GetBasicBlockAddr(&func);
-            CHECK(block_addr.has_value());
+            auto block_uid = anvill::GetBasicBlockUid(&func);
+            CHECK(block_uid.has_value());
             auto block_contexts  = spec.GetBlockContexts();
-            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
+            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForUid(*block_uid);
             CHECK(maybe_block_ctx.has_value());
             // const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
@@ -158,7 +158,7 @@ namespace irene3
             llvm::Function& func, clang::FunctionDecl* fdecl, anvill::Specification& spec) {
             auto vars = UsedGlobalValue< llvm::Function >(&func, required_globals);
             for (auto gv : vars) {
-                if (anvill::GetBasicBlockAddr(gv)) {
+                if (anvill::GetBasicBlockUid(gv)) {
                     continue;
                 }
 
@@ -207,10 +207,10 @@ namespace irene3
         }
 
         void BeginFunctionVisit(llvm::Function& func, clang::FunctionDecl* fdecl) {
-            auto block_addr = anvill::GetBasicBlockAddr(&func);
-            CHECK(block_addr.has_value());
+            auto block_uid = anvill::GetBasicBlockUid(&func);
+            CHECK(block_uid.has_value());
             auto block_contexts  = spec.GetBlockContexts();
-            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
+            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForUid(*block_uid);
             CHECK(maybe_block_ctx.has_value());
             // const anvill::BasicBlockContext& block_ctx = maybe_block_ctx.value();
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
@@ -260,12 +260,12 @@ namespace irene3
             if (llvm::isa< llvm::AllocaInst >(value)) {
                 return true;
             }
-            auto block_addr = anvill::GetBasicBlockAddr(&func);
-            if (!block_addr.has_value()) {
+            auto block_uid = anvill::GetBasicBlockUid(&func);
+            if (!block_uid.has_value()) {
                 return false;
             }
             auto block_contexts  = spec.GetBlockContexts();
-            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForAddr(*block_addr);
+            auto maybe_block_ctx = block_contexts.GetBasicBlockContextForUid(*block_uid);
             CHECK(maybe_block_ctx.has_value());
             auto fspec = spec.FunctionAt(maybe_block_ctx->get().GetParentFunctionAddress());
             const auto& available_vars = fspec->in_scope_variables;

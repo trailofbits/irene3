@@ -1,5 +1,7 @@
 package anvill;
 
+import collection.JavaConverters.*
+import java.security as js
 import java.util as ju
 import collection.JavaConverters.*
 import com.google.protobuf.ByteString
@@ -115,15 +117,28 @@ import ghidra.util.task.TaskMonitor
 
 import scala.collection.mutable.Map as MutableMap
 import scala.collection.mutable.Set as MutableSet
+import scala.collection.immutable.SortedMap
 import anvill.Util.{getReachableCodeBlocks, registerToVariable}
 import ghidra.program.model.address.AddressSet
 import ghidra.program.model.pcode.VarnodeTranslator
 import ghidra.program.model.pcode.SequenceNumber
 
+import java.util.concurrent.atomic.AtomicLong
+
 def pair[A, B](ma: Option[A], mb: Option[B]): Option[(A, B)] =
   ma.flatMap(a => mb.map(b => (a, b)))
 
 object ProgramSpecifier {
+
+  /** Generate new Uid */
+  object createNewUid extends (() => Long) {
+    var nextUid: AtomicLong = AtomicLong(1);
+
+    def apply: Long = {
+      nextUid.getAndIncrement()
+    }
+  }
+
   val integerTypes = Map(
     (1, false) -> TypeSpec(Type.Base(BT_U8)),
     (1, true) -> TypeSpec(Type.Base(BT_I8)),
@@ -533,7 +548,8 @@ object ProgramSpecifier {
         )
         .map(_.getOffset()),
       (blk.getMaxAddress.getOffset() - addr.getOffset()).toInt + 1,
-      specifyContextAssignments(func.getProgram(), addr)
+      specifyContextAssignments(func.getProgram(), addr),
+      0
     )
   }
 
@@ -641,34 +657,32 @@ object ProgramSpecifier {
     var cfg = if func.isExternal() then { Map.empty }
     else { getCFG(func, func_split_addrs) }
 
-    if (!(cfg contains func.getEntryPoint().getOffset())) {
+    if (!cfg.exists((_, blk) => blk.address == func.getEntryPoint.getOffset)) {
       cfg = Map.empty
     }
     val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
     val max_depth = maxDepth(func, cdi)
     val bb_context_prod = BasicBlockContextProducer(func, cdi, max_depth, cfg)
-    val block_ctxts = cfg.map((addr, cb) => {
-      val gaddr = func.getProgram
-        .getAddressFactory()
-        .getDefaultAddressSpace
-        .getAddress(addr)
-      (
-        addr,
-        bb_context_prod.getBlockContext(
-          gaddr,
-          func
-            .getProgram()
-            .getListing()
-            .getInstructionBefore(gaddr.add(cb.size))
-            .getAddress()
+    val block_ctxts = cfg
+      .map((uid, cb) => {
+        (
+          uid,
+          bb_context_prod.getBlockContext(cb)
         )
-      )
-    })
+      })
+      .to(SortedMap)
 
     val ty_hints = computeTypeHints(func, aliases)
-    FuncSpec(
+    val entry_addr =
       getThunkRedirection(func.getProgram(), func.getEntryPoint())
-        .getOffset(),
+        .getOffset()
+    val entry_uid = cfg
+      .find((_, blk) => blk.address == func.getEntryPoint.getOffset)
+      .map(_._2.uid)
+      .getOrElse(0L)
+    FuncSpec(
+      entry_addr,
+      entry_uid,
       linkage,
       Some(
         specifyCallableFromFunction(
@@ -1156,23 +1170,27 @@ object ProgramSpecifier {
         function_decl_list ++ required_funcs
       ) -- func_defs_redirected
 
-    val func_specs = (func_decls_redirected.toSeq.map(
-      specifyFunctionOrDecl(
-        _,
-        defaultRetAddr,
-        aliases,
-        true,
-        function_split_addrs
-      )
-    ) ++ func_defs_redirected.toSeq.map(
-      specifyFunctionOrDecl(
-        _,
-        defaultRetAddr,
-        aliases,
-        false,
-        function_split_addrs
-      )
-    )).toList
+    val func_specs = (func_decls_redirected.toSeq
+      .sortBy(_.getEntryPoint)
+      .map(
+        specifyFunctionOrDecl(
+          _,
+          defaultRetAddr,
+          aliases,
+          true,
+          function_split_addrs
+        )
+      ) ++ func_defs_redirected.toSeq
+      .sortBy(_.getEntryPoint)
+      .map(
+        specifyFunctionOrDecl(
+          _,
+          defaultRetAddr,
+          aliases,
+          false,
+          function_split_addrs
+        )
+      )).toList.sortBy(_.entryAddress)
 
     val symbol_specs = {
       val sym_iterator: ju.Iterator[Symbol] =

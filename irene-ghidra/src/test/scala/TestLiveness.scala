@@ -1,5 +1,6 @@
 import org.junit.Test
 import ghidra.program.model.listing.Program
+
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 import anvill.BasicBlockContextProducer
 import anvill.LivenessAnalysis
@@ -9,8 +10,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
 import specification.specification.Parameter
 import ghidra.program.model.lang.Register
+
 import scala.collection.mutable
-import anvill.Util.getLiveRegisters
+import anvill.Util.{getBlockByAddr, getLiveRegisters}
 import anvill.ProgramSpecifier
 import ghidra.app.cmd.function.CallDepthChangeInfo
 import ghidra.util.task.TaskMonitor
@@ -44,7 +46,7 @@ class TestLiveness extends BaseProgramLoadTest {
       )
     val target_addr = coll_prog.getAddressFactory.getAddress("100003f94")
     val live_info =
-      bb_cont.liveness(cfg.get(target_addr.getOffset).get)
+      bb_cont.liveness(getBlockByAddr(cfg, target_addr.getOffset).get)
 
     assertEquals(
       Set("R14", "RBX", "R13", "RSP", "R12", "R15", "RBP"),
@@ -118,7 +120,7 @@ class TestLiveness extends BaseProgramLoadTest {
       )
     val target_addr = prog.getAddressFactory.getAddress("401af0")
     val liveness_entry_block =
-      bb_cont.liveness(cfg.get(target_addr.getOffset).get)
+      bb_cont.liveness(getBlockByAddr(cfg, target_addr.getOffset).get)
 
     assertTrue(
       "The value of  RDX should be dead",
@@ -129,7 +131,7 @@ class TestLiveness extends BaseProgramLoadTest {
 
     val other_target_addr = prog.getAddressFactory.getAddress("00401b16")
     val live_info =
-      bb_cont.liveness(cfg.get(other_target_addr.getOffset).get)
+      bb_cont.liveness(getBlockByAddr(cfg, other_target_addr.getOffset).get)
 
     val lives = getLiveRegisters(live_info.live_before).map(r => r.registerName)
     assertEquals(Set("EBX", "R14", "R13", "R12", "R15", "RSP"), lives)
@@ -147,17 +149,16 @@ class TestLiveness extends BaseProgramLoadTest {
       loadProgram(proj, "binaries/challenge-3_amd64_program_c.elf")
     val func = firstFunctionNamed(prog, "set_duty")
     val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
+    val cfg = ProgramSpecifier.getCFG(func);
     val bb_prod =
       BasicBlockContextProducer(
         func,
         cdi,
         ProgramSpecifier.maxDepth(func, cdi),
-        ProgramSpecifier.getCFG(func)
+        cfg
       )
-
     val stack_vals = bb_prod.getBlockContext(
-      func.getEntryPoint(),
-      prog.getAddressFactory().getAddress("00401b14")
+      getBlockByAddr(cfg, func.getEntryPoint.getOffset).get
     )
 
     val rsp_mapping = stack_vals.symvalsAtEntry.toSeq
@@ -214,17 +215,18 @@ class TestLiveness extends BaseProgramLoadTest {
       cfg
     )
     val target_addr = coll_prog.getAddressFactory.getAddress("00401920")
-    val live_info =
-      bb_cont.liveness(cfg.get(target_addr.getOffset).get)
-    println(cfg.get(target_addr.getOffset).get.outgoingBlocks)
+    val blk = getBlockByAddr(cfg, target_addr.getOffset).get
+    val live_info = bb_cont.liveness(blk)
+    println("Outgoing blocks: " + blk.outgoingBlocks)
     println(
-      live_info.live_before.toSeq
-        .groupBy(p => p.name.get)
-        .map((nm, l) => (nm, l.length))
-        .toMap
+      "Live before name to size: " +
+        live_info.live_before.toSeq
+          .groupBy(p => p.name.get)
+          .map((nm, l) => (nm, l.length))
+          .toMap
     )
 
-    println(live_info.live_before)
+    println("Live before: " + live_info.live_before)
 
     live_info.live_before.toSeq
       .filter(p => p.name.get == "p")
