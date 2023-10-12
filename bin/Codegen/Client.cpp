@@ -16,6 +16,7 @@
 #include <fstream>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <google/protobuf/util/json_util.h>
 #include <grpc/grpc.h>
 #include <grpcpp/channel.h>
 #include <grpcpp/client_context.h>
@@ -48,23 +49,33 @@ class IreneClient {
 
     bool ProcessSpecification(const Specification& specification, Codegen* codegen) {
         ClientContext context;
-        auto writer  = stub_->ProcessSpecification(&context, codegen);
+        auto writer(stub_->ProcessSpecification(&context, codegen));
         auto out_str = specification.SerializeAsString();
-        size_t ind   = 0;
+
+        LOG(INFO) << "Sending...\n";
+        size_t ind = 0;
         while (ind < out_str.length()) {
             irene::server::SpecChunk chunk;
-            auto cbytes = out_str.substr(ind, ind + CHUNK_SIZE);
-            chunk.set_allocated_chunk(&cbytes);
-            writer->Write(chunk);
+            std::string cbytes = out_str.substr(ind, ind + CHUNK_SIZE);
+            chunk.set_chunk(cbytes);
+            if (!writer->Write(chunk)) {
+                LOG(ERROR) << "Broken stream while writing spec\n";
+                // Broken stream
+                return false;
+            }
+            LOG(INFO) << "Sent chunk index " << ind << "\n";
+            ind += CHUNK_SIZE;
         }
 
+        writer->WritesDone();
         auto status = writer->Finish();
         if (!status.ok()) {
-            std::cout << "ProcessSpecification rpc failed with message:\n\""
+            std::cerr << "ProcessSpecification rpc failed with message:\n\""
                       << status.error_message() << "\"\nand details:\n\"" << status.error_details()
                       << "\"\n";
             return false;
         }
+        LOG(INFO) << "Sent specification!\n";
         return true;
     }
 
@@ -93,22 +104,24 @@ int main(int argc, char** argv) {
     google::HandleCommandLineHelpFlags();
 
     std::filesystem::path input_spec(FLAGS_spec);
-    std::ifstream is(input_spec, std::ifstream::binary);
+    std::ifstream is(input_spec);
+    std::stringstream buffer;
+    buffer << is.rdbuf();
     Specification spec;
-    if (is) {
-        spec.ParseFromIstream(&is);
-        std::cout << "Sending spec with " << spec.functions().size() << " functions.\n";
-    } else {
-        std::cout << "Something wrong with reading Specification protobuf file: " << input_spec
-                  << "\n";
-        return 1;
+    if (!spec.ParseFromString(buffer.str())) {
+        auto status = google::protobuf::util::JsonStringToMessage(buffer.str(), &spec);
+        if (!status.ok()) {
+            LOG(FATAL) << "Failed to parse specification\n";
+            return 1;
+        }
     }
+    std::cerr << "Sending spec with " << spec.functions().size() << " functions.\n";
 
     // Send spec to server
     IreneClient irene(grpc::CreateChannel(
         "localhost:" + std::to_string(FLAGS_port), grpc::InsecureChannelCredentials()));
 
-    std::cout << "-------------- ProcessSpec --------------" << std::endl;
+    LOG(INFO) << "-------------- ProcessSpec --------------" << std::endl;
     Codegen codegen;
     irene.ProcessSpecification(spec, &codegen);
     std::cout << codegen.json();

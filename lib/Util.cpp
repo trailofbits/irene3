@@ -83,8 +83,8 @@ namespace irene3
     }
 
     std::optional< std::int64_t > GetDepthForBlockExit(
-        const remill::Register* stack_reg, const anvill::FunctionDecl& decl, uint64_t bbaddr) {
-        auto nd = decl.cfg.at(bbaddr);
+        const remill::Register* stack_reg, const anvill::FunctionDecl& decl, anvill::Uid uid) {
+        auto nd = decl.cfg.at(uid);
 
         if (nd.outgoing_edges.empty()) {
             return 0;
@@ -106,10 +106,10 @@ namespace irene3
     }
 
     StackOffsets ComputeStackOffsets(
-        const remill::Register* stack_reg, const anvill::FunctionDecl& decl, uint64_t bbaddr) {
-        auto cont       = decl.GetBlockContext(bbaddr);
+        const remill::Register* stack_reg, const anvill::FunctionDecl& decl, anvill::Uid uid) {
+        auto cont       = decl.GetBlockContext(uid);
         auto ent_depth  = GetDepthForBlockEntry(stack_reg, cont);
-        auto exit_depth = GetDepthForBlockExit(stack_reg, decl, bbaddr);
+        auto exit_depth = GetDepthForBlockExit(stack_reg, decl, uid);
 
         if (!ent_depth) {
             LOG(ERROR) << "Overriding entry depth with 0";

@@ -140,8 +140,8 @@ namespace irene3
         uint64_t addr;
     };
 
-    using GvarInfoByBlock     = std::unordered_map< std::uint64_t, std::vector< GlobalVarInfo > >;
-    using FunctionInfoByBlock = std::unordered_map< std::uint64_t, std::vector< FunctionInfo > >;
+    using GvarInfoByBlock     = std::unordered_map< anvill::Uid, std::vector< GlobalVarInfo > >;
+    using FunctionInfoByBlock = std::unordered_map< anvill::Uid, std::vector< FunctionInfo > >;
 
     struct CodegenResult {
         std::shared_ptr< llvm::LLVMContext > context;
@@ -155,7 +155,7 @@ namespace irene3
 
         FunctionInfoByBlock block_functions;
 
-        std::unordered_map< std::uint64_t, clang::CompoundStmt* > blocks;
+        std::unordered_map< anvill::Uid, clang::CompoundStmt* > blocks;
     };
 
     class SpecDecompilationJob {
