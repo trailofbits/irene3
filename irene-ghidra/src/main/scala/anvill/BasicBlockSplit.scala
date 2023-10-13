@@ -136,14 +136,18 @@ object BasicBlockSplit {
     val prologue_exits = blkseq
       .filter(_.getFirstStartAddress == func.getEntryPoint)
       .flatMap(blk => {
-        getPrologueExitAddr(blk, computeDecompilationMappings(decomp_c, blk))
+        decomp_c.flatMap(decomp_c =>
+          getPrologueExitAddr(blk, computeDecompilationMappings(decomp_c, blk))
+        )
       })
     Msg.debug(this, s"Found prologue exits $func: $prologue_exits")
 
     val epilogue_entries = blkseq
       .filter(blk => Util.getOutgoingAddresses(func, blk).isEmpty)
       .flatMap(blk => {
-        getEpilogueEntryAddr(blk, computeDecompilationMappings(decomp_c, blk))
+        decomp_c.flatMap(decomp_c =>
+          getPrologueExitAddr(blk, computeDecompilationMappings(decomp_c, blk))
+        )
       })
     Msg.debug(this, s"Found epilogue entries for $func: $epilogue_entries")
 
@@ -154,7 +158,7 @@ object BasicBlockSplit {
     )
   }
 
-  def getGhidraDecompilation(func: Function): ClangTokenGroup = {
+  def getGhidraDecompilation(func: Function): Option[ClangTokenGroup] = {
     // We use Ghidra's decompiler to detect prologue/epilogue blocks.
     // Decompile the function and get its C output ahead of time.
     val decomp_options = new DecompileOptions()
@@ -163,18 +167,25 @@ object BasicBlockSplit {
     decomp_ifc.toggleCCode(true)
     decomp_ifc.toggleSyntaxTree(true)
     if (!decomp_ifc.openProgram(func.getProgram)) {
-      throw new RuntimeException(
-        "Unable to initialize: " + decomp_ifc.getLastMessage
+      Msg.warn(
+        this,
+        s"Unable to initialize (" + func
+          .toString() + "): " + decomp_ifc.getLastMessage
       )
+      return None
     }
     val decomp_res = decomp_ifc.decompileFunction(func, 30, null)
     decomp_ifc.closeProgram();
-    if (!decomp_res.decompileCompleted) {
-      throw new RuntimeException(
-        "Unable to decompile: " + decomp_ifc.getLastMessage
+    if (decomp_res.decompileCompleted) {
+      Option(decomp_res.getCCodeMarkup)
+    } else {
+      Msg.warn(
+        this,
+        "Unable to decompile function (" + func
+          .toString() + "): " + decomp_ifc.getLastMessage
       )
+      None
     }
-    decomp_res.getCCodeMarkup
   }
 
   def computeDecompilationMappings(
