@@ -15,9 +15,9 @@ CMAKE_ARCH := if "macos" == "{{CMAKE_OS}}" { "universal" } else { arch() }
 CMAKE_VERSION := "3.26.4"
 CMAKE_DIR := "cmake-"+CMAKE_VERSION+"-"+CMAKE_OS+"-"+CMAKE_ARCH
 
-GHIDRA_TAG := "amp-ghidra-v0.0.2-rc2"
+GHIDRA_TAG := "amp-ghidra-v0.0.3-rc2"
 GHIDRA_MAJOR_VERSION := "10.3_DEV"
-GHIDRA_MINOR_VERSION := "20230505"
+GHIDRA_MINOR_VERSION := "20231016"
 
 VIRTUAL_ENV := env_var_or_default("VIRTUAL_ENV", justfile_directory() + "/venv")
 DOCKER_CMD := "docker"
