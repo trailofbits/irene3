@@ -162,10 +162,15 @@ object ProgramSpecifier {
     16 -> TypeSpec(Type.Base(BT_FL128))
   )
 
+  // Takes a collection of compoenents to be passed to
+  // a composite type buidler. Non-typespec components are evaluated to
+  // TypeSpecs before calling the builder.
+  // Right(TypeSpec) allows the caller to fill in type specs when they are
+  // already known.
   def getTypeSpecRecCall(
       repr_type: DataType,
       builder: Seq[TypeSpec] => TypeSpec,
-      components: Seq[DataType],
+      components: Seq[Either[DataType, TypeSpec]],
       aliases: MutableMap[Long, TypeSpec]
   ): TypeSpec = {
 
@@ -177,16 +182,18 @@ object ProgramSpecifier {
     )
 
     val parent_spec = builder(
-      components.map(d =>
-        Option(d.getUniversalID())
-          .map(id => TypeSpec(TypeSpec.Type.Alias(id.getValue())))
-          .getOrElse(
-            // otherwise we have to make the recursive call in a thunk
-            default = {
-              getTypeSpec(d, aliases).get
-            }
-          )
-      )
+      components.map {
+        case Left(d) =>
+          Option(d.getUniversalID())
+            .map(id => TypeSpec(TypeSpec.Type.Alias(id.getValue())))
+            .getOrElse(
+              // otherwise we have to make the recursive call in a thunk
+              default = {
+                getTypeSpec(d, aliases).get
+              }
+            )
+        case Right(sp) => sp
+      }
     )
     aliases.put(
       repr_type.getUniversalID().getValue(),
@@ -194,7 +201,7 @@ object ProgramSpecifier {
     )
 
     for (comp <- components) {
-      getTypeSpec(comp, aliases)
+      comp.left.foreach(getTypeSpec(_, aliases))
     }
 
     parent_spec
@@ -242,12 +249,39 @@ object ProgramSpecifier {
                 )
               }
               case struct: Structure => {
+                // Creates padding of the given size in bytes that can be passed to the builder
+                val get_pad: Int => Either[DataType, TypeSpec] = num => {
+                  val base = Some(TypeSpec(Type.Base(BT_U8)))
+                  Right(TypeSpec(Type.Array(TypeSpec.ArrayType(base, num))))
+                }
+                // The end padding is the difference between the last byte of the
+                // last field and the established lengh of the structure.
+                val end_padding =
+                  struct.getLength - struct.getComponents.toList.lastOption
+                    .map(c => c.getOffset + c.getLength)
+                    .getOrElse(0)
+                val epad_ty =
+                  if end_padding > 0 then Some(get_pad(end_padding)) else None
                 Some(
                   getTypeSpecRecCall(
                     struct,
                     comp_specs =>
+                      // Adds every field as a data type to the component list
+                      // if the next elem exists, and is not adjacent to the end of the current field
+                      // we add an array of padding to make the padding bytes explicit.
                       TypeSpec(Type.Struct(TypeSpec.StructType(comp_specs))),
-                    struct.getComponents().toList.map(_.getDataType),
+                    (struct.getComponents.toList
+                      .sliding(2, 1)
+                      .flatMap(c => {
+                        val felem = c.head
+                        val selem = c.lift(1)
+                        List(Left(felem.getDataType)) ++ selem.flatMap(s => {
+                          val padding =
+                            s.getOffset - (felem.getOffset + felem.getLength)
+                          if padding > 0 then Some(get_pad(padding)) else None
+                        })
+                      }) ++ struct.getComponents.toList.lastOption
+                      .map(c => Left(c.getDataType)) ++ epad_ty).toSeq,
                     aliases
                   )
                 )
