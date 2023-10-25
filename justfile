@@ -1,5 +1,5 @@
 set dotenv-load
-LLVM_VERSION := "16"
+LLVM_VERSION := "17"
 CXX_COMMON_VERSION := "0.6.0"
 CXX_COMMON_ARCH := if "x86_64" == arch() { "amd64" } else { "arm64" }
 XCODE_VERSION := "15.0"

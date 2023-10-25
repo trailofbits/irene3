@@ -21,8 +21,6 @@ def PatchIR_Dialect : Dialect {
     // Uncomment if adding custom types
     // let useDefaultTypePrinterParser = 1;
     let useDefaultAttributePrinterParser = 1;
-
-    let useFoldAPI = kEmitFoldAdaptorFolder;
 }
 
 class PatchIR_Op<string mnemonic, list<Trait> traits = []> :

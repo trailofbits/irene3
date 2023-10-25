@@ -149,7 +149,7 @@ namespace irene3
             }
         }
 
-        for (const llvm::GlobalAlias& var : anvill_mod->getAliasList()) {
+        for (const llvm::GlobalAlias& var : anvill_mod->aliases()) {
             if (auto addr = GetPCMetadata(&var)) {
                 res.insert({ &var, *addr });
                 rev.insert({ *addr, &var });

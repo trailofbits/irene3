@@ -29,12 +29,12 @@
 #include <irene3/TypeDecoder.h>
 #include <irene3/Util.h>
 #include <irene3/Version.h>
-#include <llvm/ADT/Triple.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/JSON.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/TargetParser/Triple.h>
 #include <optional>
 #include <rellic/Decompiler.h>
 #include <rellic/Result.h>
