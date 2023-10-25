@@ -21,11 +21,11 @@
 #include <irene3/TypeDecoder.h>
 #include <irene3/Util.h>
 #include <irene3/Version.h>
-#include <llvm/ADT/Triple.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/JSON.h>
 #include <llvm/Support/MemoryBuffer.h>
+#include <llvm/TargetParser/Triple.h>
 #include <rellic/Decompiler.h>
 #include <remill/BC/Error.h>
 #include <remill/BC/Util.h>
