@@ -30,6 +30,8 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    if: always()
+
     steps:
       - uses: actions/checkout@v3
         with:
@@ -249,11 +251,11 @@ jobs:
           name: AMP Challenge Binaries logs
           path: test-errs.tar.xz
 
-      - name: Upload anvill python stats
+      - name: Upload anvill ghidra stats
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: anvill-python
+          name: anvill-ghidra
           path: ${{ steps.build_paths.outputs.REL_SOURCE }}/anvill/amp-challenge-bins/results/binaries/python/stats.json
 
       - name: Upload anvill decompiler stats
@@ -262,6 +264,41 @@ jobs:
         with:
           name: anvill-decompile
           path: ${{ steps.build_paths.outputs.REL_SOURCE }}/anvill/amp-challenge-bins/results/binaries/decompile/stats.json
+
+  test-csmith:
+    runs-on:
+      labels: gha-ubuntu-32
+    if: always()
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d # v1.6.0
+
+      - name: Build differential testing container
+        run: |
+          just build-docker-eval
+
+      - name: Run differential testing
+        run: |
+          mkdir csmith_out/
+          docker run -v $(pwd)/csmith_out/:/csmith_out/ irene3-eval 8 /csmith_out/
+        shell: bash
+
+      - name: Fix directory permissions
+        if: always()
+        run: |
+          docker run --rm -v $(pwd)/csmith_out/:/csmith_out/ --entrypoint /bin/chown irene3-eval -R 1000:1000 /csmith_out/
+        shell: bash
+
+      - name: Upload differential testing stats
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: irene3-csmith
+          path: ./csmith_out
 
   build-metrics:
     needs: test-anvill
@@ -273,11 +310,11 @@ jobs:
         with:
           submodules: false
 
-      - name: Download anvill python stats
+      - name: Download anvill ghidra stats
         uses: actions/download-artifact@v3
         with:
-          name: anvill-python
-          path: anvill-python
+          name: anvill-ghidra
+          path: anvill-ghidra
 
       - name: Download anvill decompiler stats
         uses: actions/download-artifact@v3
@@ -285,11 +322,18 @@ jobs:
           name: anvill-decompile
           path: anvill-decompile
 
+      - name: Download irene3 csmith results
+        uses: actions/download-artifact@v3
+        with:
+          name: irene3-csmith
+          path: irene3-csmith
+
       - name: Build metrics
         run: |
           python scripts/build_metrics.py \
-              --ghidra-stats anvill-python/stats.json \
+              --ghidra-stats anvill-ghidra/stats.json \
               --decompiler-stats anvill-decompile/stats.json \
+              --csmith-results irene3-csmith/ \
               --output-metrics nightly-metrics.json
 
       - name: Upload metrics

@@ -192,7 +192,7 @@ class TestCase:
 
     # TODO(Ian): probably more effecient to fan out and replace every function but that makes isolation hard, also shouldnt find
     # funcs by text because may be inlined idk if we want to let inlining happen tho because that reduces samples
-    @timeout(240)
+    @timeout(800)
     def run_task(self) -> TestCaseRes:
         self.generate_c_file()
         self.compile_tc_to_llvm()
