@@ -8,7 +8,12 @@ import ghidra.program.model.lang.Register
 
 import scala.collection.mutable.Stack
 import ghidra.program.model.pcode.PcodeOp
-import ghidra.program.model.listing.{Instruction, Program, Variable}
+import ghidra.program.model.listing.{
+  Instruction,
+  FunctionSignature,
+  Program,
+  Variable
+}
 
 import collection.JavaConverters.*
 import ghidra.app.cmd.function.CallDepthChangeInfo
@@ -25,6 +30,7 @@ import Util.registerToVariable
 import scala.collection.immutable.Set
 import scala.collection.Set as MutableSet
 import ProgramSpecifier.getRegisterName
+import ProgramSpecifier.getOverrideForInsn
 import anvill.Fixpoint.Solution
 import ghidra.program.model.pcode.Varnode
 import ghidra.program.model.lang.Register
@@ -146,10 +152,6 @@ class LivenessAnalysis(
     )
   }
 
-  def get_called_sig(insn: Instruction): Seq[Variable] = {
-    getUniqueCallee(insn).map(f => f.getParameters().toSeq).getOrElse(Seq.empty)
-  }
-
   def get_live_registers(vars: Seq[Variable]): Set[Register] = {
     vars
       .flatMap(v =>
@@ -176,7 +178,39 @@ class LivenessAnalysis(
       // TODO(Ian): this assumes that we arent going to build up a stack parameter in a calling block
       // this requires handling stack extensions, which we dont handle... this could come up with something like int a; if (x<0) a= b else a = c; call(a)
       // A reasonable thing for a compile to do would be to either push b or c to the stack in each of those blocks.
-      get_live_registers(get_called_sig(insn)).map(registerToParam).toSet
+      getUniqueCallee(insn)
+        .map(f =>
+          getOverrideForInsn(insn) match
+            case Some(dsm) =>
+              val sig = dsm.getDataType.asInstanceOf[FunctionSignature]
+              val prog = f.getProgram()
+              val compiler_spec = prog.getCompilerSpec()
+              val proto = Option(
+                compiler_spec.getCallingConvention(sig.getCallingConventionName)
+              )
+                .getOrElse(compiler_spec.getDefaultCallingConvention())
+              val types = Array(sig.getReturnType()) ++ sig
+                .getArguments()
+                .map(param => param.getDataType())
+
+              val locs = proto.getStorageLocations(prog, types, false)
+              // first element is the return storage which we don't care about
+              val o = locs
+                .drop(1)
+                .toSeq
+                .flatMap(p =>
+                  Option(p.getRegisters())
+                    .map(rs => rs.asScala)
+                    .getOrElse(Seq.empty)
+                )
+              Msg.info(this, "Overriden call " + insn + ": " + o)
+              o
+            case None =>
+              get_live_registers(f.getParameters().toSeq)
+        )
+        .getOrElse(Seq.empty)
+        .map(registerToParam)
+        .toSet
     } else {
       Set.empty
     }
