@@ -1,8 +1,19 @@
 import argparse
 import json
+from pathlib import Path
 
 
-def build_metrics(ghidra_stats, decompiler_stats):
+def count_dirs(path: Path):
+    if not path.exists():
+        return 0
+    count = 0
+    for p in path.iterdir():
+        assert p.is_dir()
+        count += 1
+    return count
+
+
+def build_metrics(ghidra_stats, decompiler_stats, csmith_results: Path):
     ghidra_timeout = ghidra_stats.get("output.timeout", [])
     ghidra_zero_sized_output = ghidra_stats.get("output.zero-sized-output", [])
     ghidra_ignore_failure = ghidra_stats.get("outputignore_fail", [])
@@ -16,21 +27,27 @@ def build_metrics(ghidra_stats, decompiler_stats):
 
     success = decompiler_stats.get("output.success", [])
 
+    csmith_success = count_dirs(csmith_results / "success")
+    csmith_failure = count_dirs(csmith_results / "fail")
+    csmith_invalid = count_dirs(csmith_results / "invalid")
+
     metrics = {}
 
     job_stats = {}
-    job_stats["ghidra-timeout"] = len(ghidra_timeout)
-    job_stats["ghidra-zero-sized-output"] = len(ghidra_zero_sized_output)
-    job_stats["ghidra-ignore-failure"] = len(ghidra_ignore_failure)
-    job_stats["ghidra-ignore-success"] = len(ghidra_ignore_success)
-    job_stats["ghidra-success"] = len(ghidra_success)
+    job_stats["challenge-ghidra-timeout"] = len(ghidra_timeout)
+    job_stats["challenge-ghidra-zero-sized-output"] = len(ghidra_zero_sized_output)
+    job_stats["challenge-ghidra-ignore-failure"] = len(ghidra_ignore_failure)
+    job_stats["challenge-ghidra-ignore-success"] = len(ghidra_ignore_success)
+    job_stats["challenge-ghidra-success"] = len(ghidra_success)
 
-    job_stats["decompiler-timeout"] = len(decompiler_timeout)
-    job_stats["decompiler-zero-sized-output"] = len(decompiler_zero_sized_output)
-    job_stats["decompiler-ignore-failure"] = len(decompiler_ignore_failure)
-    job_stats["decompiler-ignore-success"] = len(decompiler_ignore_success)
+    job_stats["challenge-decompiler-timeout"] = len(decompiler_timeout)
+    job_stats["challenge-decompiler-zero-sized-output"] = len(
+        decompiler_zero_sized_output
+    )
+    job_stats["challenge-decompiler-ignore-failure"] = len(decompiler_ignore_failure)
+    job_stats["challenge-decompiler-ignore-success"] = len(decompiler_ignore_success)
 
-    job_stats["failure"] = (
+    job_stats["challenge-failure"] = (
         len(ghidra_timeout)
         + len(ghidra_zero_sized_output)
         + len(ghidra_ignore_failure)
@@ -38,7 +55,11 @@ def build_metrics(ghidra_stats, decompiler_stats):
         + len(decompiler_zero_sized_output)
         + len(decompiler_ignore_failure)
     )
-    job_stats["success"] = len(success)
+    job_stats["challenge-success"] = len(success)
+
+    job_stats["csmith-success"] = csmith_success
+    job_stats["csmith-failure"] = csmith_failure
+    job_stats["csmith-invalid"] = csmith_invalid
 
     challenge_stats = {}
 
@@ -63,10 +84,15 @@ def main():
         required=True,
         type=argparse.FileType("r"),
     )
+    parser.add_argument(
+        "--csmith-results",
+        help="The location of the csmith results directory",
+        required=True,
+        type=Path,
+    )
 
     # TODO(alex): Enable these when we've added them to the metrics nightly workflow.
     # parser.add_argument("--llvm-stats", help="", required=True, type=argparse.FileType("r"))
-    # parser.add_argument("--csmith-stats", help="", required=True, type=argparse.FileType("r"))
 
     parser.add_argument(
         "--output-metrics",
@@ -80,7 +106,7 @@ def main():
     ghidra_stats = json.load(args.ghidra_stats)
     decompiler_stats = json.load(args.decompiler_stats)
 
-    metrics = build_metrics(ghidra_stats, decompiler_stats)
+    metrics = build_metrics(ghidra_stats, decompiler_stats, args.csmith_results)
 
     json.dump(metrics, args.output_metrics)
 

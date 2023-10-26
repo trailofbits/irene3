@@ -6,11 +6,11 @@ WORKDIR /builds
 RUN curl https://apt.llvm.org/llvm-snapshot.gpg.key -o llvm-snapshot.gpg.key
 
 RUN apt-key add < llvm-snapshot.gpg.key
-RUN add-apt-repository 'deb https://apt.llvm.org/focal/ llvm-toolchain-focal-15 main'
-RUN apt-get update 
-RUN apt-get install -y qemu-user m4 gcc-arm-linux-gnueabihf openjdk-17-jdk-headless clang-15 libc6-dev-armhf-cross
+RUN add-apt-repository 'deb https://apt.llvm.org/focal/ llvm-toolchain-focal-17 main'
+RUN apt-get update
+RUN apt-get install -y qemu-user m4 gcc-arm-linux-gnueabihf openjdk-17-jdk-headless clang-17 libc6-dev-armhf-cross
 
-RUN curl https://embed.cs.utah.edu/csmith/csmith-2.3.0.tar.gz -o csmith.tar.gz
+RUN curl -L https://github.com/csmith-project/csmith/tarball/csmith-2.3.0 -o csmith.tar.gz
 RUN mkdir csmith
 RUN tar  --strip-components=1 -xvf csmith.tar.gz -C csmith
 
