@@ -250,9 +250,9 @@ void ParamToSpecVibes(
     var["name"] = bb_param.param.name;
 
     std::optional< llvm::json::Array > vstorage;
-    if (bb_param.param.oredered_locs.size() == 1) {
+    if (bb_param.param.ordered_locs.size() == 1) {
         vstorage = LowLocToStorage(
-            bb_param, bb_param.param.oredered_locs[0], stack_pointer_reg, block_stack_disp, true,
+            bb_param, bb_param.param.ordered_locs[0], stack_pointer_reg, block_stack_disp, true,
             unsafe, address_size);
     }
 
@@ -281,7 +281,7 @@ void ParamToSpec(
 
     std::vector< llvm::json::Value > storage;
 
-    for (const auto &loc : var_spec.oredered_locs) {
+    for (const auto &loc : var_spec.ordered_locs) {
         auto comp = LowLocToStorage(
             bb_param, loc, stack_pointer_reg, block_stack_disp, false, address_size, unsafe);
         if (comp) {
