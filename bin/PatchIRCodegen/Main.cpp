@@ -215,7 +215,7 @@ class MLIRCodegen {
         const anvill::BasicBlockVariable& bb_param,
         std::vector< mlir::Value >& param_locs,
         mlir::Block& where) {
-        if (bb_param.param.oredered_locs.size() != 1) {
+        if (bb_param.param.ordered_locs.size() != 1) {
             return;
         }
 
@@ -223,7 +223,7 @@ class MLIRCodegen {
         auto unk_loc = mlir_builder.getUnknownLoc();
         mlir_builder.setInsertionPointToEnd(&where);
 
-        auto& loc = bb_param.param.oredered_locs[0];
+        auto& loc = bb_param.param.ordered_locs[0];
 
         mlir::Attribute at_entry = bb_param.live_at_entry ? CreateLowLoc(loc) : nullptr;
         mlir::Attribute at_exit  = bb_param.live_at_exit ? CreateLowLoc(loc) : nullptr;

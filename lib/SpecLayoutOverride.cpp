@@ -49,8 +49,8 @@ namespace irene3
         bool IsStackVariable(const anvill::ParameterDecl& var) {
             auto stack_pointer_reg
                 = spec.Arch()->RegisterByName(spec.Arch()->StackPointerRegisterName());
-            return var.oredered_locs.size() == 1
-                   && var.oredered_locs[0].mem_reg == stack_pointer_reg;
+            return var.ordered_locs.size() == 1
+                   && var.ordered_locs[0].mem_reg == stack_pointer_reg;
         }
 
         Impl(
@@ -202,9 +202,9 @@ namespace irene3
                 auto& var = available_vars[i];
                 // we should do a better job of baking this assumption into the type...
                 // we only allow memory to be contigous
-                if (var.oredered_locs.size() == 1
-                    && var.oredered_locs[0].mem_reg == stack_pointer_reg) {
-                    auto offset = stk.StackOffsetFromStackPointer(var.oredered_locs[0].mem_offset);
+                if (var.ordered_locs.size() == 1
+                    && var.ordered_locs[0].mem_reg == stack_pointer_reg) {
+                    auto offset = stk.StackOffsetFromStackPointer(var.ordered_locs[0].mem_offset);
                     // A declared local *must* be contained in the stack
                     CHECK(offset.has_value());
                     stack_vars.push_back({ arg, *offset });
@@ -285,7 +285,7 @@ namespace irene3
             auto used_stack_local = std::any_of(
                 available_vars.begin(), available_vars.end(),
                 [&func, &block_ctx, sp](const anvill::ParameterDecl& bbvar) {
-                    return bbvar.oredered_locs.size() == 1 && bbvar.oredered_locs[0].mem_reg == sp
+                    return bbvar.ordered_locs.size() == 1 && bbvar.ordered_locs[0].mem_reg == sp
                            && block_ctx.ProvidePointerFromFunctionArgs(&func, bbvar)->getNumUses()
                                   != 0;
                 });

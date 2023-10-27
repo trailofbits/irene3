@@ -74,8 +74,8 @@ namespace irene3
     std::optional< std::int64_t > GetDepthForBlockEntry(
         const remill::Register* stack_reg, const anvill::BasicBlockContext& bbcont) {
         for (const auto& c : bbcont.GetStackOffsetsAtEntry().affine_equalities) {
-            if (c.target_value.oredered_locs.size() == 1 && c.target_value.oredered_locs[0].reg
-                && c.target_value.oredered_locs[0].reg == stack_reg) {
+            if (c.target_value.ordered_locs.size() == 1 && c.target_value.ordered_locs[0].reg
+                && c.target_value.ordered_locs[0].reg == stack_reg) {
                 return c.stack_offset;
             }
         }
@@ -125,15 +125,15 @@ namespace irene3
     int64_t GetStackOffset(const remill::Arch& arch, const anvill::SpecStackOffsets& stack_offs) {
         auto sp_reg = arch.RegisterByName(arch.StackPointerRegisterName());
         for (auto& eq : stack_offs.affine_equalities) {
-            if (eq.target_value.oredered_locs.size() != 1) {
+            if (eq.target_value.ordered_locs.size() != 1) {
                 continue;
             }
 
-            if (eq.target_value.oredered_locs[0].mem_reg) {
+            if (eq.target_value.ordered_locs[0].mem_reg) {
                 continue;
             }
 
-            if (eq.target_value.oredered_locs[0].reg == sp_reg) {
+            if (eq.target_value.ordered_locs[0].reg == sp_reg) {
                 return eq.stack_offset;
             }
         }
