@@ -265,6 +265,13 @@ jobs:
           name: anvill-decompile
           path: ${{ steps.build_paths.outputs.REL_SOURCE }}/anvill/amp-challenge-bins/results/binaries/decompile/stats.json
 
+      - name: Upload anvill llvm stats
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: anvill-llvm
+          path: ${{ steps.build_paths.outputs.REL_SOURCE }}/anvill/amp-challenge-bins/results/binaries/decompile/decompile_stats.json
+
   test-csmith:
     runs-on:
       labels: gha-ubuntu-32
@@ -301,7 +308,7 @@ jobs:
           path: ./csmith_out
 
   build-metrics:
-    needs: test-anvill
+    needs: [test-anvill, test-csmith]
     runs-on: ubuntu-22.04
     if: always()
 
@@ -322,6 +329,12 @@ jobs:
           name: anvill-decompile
           path: anvill-decompile
 
+      - name: Download anvill llvm stats
+        uses: actions/download-artifact@v3
+        with:
+          name: anvill-llvm
+          path: anvill-llvm
+
       - name: Download irene3 csmith results
         uses: actions/download-artifact@v3
         with:
@@ -333,11 +346,12 @@ jobs:
           python scripts/build_metrics.py \
               --ghidra-stats anvill-ghidra/stats.json \
               --decompiler-stats anvill-decompile/stats.json \
+              --llvm-stats anvill-llvm/decompile_stats.json \
               --csmith-results irene3-csmith/ \
-              --output-metrics nightly-metrics.json
+              --output-metrics weekly-metrics.json
 
       - name: Upload metrics
         uses: actions/upload-artifact@v3
         with:
-          name: nightly-metrics
-          path: ./nightly-metrics.json
+          name: weekly-metrics
+          path: ./weekly-metrics.json

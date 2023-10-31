@@ -13,7 +13,7 @@ def count_dirs(path: Path):
     return count
 
 
-def build_metrics(ghidra_stats, decompiler_stats, csmith_results: Path):
+def build_metrics(ghidra_stats, decompiler_stats, llvm_stats, csmith_results: Path):
     ghidra_timeout = ghidra_stats.get("output.timeout", [])
     ghidra_zero_sized_output = ghidra_stats.get("output.zero-sized-output", [])
     ghidra_ignore_failure = ghidra_stats.get("outputignore_fail", [])
@@ -32,22 +32,20 @@ def build_metrics(ghidra_stats, decompiler_stats, csmith_results: Path):
     csmith_invalid = count_dirs(csmith_results / "invalid")
 
     metrics = {}
+    metrics["challenge.ghidra.timeout"] = len(ghidra_timeout)
+    metrics["challenge.ghidra.zero-sized-output"] = len(ghidra_zero_sized_output)
+    metrics["challenge.ghidra.ignore-failure"] = len(ghidra_ignore_failure)
+    metrics["challenge.ghidra.ignore-success"] = len(ghidra_ignore_success)
+    metrics["challenge.ghidra.success"] = len(ghidra_success)
 
-    job_stats = {}
-    job_stats["challenge-ghidra-timeout"] = len(ghidra_timeout)
-    job_stats["challenge-ghidra-zero-sized-output"] = len(ghidra_zero_sized_output)
-    job_stats["challenge-ghidra-ignore-failure"] = len(ghidra_ignore_failure)
-    job_stats["challenge-ghidra-ignore-success"] = len(ghidra_ignore_success)
-    job_stats["challenge-ghidra-success"] = len(ghidra_success)
-
-    job_stats["challenge-decompiler-timeout"] = len(decompiler_timeout)
-    job_stats["challenge-decompiler-zero-sized-output"] = len(
+    metrics["challenge.decompiler.timeout"] = len(decompiler_timeout)
+    metrics["challenge.decompiler.zero-sized-output"] = len(
         decompiler_zero_sized_output
     )
-    job_stats["challenge-decompiler-ignore-failure"] = len(decompiler_ignore_failure)
-    job_stats["challenge-decompiler-ignore-success"] = len(decompiler_ignore_success)
+    metrics["challenge.decompiler.ignore-failure"] = len(decompiler_ignore_failure)
+    metrics["challenge.decompiler.ignore-success"] = len(decompiler_ignore_success)
 
-    job_stats["challenge-failure"] = (
+    metrics["challenge.failure"] = (
         len(ghidra_timeout)
         + len(ghidra_zero_sized_output)
         + len(ghidra_ignore_failure)
@@ -55,16 +53,15 @@ def build_metrics(ghidra_stats, decompiler_stats, csmith_results: Path):
         + len(decompiler_zero_sized_output)
         + len(decompiler_ignore_failure)
     )
-    job_stats["challenge-success"] = len(success)
+    metrics["challenge.success"] = len(success)
 
-    job_stats["csmith-success"] = csmith_success
-    job_stats["csmith-failure"] = csmith_failure
-    job_stats["csmith-invalid"] = csmith_invalid
+    for stat_name, stat_value in llvm_stats.items():
+        metric_name = f"challenge.llvm.{stat_name}"
+        metrics[metric_name] = stat_value
 
-    challenge_stats = {}
-
-    metrics["job-stats"] = job_stats
-    metrics["challenge-stats"] = challenge_stats
+    metrics["csmith.success"] = csmith_success
+    metrics["csmith.failure"] = csmith_failure
+    metrics["csmith.invalid"] = csmith_invalid
 
     return metrics
 
@@ -90,10 +87,12 @@ def main():
         required=True,
         type=Path,
     )
-
-    # TODO(alex): Enable these when we've added them to the metrics nightly workflow.
-    # parser.add_argument("--llvm-stats", help="", required=True, type=argparse.FileType("r"))
-
+    parser.add_argument(
+        "--llvm-stats",
+        help="The location of the decompilation `decompile_stats.json` file",
+        required=True,
+        type=argparse.FileType("r"),
+    )
     parser.add_argument(
         "--output-metrics",
         help="The location to write the output metrics JSON file",
@@ -105,8 +104,9 @@ def main():
 
     ghidra_stats = json.load(args.ghidra_stats)
     decompiler_stats = json.load(args.decompiler_stats)
+    llvm_stats = json.load(args.llvm_stats)
 
-    metrics = build_metrics(ghidra_stats, decompiler_stats, args.csmith_results)
+    metrics = build_metrics(ghidra_stats, decompiler_stats, llvm_stats, args.csmith_results)
 
     json.dump(metrics, args.output_metrics)
 
