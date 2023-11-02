@@ -146,7 +146,7 @@ object BasicBlockSplit {
       .filter(blk => Util.getOutgoingAddresses(func, blk).isEmpty)
       .flatMap(blk => {
         decomp_c.flatMap(decomp_c =>
-          getPrologueExitAddr(blk, computeDecompilationMappings(decomp_c, blk))
+          getEpilogueEntryAddr(blk, computeDecompilationMappings(decomp_c, blk))
         )
       })
     Msg.debug(this, s"Found epilogue entries for $func: $epilogue_entries")
