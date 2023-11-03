@@ -355,3 +355,33 @@ jobs:
         with:
           name: weekly-metrics
           path: ./weekly-metrics.json
+
+  publish-metrics:
+    needs: build-metrics
+    runs-on: ubuntu-22.04
+    if: always()
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: false
+
+      - name: Download weekly metrics
+        uses: actions/download-artifact@v3
+        with:
+          name: weekly-metrics
+          path: weekly-metrics
+
+      - name: Start Google Cloud SQL Proxy
+        uses: mattes/gce-cloudsql-proxy-action@v1
+        with:
+          creds: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          instance: data-warehouse-392820:us-central1:warehouse
+
+      - name: Publish metrics
+        run: |
+          pip install --upgrade pip
+          pip install "psycopg[binary]"
+          python scripts/upload_metrics.py \
+              --metrics weekly-metrics/weekly-metrics.json \
+              --connection postgresql://amp_write:${{ secrets.AMP_WRITE_PASSWORD }}@127.0.0.1/warehouse
