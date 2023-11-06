@@ -56,6 +56,7 @@ import ghidra.program.model.symbol.FlowType;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.util.ProgramLocation;
 import ghidra.util.Msg;
+import ghidra.util.Swing;
 import ghidra.util.SystemUtilities;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.filechooser.ExtensionFileFilter;
@@ -69,8 +70,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import javax.swing.ImageIcon;
-import javax.swing.JComponent;
+import javax.swing.*;
 import org.apache.commons.collections4.BidiMap;
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 import resources.Icons;
@@ -387,10 +387,11 @@ public class AnvillGraphProvider
       for (Patch patch : blkPatches) {
         blockVertices.add(new AnvillVertex(codeBlock, patch));
       }
-      // Make sure that blocks that correspond to the same Ghidra code block are in
-      // chronological
-      // order.
-      blockVertices.sort((lhs, rhs) -> lhs.getVertexAddress().compareTo(rhs.getVertexAddress()));
+      // Make sure that blocks that correspond to the same Ghidra code block
+      // are in chronological order. For zero-byte block insertion, the
+      // zero-byte block is always first
+      blockVertices.sort(Comparator.comparing(BasicBlockVertex::getSize));
+      blockVertices.sort(Comparator.comparing(BasicBlockVertex::getVertexAddress));
       vertices.put(codeBlock, blockVertices);
 
       long blockAddressCount = codeBlock.getNumAddresses();
@@ -403,11 +404,9 @@ public class AnvillGraphProvider
     for (List<BasicBlockVertex> startVertices : vertices.values()) {
       if (startVertices.size() > 1) {
         // If we have a prologue and/or epilogue, it's possible to have multiple
-        // vertices for the
-        // same Ghidra code block.
-        // These will all map to the same Ghidra code block, however we know that the
-        // flow type
-        // should be "fall-through".
+        // vertices for the same Ghidra code block.
+        // These will all map to the same Ghidra code block, however we know
+        // that the flow type should be "fall-through".
         for (int i = 0; i < startVertices.size() - 1; ++i) {
           BasicBlockVertex startVertex = startVertices.get(i);
           BasicBlockVertex destinationVertex = startVertices.get(i + 1);
@@ -539,7 +538,7 @@ public class AnvillGraphProvider
     }
   }
 
-  public class AddToPatchSliceAction extends AnvillGraphAction {
+  public static class AddToPatchSliceAction extends AnvillGraphAction {
     private final AnvillSlices saveList;
 
     public AddToPatchSliceAction(AnvillGraphPlugin plugin) {
@@ -552,6 +551,102 @@ public class AnvillGraphProvider
     @Override
     public void runInAction(TaskMonitor monitor, ActionContext actionContext) {
       addSliceToSaveList(actionContext, this.saveList);
+    }
+  }
+
+  public enum AddZeroByteBlockDirection {
+    AFTER,
+    BEFORE
+  }
+
+  public void addZeroByteBlock(ActionContext actionContext, AddZeroByteBlockDirection direction) {
+    if (actionContext instanceof ProgramLocationActionContext context) {
+      var listing = this.getProgram().getListing();
+      Address addr;
+      // Check direction of insertion
+      switch (direction) {
+        case BEFORE -> {
+          addr = context.getSelection().getMinAddress();
+          if (addr == null) {
+            addr = context.getAddress();
+          }
+          var insn = listing.getInstructionAt(addr);
+          if (insn == null || listing.getFunctionContaining(insn.getAddress()) == null) {
+            Msg.showError(
+                this,
+                null,
+                "Address outside function",
+                "Cannot add zero byte block outside of function body");
+            return;
+          }
+          addr = insn.getAddress();
+        }
+        case AFTER -> {
+          addr = context.getSelection().getMaxAddress();
+          if (addr == null) {
+            addr = context.getAddress();
+          }
+          var afterInsn = listing.getInstructionAfter(addr);
+          if (afterInsn == null || listing.getFunctionContaining(afterInsn.getAddress()) == null) {
+            Msg.showError(
+                this,
+                null,
+                "Address outside function",
+                "Cannot add zero byte block outside of function body");
+            return;
+          }
+          addr = afterInsn.getAddress();
+        }
+        default -> {
+          Msg.info(this, "Bad direction for adding zero-byte block: " + direction);
+          return;
+        }
+      }
+
+      this.plugin
+          .getFunctionSlices()
+          .insertZeroByteBlock(listing.getFunctionContaining(addr), addr);
+    } else {
+      Msg.info(
+          AnvillGraphProvider.class,
+          "Unknown action context for `addZeroByteBlock` action: " + actionContext);
+    }
+  }
+
+  public static class AddBlockBeforeAction extends AnvillGraphAction {
+    private final AnvillGraphProvider provider;
+
+    public AddBlockBeforeAction(AnvillGraphPlugin plugin, AnvillGraphProvider provider) {
+      super(plugin, "Add Patch Block Before");
+      var m = new MenuData(new String[] {"Add patch block before instruction(s)"}, "New");
+      m.setMenuSubGroup("1");
+      setPopupMenuData(m);
+      setDescription("Adds a zero-byte patch block before the currently selected instruction(s).");
+      this.provider = provider;
+    }
+
+    @Override
+    public void runInAction(TaskMonitor monitor, ActionContext actionContext) {
+      Swing.runIfSwingOrRunLater(
+          () -> provider.addZeroByteBlock(actionContext, AddZeroByteBlockDirection.BEFORE));
+    }
+  }
+
+  public static class AddBlockAfterAction extends AnvillGraphAction {
+    private final AnvillGraphProvider provider;
+
+    public AddBlockAfterAction(AnvillGraphPlugin plugin, AnvillGraphProvider provider) {
+      super(plugin, "Add Patch Block After");
+      var m = new MenuData(new String[] {"Add patch block after instruction(s)"}, "New");
+      m.setMenuSubGroup("2");
+      setPopupMenuData(m);
+      setDescription("Adds a zero-byte patch block after the currently selected instruction(s).");
+      this.provider = provider;
+    }
+
+    @Override
+    public void runInAction(TaskMonitor monitor, ActionContext actionContext) {
+      provider.addZeroByteBlock(actionContext, AddZeroByteBlockDirection.AFTER);
     }
   }
 
@@ -652,6 +747,21 @@ public class AnvillGraphProvider
     sliceActionDecomp.setEnabled(true);
     sliceActionCode.setEnabled(true);
 
+    var addBlockBeforeActionDecomp = new AddBlockBeforeAction(plugin, this);
+    var addBlockBeforeActionCode = new AddBlockBeforeAction(plugin, this);
+    var addBlockAfterActionDecomp = new AddBlockAfterAction(plugin, this);
+    var addBlockAfterActionCode = new AddBlockAfterAction(plugin, this);
+    tool.addLocalAction(tool.getComponentProvider("Decompiler"), addBlockBeforeActionDecomp);
+    tool.addLocalAction(
+        tool.getComponentProvider(PluginConstants.CODE_BROWSER), addBlockBeforeActionCode);
+    tool.addLocalAction(tool.getComponentProvider("Decompiler"), addBlockAfterActionDecomp);
+    tool.addLocalAction(
+        tool.getComponentProvider(PluginConstants.CODE_BROWSER), addBlockAfterActionCode);
+    addBlockBeforeActionDecomp.setEnabled(true);
+    addBlockBeforeActionCode.setEnabled(true);
+    addBlockAfterActionDecomp.setEnabled(true);
+    addBlockAfterActionCode.setEnabled(true);
+
     addLayoutAction();
   }
 
@@ -668,14 +778,17 @@ public class AnvillGraphProvider
     var id = currentProgram.startTransaction("Generating anvill patch");
     Specification spec;
     try {
-      var funcSplitAddrs = this.plugin.getFunctionSlices().getSlices(func);
+      var functionSlices = this.plugin.getFunctionSlices();
+      var funcSplitAddrs = functionSlices.getSlices(func);
       var sym_set = new scala.collection.immutable.HashSet<Symbol>();
       // TODO(frabert): This is pretty bad... but also I don't expect
       // tons of required globals
       for (var sym : anvillRequiredGlobals) {
         sym_set = (scala.collection.immutable.HashSet<Symbol>) sym_set.$plus(sym);
       }
-      spec = ProgramSpecifier.specifySingleFunctionWithSplits(func, funcSplitAddrs, sym_set);
+      spec =
+          ProgramSpecifier.specifySingleFunctionWithSplits(
+              func, funcSplitAddrs, sym_set, functionSlices.getZeroByteBlocks(func));
     } finally {
       currentProgram.endTransaction(id, true);
     }
@@ -826,42 +939,33 @@ public class AnvillGraphProvider
 
     updatePatchModel();
 
-    var matching_patch =
-        anvillPatchInfo.getPatches().stream()
-            .filter(
-                (Patch p) -> {
-                  var addr = currentProgram.getAddressFactory().getAddress(p.getAddress());
-                  var max_addr = addr.add(p.getSize());
-                  return p.getSize() > 0
-                      && new AddressRangeImpl(addr, max_addr.subtract(1))
-                          .contains(currentLocation.getAddress());
-                })
-            .findFirst();
-
-    if (matching_patch.isEmpty()) {
-      Msg.showError(
-          this,
-          view.getPrimaryGraphViewer(),
-          "No Patch for Location",
-          "Selected location is not in decompiled function.");
+    if (view.getSelectedVertices().isEmpty()) {
+      Msg.showInfo(
+          this, null, "Cannot export", "Please select at least one vertex to export a patch");
       return;
     }
 
-    var patch_to_save = matching_patch.get();
-    if (!patch_to_save.isModified()) {
-      Msg.showWarn(
-          this,
-          view.getPrimaryGraphViewer(),
-          "Selected Location was not Modified",
-          "No code modifications were made to the selected patch block.");
-      return;
-    }
+    view.getSelectedVertices()
+        .forEach(
+            basicBlockVertex -> {
+              // We know our graph is full of Anvill vertices
+              AnvillVertex av = (AnvillVertex) basicBlockVertex;
+              var patch_to_save = av.getPatch();
+              if (!patch_to_save.isModified()) {
+                Msg.showWarn(
+                    this,
+                    view.getPrimaryGraphViewer(),
+                    "Selected Location was not Modified",
+                    "No code modifications were made to the selected patch block.");
+                return;
+              }
 
-    String pinfo = patch_to_save.serializePatchInfo();
-    String code = patch_to_save.getCode();
+              String pinfo = patch_to_save.serializePatchInfo();
+              String code = patch_to_save.getCode();
 
-    this.saveContent(pinfo, JSON_FILE_FILTER);
-    this.saveContent(code, C_FILE_FILTER);
+              this.saveContent(pinfo, JSON_FILE_FILTER);
+              this.saveContent(code, C_FILE_FILTER);
+            });
   }
 
   /** Update patch models with potentially user-changed text in the graph vertices. */

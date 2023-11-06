@@ -4,6 +4,8 @@ import docking.ActionContext;
 import docking.WindowPosition;
 import docking.action.DockingAction;
 import docking.action.ToolBarData;
+import docking.widgets.OkDialog;
+import docking.widgets.OptionDialog;
 import docking.widgets.table.AbstractDynamicTableColumn;
 import docking.widgets.table.TableColumnDescriptor;
 import ghidra.app.context.ProgramActionContext;
@@ -69,8 +71,19 @@ public class AnvillSlicesProvider extends ComponentProviderAdapter {
   private void deleteSliceAction() {
     int[] rows = sliceTable.getSelectedRows();
     List<SliceRowObject> sliceObjects = model.getRowObjects(rows);
+    var functionSlices = this.plugin.getFunctionSlices();
     for (SliceRowObject slice : sliceObjects) {
-      this.plugin.getFunctionSlices().removeSlice(slice.getFunction(), slice.getAddress());
+      if (functionSlices.getZeroByteBlocks(slice.getFunction()).contains(slice.getAddress())) {
+        var confirmDialog =
+            new OkDialog(
+                "Attention!",
+                "This address is a zero-byte block. Are you sure you want to remove this split?",
+                OptionDialog.WARNING_MESSAGE);
+        tool.showDialog(confirmDialog);
+        if (confirmDialog.getResult() == OptionDialog.CANCEL_OPTION) return;
+      }
+
+      functionSlices.removeSlice(slice.getFunction(), slice.getAddress());
     }
     model.reload();
   }

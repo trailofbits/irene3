@@ -23,6 +23,7 @@ import ghidra.util.task.TaskMonitor
 import scala.collection.mutable.Map as MutableMap
 import scala.collection.mutable.Set as MutableSet
 import specification.specification.CodeBlock as CodeBlockSpec
+import specification.specification.BlockContext as BlockContextSpec
 
 import math.Ordering.Implicits.infixOrderingOps
 import scala.collection.immutable.SortedMap
@@ -156,6 +157,72 @@ object BasicBlockSplit {
       blkseq.iterator,
       func_split_addrs ++ prologue_exits ++ epilogue_entries
     )
+  }
+
+  /** Insert zero byte blocks at the specified addresses and fix up the other
+    * blocks
+    * @param blocks
+    *   Mapping of block UID to spec
+    * @param zero_byte_addrs
+    *   Insertion points of zero byte blocks
+    * @return
+    */
+  def insertZeroByteBlocks(
+      blocks: Map[Long, CodeBlockSpec],
+      blk_ctxts: Map[Long, BlockContextSpec],
+      zero_byte_addrs: Set[Long]
+  ): (Map[Long, CodeBlockSpec], Map[Long, BlockContextSpec]) = {
+    val newBlocks = MutableMap[Long, CodeBlockSpec]()
+    val newCtxts = MutableMap[Long, BlockContextSpec]()
+
+    // Loop over, insert new block and fix up the other blocks
+    blocks
+      .filter((_, blk) => zero_byte_addrs.contains(blk.address))
+      .foreach((_, blk) => {
+        // Create and add new zero byte block and context
+        val zeroByteBlock = CodeBlockSpec(
+          blk.address,
+          "zero_byte_insertion_" + blk.address,
+          blk.incomingBlocks,
+          List(blk.uid),
+          0,
+          blk.contextAssignments,
+          createNewUid()
+        )
+        newBlocks.addOne(zeroByteBlock.uid, zeroByteBlock)
+        val blk_ctx = blk_ctxts(blk.uid)
+        newCtxts.addOne(
+          zeroByteBlock.uid,
+          blk_ctx
+            .withSymvalsAtExit(blk_ctx.symvalsAtEntry)
+            .withLiveAtExits(blk_ctx.liveAtEntries)
+        )
+
+        // Fix the incoming blocks to point to new zero byte block
+        blk.incomingBlocks.foreach(uid => {
+          val incoming = newBlocks.getOrElse(uid, blocks(uid))
+          newBlocks.addOne(
+            uid,
+            incoming.withOutgoingBlocks(
+              incoming.outgoingBlocks
+                .filter(outUid => outUid != blk.uid) ++ List(zeroByteBlock.uid)
+            )
+          )
+        })
+
+        // Fix _this_ block's incoming block(s) to be just the zero byte block
+        val potentiallyUpdatedBlk =
+          newBlocks.getOrElse(blk.uid, blocks(blk.uid))
+        newBlocks.addOne(
+          potentiallyUpdatedBlk.uid,
+          potentiallyUpdatedBlk.withIncomingBlocks(
+            List(zeroByteBlock.uid)
+          )
+        )
+      })
+
+    // Merge the maps with new values overwriting old values
+    (blocks ++ newBlocks, blk_ctxts ++ newCtxts)
   }
 
   def getGhidraDecompilation(func: Function): Option[ClangTokenGroup] = {

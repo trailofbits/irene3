@@ -7,22 +7,44 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
 public class AnvillSlices {
-  private Map<Function, Set<Address>> slices = new ConcurrentHashMap<>();
-  private List<AnvillSliceListener> listeners = new ArrayList<>();
+  private final Map<Function, Set<Address>> slices = new ConcurrentHashMap<>();
+  private final Map<Function, Set<Address>> zeroByteBlocks = new ConcurrentHashMap<>();
+  private final List<AnvillSliceListener> listeners = new ArrayList<>();
+
+  public synchronized void insertZeroByteBlock(Function function, Address address) {
+    addSlice(function, address, false);
+    zeroByteBlocks.putIfAbsent(function, new HashSet<>());
+    zeroByteBlocks.get(function).add(address);
+    notifyListeners();
+  }
 
   public synchronized void addSlice(Function function, Address address) {
+    addSlice(function, address, true);
+  }
+
+  private synchronized void addSlice(Function function, Address address, boolean notify) {
     this.slices.putIfAbsent(function, new HashSet<>());
     var addressSet = this.slices.get(function);
     addressSet.add(address);
-    this.notifyListeners();
+    if (notify) this.notifyListeners();
   }
 
   public synchronized void removeSlice(Function function, Address address) {
-    var addressSet = this.slices.get(function);
-    addressSet.remove(address);
-    if (addressSet.isEmpty()) {
-      this.slices.remove(function);
+    ArrayList<Map<Function, Set<Address>>> lists = new ArrayList<>();
+    lists.add(slices);
+    lists.add(zeroByteBlocks);
+
+    // Remove from each list
+    for (Map<Function, Set<Address>> list : lists) {
+      var addressSet = list.get(function);
+      if (addressSet == null) return;
+
+      addressSet.remove(address);
+      if (addressSet.isEmpty()) {
+        list.remove(function);
+      }
     }
+
     this.notifyListeners();
   }
 
@@ -31,6 +53,13 @@ public class AnvillSlices {
   // updated via a lock.
   public synchronized Set<Address> getSlices(Function function) {
     return this.slices.get(function);
+  }
+
+  // Although this method is synchronized, access to the returned set isn't.
+  // This can only be used within an `AnvillGraphTask` where we protect the slices from being
+  // updated via a lock.
+  public synchronized Set<Address> getZeroByteBlocks(Function function) {
+    return this.zeroByteBlocks.get(function);
   }
 
   // This method performs the entire iteration within the method so it can be used without external

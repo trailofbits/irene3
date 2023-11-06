@@ -682,7 +682,8 @@ object ProgramSpecifier {
       defaultRetAddr: Option[ValueSpec],
       aliases: MutableMap[Long, TypeSpec],
       linkage: FunctionLinkage,
-      func_split_addrs: Set[Address]
+      func_split_addrs: Set[Address],
+      zero_byte_addrs: Set[Address]
   ): FuncSpec = {
 
     val params = func.getParameters().toSeq.map(x => specifyParam(x, aliases))
@@ -697,7 +698,7 @@ object ProgramSpecifier {
     val cdi = CallDepthChangeInfo(func, TaskMonitor.DUMMY)
     val max_depth = maxDepth(func, cdi)
     val bb_context_prod = BasicBlockContextProducer(func, cdi, max_depth, cfg)
-    val block_ctxts = cfg
+    var block_ctxts: Map[Long, BlockContextSpec] = cfg
       .map((uid, cb) => {
         (
           uid,
@@ -705,6 +706,16 @@ object ProgramSpecifier {
         )
       })
       .to(SortedMap)
+
+    if (zero_byte_addrs.nonEmpty) {
+      val cfg_n_block_ctxts = BasicBlockSplit.insertZeroByteBlocks(
+        cfg,
+        block_ctxts,
+        zero_byte_addrs.map(_.getOffset)
+      )
+      cfg = cfg_n_block_ctxts._1
+      block_ctxts = cfg_n_block_ctxts._2
+    }
 
     val ty_hints = computeTypeHints(func, aliases)
     val entry_addr =
@@ -1011,7 +1022,8 @@ object ProgramSpecifier {
       defaultRetAddr: Option[ValueSpec],
       aliases: MutableMap[Long, TypeSpec],
       as_decl: Boolean,
-      func_split_addrs: Set[Address]
+      func_split_addrs: Set[Address],
+      zero_byte_addrs: Set[Address]
   ): FuncSpec = {
     val linkage = (as_decl, func.isExternal()) match {
       case (_, true) => FunctionLinkage.FUNCTION_LINKAGE_EXTERNAL
@@ -1020,7 +1032,14 @@ object ProgramSpecifier {
       case _ => FunctionLinkage.FUNCTION_LINKAGE_NORMAL_UNSPECIFIED
     }
 
-    specifyFunction(func, defaultRetAddr, aliases, linkage, func_split_addrs)
+    specifyFunction(
+      func,
+      defaultRetAddr,
+      aliases,
+      linkage,
+      func_split_addrs,
+      zero_byte_addrs
+    )
   }
 
   def applyThunkRedirections(
@@ -1181,7 +1200,8 @@ object ProgramSpecifier {
       function_def_list: Seq[Function],
       function_decl_list: Seq[Function],
       function_split_addrs: Set[Address] = Set.empty,
-      required_globals: Set[Symbol] = Set.empty
+      required_globals: Set[Symbol] = Set.empty,
+      zero_byte_addrs: Set[Address] = Set.empty
   ): Specification = {
     val aliases = MutableMap[Long, TypeSpec]()
     val arch = getProgramArch(prog)
@@ -1212,7 +1232,8 @@ object ProgramSpecifier {
           defaultRetAddr,
           aliases,
           true,
-          function_split_addrs
+          function_split_addrs,
+          zero_byte_addrs
         )
       ) ++ func_defs_redirected.toSeq
       .sortBy(_.getEntryPoint)
@@ -1222,7 +1243,8 @@ object ProgramSpecifier {
           defaultRetAddr,
           aliases,
           false,
-          function_split_addrs
+          function_split_addrs,
+          zero_byte_addrs
         )
       )).toList.sortBy(_.entryAddress)
 
@@ -1341,13 +1363,14 @@ object ProgramSpecifier {
       func: Function,
       required_globals: Set[Symbol] = Set.empty
   ) = {
-    specifySingleFunctionWithSplits(func, null, required_globals)
+    specifySingleFunctionWithSplits(func, null, required_globals, null)
   }
 
   def specifySingleFunctionWithSplits(
       func: Function,
       func_split_addrs: ju.Set[Address],
-      required_globals: Set[Symbol] = Set.empty
+      required_globals: Set[Symbol],
+      zero_byte_addrs: ju.Set[Address]
   ) = {
     makeFunctionsPermissive(Seq(func))
     val decls = calledFunctions(func)
@@ -1357,7 +1380,9 @@ object ProgramSpecifier {
       decls.toSeq,
       if (func_split_addrs == null) Set.empty
       else func_split_addrs.asScala.toSet,
-      required_globals
+      if (required_globals == null) Set.empty else required_globals,
+      if (zero_byte_addrs == null) Set.empty
+      else zero_byte_addrs.asScala.toSet
     )
   }
 

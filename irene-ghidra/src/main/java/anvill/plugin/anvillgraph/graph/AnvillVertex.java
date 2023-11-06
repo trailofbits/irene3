@@ -40,6 +40,7 @@ import java.awt.KeyboardFocusManager;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.beans.PropertyChangeListener;
+import java.util.Objects;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
@@ -58,6 +59,7 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
   private final Address address;
   private final AddressSetView addressSetView;
   private final String name;
+  private final int size;
   private JPanel mainPanel = new JPanel(new BorderLayout());
   private final RSyntaxTextArea textArea;
   private final GenericHeader genericHeader;
@@ -76,6 +78,7 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
     program = block.getModel().getProgram();
     AddressFactory addressFactory = program.getAddressFactory();
     address = addressFactory.getAddress(patch.getAddress());
+    size = patch.getSize();
     Address maxAddress =
         addressFactory.getAddress(
             address.getAddressSpace().getSpaceID(),
@@ -287,6 +290,11 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
   }
 
   @Override
+  public int getSize() {
+    return size;
+  }
+
+  @Override
   public boolean containsAddress(Address address) {
     return addressSetView.contains(address);
   }
@@ -297,32 +305,15 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
   }
 
   @Override
-  public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((name == null) ? 0 : name.hashCode());
-    return result;
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    AnvillVertex that = (AnvillVertex) o;
+    return size == that.size && Objects.equals(name, that.name);
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    AnvillVertex other = (AnvillVertex) obj;
-    if (name == null) {
-      if (other.name != null) {
-        return false;
-      }
-    } else if (!name.equals(other.name)) {
-      return false;
-    }
-    return true;
+  public int hashCode() {
+    return Objects.hash(name, size);
   }
 }
