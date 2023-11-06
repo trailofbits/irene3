@@ -29,6 +29,8 @@ public interface BasicBlockVertex extends VisualVertex {
 
   public abstract Address getVertexAddress();
 
+  public abstract int getSize();
+
   public abstract boolean containsAddress(Address address);
 
   public abstract void setEditable(boolean editable);
