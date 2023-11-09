@@ -17,6 +17,7 @@
  */
 package anvill.plugin.anvillgraph;
 
+import anvill.SplitsManager;
 import anvill.plugin.anvillgraph.layout.AnvillGraphLayoutOptions;
 import anvill.plugin.anvillgraph.layout.AnvillGraphLayoutProvider;
 import anvill.plugin.anvillgraph.layout.jungrapht.JgtLayoutFactory;
@@ -26,12 +27,16 @@ import ghidra.app.decompiler.DecompilerHighlightService;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
 import ghidra.app.services.*;
+import ghidra.framework.model.DomainObjectChangedEvent;
+import ghidra.framework.model.DomainObjectListener;
 import ghidra.framework.options.Options;
 import ghidra.framework.options.ToolOptions;
 import ghidra.framework.plugintool.PluginInfo;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.program.model.listing.Program;
+import ghidra.program.util.ChangeManager;
+import ghidra.program.util.CodeUnitPropertyChangeRecord;
 import ghidra.program.util.ProgramLocation;
 import ghidra.util.HelpLocation;
 import ghidra.util.classfinder.ClassSearcher;
@@ -54,7 +59,7 @@ import resources.ResourceManager;
       DecompilerHighlightService.class,
       ProgramManager.class
     })
-public class AnvillGraphPlugin extends ProgramPlugin {
+public class AnvillGraphPlugin extends ProgramPlugin implements DomainObjectListener {
 
   public static final String GRAPH_NAME = "Anvill Graph";
 
@@ -68,7 +73,7 @@ public class AnvillGraphPlugin extends ProgramPlugin {
   private List<AnvillGraphLayoutProvider> layoutProviders;
   private BBGraphOptions bbGraphOptions = new BBGraphOptions();
   private AnvillSlicesProvider slicesProvider;
-  private AnvillSlices functionSlices = new AnvillSlices();
+
   private Optional<Thread> busy;
 
   public AnvillGraphPlugin(PluginTool tool) {
@@ -139,6 +144,7 @@ public class AnvillGraphPlugin extends ProgramPlugin {
     }
     connectedProvider.setProgram(program);
     slicesProvider.setProgram(program);
+    program.addListener(this);
   }
 
   @Override
@@ -146,6 +152,7 @@ public class AnvillGraphPlugin extends ProgramPlugin {
     if (connectedProvider == null) {
       return;
     }
+    program.removeListener(this);
     connectedProvider.setProgram(null);
     slicesProvider.setProgram(null);
   }
@@ -158,6 +165,7 @@ public class AnvillGraphPlugin extends ProgramPlugin {
     connectedProvider.setProgram(currentProgram);
     connectedProvider.setLocation(location);
     slicesProvider.setProgram(currentProgram);
+    slicesProvider.setLocation(location);
   }
 
   @Override
@@ -234,10 +242,6 @@ public class AnvillGraphPlugin extends ProgramPlugin {
     return bbGraphOptions;
   }
 
-  public AnvillSlices getFunctionSlices() {
-    return functionSlices;
-  }
-
   public synchronized boolean tryAcquire() {
     if (busy.isPresent()) {
       return false;
@@ -249,6 +253,25 @@ public class AnvillGraphPlugin extends ProgramPlugin {
   public synchronized void release() {
     if (busy.isPresent() && Thread.currentThread() == busy.get()) {
       busy = Optional.empty();
+    }
+  }
+
+  @Override
+  public void domainObjectChanged(DomainObjectChangedEvent domainObjectChangedEvent) {
+    if (domainObjectChangedEvent.containsEvent(ChangeManager.DOCR_CODE_UNIT_PROPERTY_CHANGED)) {
+      var iter = domainObjectChangedEvent.iterator();
+      while (iter.hasNext()) {
+        var n = iter.next();
+        if (n.getEventType() == ChangeManager.DOCR_CODE_UNIT_PROPERTY_CHANGED) {
+          var prop = (CodeUnitPropertyChangeRecord) n;
+          if (prop.getPropertyName().equals(SplitsManager.SPLITS_MAP())
+              || prop.getPropertyName().equals(SplitsManager.ZERO_BYTE_BLOCKS())) {
+            for (var list : this.slicesProvider.listeners()) {
+              list.onSliceUpdate();
+            }
+          }
+        }
+      }
     }
   }
 }

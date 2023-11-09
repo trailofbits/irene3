@@ -1199,10 +1199,14 @@ object ProgramSpecifier {
       prog: Program,
       function_def_list: Seq[Function],
       function_decl_list: Seq[Function],
-      function_split_addrs: Set[Address] = Set.empty,
+      function_split_addrs_in: Set[Address] = Set.empty,
       required_globals: Set[Symbol] = Set.empty,
       zero_byte_addrs: Set[Address] = Set.empty
   ): Specification = {
+    val function_split_addrs: Set[Address] =
+      if function_split_addrs_in.isEmpty then
+        SplitsManager(prog).getSplits().asScala.map(_._2).toSet
+      else function_split_addrs_in
     val aliases = MutableMap[Long, TypeSpec]()
     val arch = getProgramArch(prog)
     val os = getProgramOS(prog)
@@ -1363,7 +1367,13 @@ object ProgramSpecifier {
       func: Function,
       required_globals: Set[Symbol] = Set.empty
   ) = {
-    specifySingleFunctionWithSplits(func, null, required_globals, null)
+    val splits_man = SplitsManager(func.getProgram)
+    specifySingleFunctionWithSplits(
+      func,
+      splits_man.getSplitsForAddressJava(func.getEntryPoint),
+      required_globals,
+      splits_man.getZeroBlocksForAddressJava(func.getEntryPoint)
+    )
   }
 
   def specifySingleFunctionWithSplits(

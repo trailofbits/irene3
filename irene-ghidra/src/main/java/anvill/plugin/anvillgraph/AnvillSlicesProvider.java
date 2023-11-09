@@ -1,5 +1,6 @@
 package anvill.plugin.anvillgraph;
 
+import anvill.SplitsManager;
 import docking.ActionContext;
 import docking.WindowPosition;
 import docking.action.DockingAction;
@@ -17,13 +18,17 @@ import ghidra.framework.plugintool.ServiceProvider;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
+import ghidra.program.util.ProgramLocation;
 import ghidra.util.datastruct.Accumulator;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.table.AddressBasedTableModel;
 import ghidra.util.table.GhidraTable;
 import ghidra.util.table.GhidraThreadedTablePanel;
 import ghidra.util.task.TaskMonitor;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import javax.swing.*;
 import resources.Icons;
 import resources.ResourceManager;
@@ -33,12 +38,20 @@ public class AnvillSlicesProvider extends ComponentProviderAdapter {
   private AnvillGraphPlugin plugin;
   private GhidraTable sliceTable;
   private SliceTableModel model;
+
+  private Optional<SplitsManager> splits;
+
+  private final List<AnvillSliceListener> sliceListeners;
+
   private GhidraThreadedTablePanel<SliceRowObject> threadedTablePanel;
 
   AnvillSlicesProvider(PluginTool tool, AnvillGraphPlugin plugin, GoToService goToService) {
     super(tool, "Anvill Slices", plugin.getName(), ProgramActionContext.class);
     this.plugin = plugin;
+    this.splits = Optional.empty();
     this.model = new SliceTableModel(tool, plugin);
+    this.sliceListeners = new ArrayList<>();
+    this.sliceListeners.add(this.model);
     this.threadedTablePanel = new GhidraThreadedTablePanel<>(model);
     this.sliceTable = this.threadedTablePanel.getTable();
     this.sliceTable.installNavigation(goToService, goToService.getDefaultNavigatable());
@@ -59,9 +72,29 @@ public class AnvillSlicesProvider extends ComponentProviderAdapter {
     addToTool();
   }
 
+  public List<AnvillSliceListener> listeners() {
+    return this.sliceListeners;
+  }
+
+  public void setLocation(ProgramLocation loc) {
+    if (!Objects.isNull(this.model.getProgram())) {
+      var f = this.model.getProgram().getFunctionManager().getFunctionContaining(loc.getAddress());
+      if (Objects.isNull(f)) {
+        this.model.clearFunction();
+      } else {
+        this.model.setFunction(f);
+      }
+    }
+  }
+
   public void setProgram(Program program) {
     this.model.setProgram(program);
     this.model.reload();
+    if (Objects.isNull(program)) {
+      this.splits = Optional.empty();
+    } else {
+      this.splits = Optional.of(new SplitsManager(program));
+    }
   }
 
   public void dispose() {
@@ -71,21 +104,28 @@ public class AnvillSlicesProvider extends ComponentProviderAdapter {
   private void deleteSliceAction() {
     int[] rows = sliceTable.getSelectedRows();
     List<SliceRowObject> sliceObjects = model.getRowObjects(rows);
-    var functionSlices = this.plugin.getFunctionSlices();
-    for (SliceRowObject slice : sliceObjects) {
-      if (functionSlices.getZeroByteBlocks(slice.getFunction()).contains(slice.getAddress())) {
-        var confirmDialog =
-            new OkDialog(
-                "Attention!",
-                "This address is a zero-byte block. Are you sure you want to remove this split?",
-                OptionDialog.WARNING_MESSAGE);
-        tool.showDialog(confirmDialog);
-        if (confirmDialog.getResult() == OptionDialog.CANCEL_OPTION) return;
-      }
+    if (splits.isPresent()) {
+      for (SliceRowObject slice : sliceObjects) {
+        if (splits
+            .get()
+            .getZeroBlocksForAddress(slice.getFunction().getEntryPoint())
+            .contains(slice.getAddress())) {
+          var confirmDialog =
+              new OkDialog(
+                  "Attention!",
+                  "This address is a zero-byte block. Are you sure you want to remove this split?",
+                  OptionDialog.WARNING_MESSAGE);
+          tool.showDialog(confirmDialog);
+          if (confirmDialog.getResult() == OptionDialog.CANCEL_OPTION) return;
+        }
 
-      functionSlices.removeSlice(slice.getFunction(), slice.getAddress());
+        splits.get().removeSplitForAddress(slice.getFunction().getEntryPoint(), slice.getAddress());
+        splits
+            .get()
+            .removeZeroBlockForAddress(slice.getFunction().getEntryPoint(), slice.getAddress());
+      }
+      model.reload();
     }
-    model.reload();
   }
 
   @Override
@@ -94,34 +134,34 @@ public class AnvillSlicesProvider extends ComponentProviderAdapter {
   }
 
   class SliceTableModel extends AddressBasedTableModel<SliceRowObject>
-      implements AnvillSlices.AnvillSliceListener {
+      implements AnvillSliceListener {
     private AnvillGraphPlugin plugin;
+
+    private Optional<Function> target_func;
 
     SliceTableModel(PluginTool tool, AnvillGraphPlugin plugin) {
       super("Slices", tool, plugin.getCurrentProgram(), null);
       this.plugin = plugin;
-      this.plugin.getFunctionSlices().addListener(this);
+      this.target_func = Optional.empty();
     }
 
-    @Override
-    public void onSliceUpdate(AnvillSlices slices) {
+    public void clearFunction() {
+      this.target_func = Optional.empty();
+    }
+
+    public void setFunction(Function func) {
+      this.target_func = Optional.of(func);
       this.reload();
     }
 
     @Override
     protected void doLoad(Accumulator<SliceRowObject> accumulator, TaskMonitor taskMonitor)
         throws CancelledException {
-      this.plugin
-          .getFunctionSlices()
-          .forEachSlice(
-              (function, addresses) -> {
-                if (function.getProgram() != this.getProgram()) {
-                  return;
-                }
-                for (Address address : addresses) {
-                  accumulator.add(new SliceRowObject(function, address));
-                }
-              });
+      if (splits.isPresent() && target_func.isPresent()) {
+        for (var addr : splits.get().getSplitsForAddressJava(target_func.get().getEntryPoint())) {
+          accumulator.add(new SliceRowObject(this.target_func.get(), addr));
+        }
+      }
     }
 
     @Override
@@ -138,6 +178,11 @@ public class AnvillSlicesProvider extends ComponentProviderAdapter {
         return this.allData.get(row).getAddress();
       }
       return null;
+    }
+
+    @Override
+    public void onSliceUpdate() {
+      this.reload();
     }
 
     class FunctionNameTableColumn
