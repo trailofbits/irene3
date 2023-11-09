@@ -19,6 +19,7 @@ package anvill.plugin.anvillgraph;
 
 import anvill.CodegenGrpcClient;
 import anvill.ProgramSpecifier;
+import anvill.SplitsManager;
 import anvill.decompiler.DecompilerServerException;
 import anvill.decompiler.DecompilerServerManager;
 import anvill.decompiler.DockerDecompilerServerManager;
@@ -502,7 +503,7 @@ public class AnvillGraphProvider
     return decorationPanel;
   }
 
-  public static void addSliceToSaveList(ActionContext actionContext, AnvillSlices saveList) {
+  public static void addSliceToSaveList(ActionContext actionContext) {
     if (actionContext instanceof ProgramLocationActionContext context) {
       if (!context.hasSelection()) {
         return;
@@ -525,8 +526,12 @@ public class AnvillGraphProvider
       if (func == null || func != listing.getFunctionContaining(highlight.getMaxAddress())) {
         return;
       }
-      saveList.addSlice(func, minSplit);
-      saveList.addSlice(func, maxSplit);
+
+      var splits = new SplitsManager(context.getProgram());
+
+      splits.addSplitForAddress(func.getEntryPoint(), minSplit);
+      splits.addSplitForAddress(func.getEntryPoint(), maxSplit);
+
       Msg.debug(
           AnvillGraphProvider.class,
           "Added selection between "
@@ -539,18 +544,16 @@ public class AnvillGraphProvider
   }
 
   public static class AddToPatchSliceAction extends AnvillGraphAction {
-    private final AnvillSlices saveList;
 
     public AddToPatchSliceAction(AnvillGraphPlugin plugin) {
       super(plugin, "Add Patch To Slice");
-      this.saveList = this.plugin.getFunctionSlices();
       setPopupMenuData(new MenuData(new String[] {"Add selection to slice"}, "New"));
       setDescription("Adds selection to the working patch slice for this function");
     }
 
     @Override
     public void runInAction(TaskMonitor monitor, ActionContext actionContext) {
-      addSliceToSaveList(actionContext, this.saveList);
+      addSliceToSaveList(actionContext);
     }
   }
 
@@ -603,9 +606,8 @@ public class AnvillGraphProvider
         }
       }
 
-      this.plugin
-          .getFunctionSlices()
-          .insertZeroByteBlock(listing.getFunctionContaining(addr), addr);
+      new SplitsManager(this.currentProgram)
+          .insertZeroByteBlock(listing.getFunctionContaining(addr).getEntryPoint(), addr);
     } else {
       Msg.info(
           AnvillGraphProvider.class,
@@ -778,8 +780,10 @@ public class AnvillGraphProvider
     var id = currentProgram.startTransaction("Generating anvill patch");
     Specification spec;
     try {
-      var functionSlices = this.plugin.getFunctionSlices();
-      var funcSplitAddrs = functionSlices.getSlices(func);
+      var split_man = new SplitsManager(currentProgram);
+      var funcSplitAddrs = split_man.getSplitsForAddressJava(func.getEntryPoint());
+      var zeroByteAddrs = split_man.getZeroBlocksForAddressJava(func.getEntryPoint());
+
       var sym_set = new scala.collection.immutable.HashSet<Symbol>();
       // TODO(frabert): This is pretty bad... but also I don't expect
       // tons of required globals
@@ -788,7 +792,7 @@ public class AnvillGraphProvider
       }
       spec =
           ProgramSpecifier.specifySingleFunctionWithSplits(
-              func, funcSplitAddrs, sym_set, functionSlices.getZeroByteBlocks(func));
+              func, funcSplitAddrs, sym_set, zeroByteAddrs);
     } finally {
       currentProgram.endTransaction(id, true);
     }
