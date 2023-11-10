@@ -412,7 +412,7 @@ object ComputeNodeContext {
   }
 
   def func_to_cfg(gfunc: GFunction): CFG = {
-    CFG.from(
+    val init_cfg = CFG.from(
       IteratorHasAsScala(
         gfunc.getProgram.getListing.getInstructions(gfunc.getBody, true)
       ).asScala
@@ -420,6 +420,18 @@ object ComputeNodeContext {
         .flatMap(edges(gfunc))
         .toList
     )
+
+    val bod = gfunc.getBody
+    val reachable_from_entry: CfgNode => Boolean = Option(gfunc.getEntryPoint)
+      .flatMap(a => Option(gfunc.getProgram.getListing.getInstructionAt(a)))
+      .map(InstructionEntry)
+      .map(st_node => init_cfg.outerNodeTraverser(init_cfg.get(st_node)).toSet)
+      .map(s => e => s.contains(e))
+      .getOrElse(_ => true)
+
+    init_cfg.filter(nd => {
+      bod.contains(nd.getAddress) && reachable_from_entry(nd)
+    })
   }
 
   // specialized fixpoint that hides some graph internals. This interface is inspired by cwe_checker and bap graphlib.

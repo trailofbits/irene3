@@ -417,7 +417,7 @@ object ProgramSpecifier {
   }
 
   val returnAddressRegisterOverrides =
-    Map(("ARM", "lr"), ("AARCH64", "x30"), ("PowerPC", "lr"))
+    Map(("ARM", "lr"), ("AARCH64", "x30"), ("PowerPC", "lr"), ("Sparc", "o7"))
 
   def specifyDefaultReturnAddress(program: Program): Option[ValueSpec] = {
     val cspec = program.getCompilerSpec()
@@ -440,6 +440,8 @@ object ProgramSpecifier {
       val rvnode = raddr(0)
       return Some(specifySingleValue(program, rvnode))
     }
+
+    Msg.error(this, s"No return address location found for: $procstr")
 
     None
   }
@@ -862,6 +864,16 @@ object ProgramSpecifier {
     val references = inst.getReferencesFrom()
     val pcode = inst.getPcode().toSeq
 
+    val call_target_addr = references.headOption
+      .map(x => x.getToAddress())
+      .map(x => get_thunk_redirection(x))
+    val noreturn = call_target_addr
+      .flatMap(a => function_at_addr(a))
+      .map(f => f.hasNoReturn())
+      .getOrElse(false);
+    val call_target_offset = call_target_addr
+      .map(a => a.getOffset())
+
     if (flow.isJump()) {
       if (
         inst.getFlows().length == 1 && function_at_addr(
@@ -877,9 +889,8 @@ object ProgramSpecifier {
               else { None },
               /*isTailcall=*/ true,
               /*stop=*/ is_terminal,
-              /*targetAddress=*/ references.headOption
-                .map(x => x.getToAddress())
-                .map(x => get_thunk_redirection(x).getOffset())
+              /*noreturn*/ noreturn,
+              /*targetAddress=*/ call_target_offset
             )
           )
         )
@@ -915,24 +926,24 @@ object ProgramSpecifier {
               /*returnAddress=*/ Some(fallthrough_addr),
               /*isTailcall=*/ false,
               /*stop=*/ is_terminal,
-              /*targetAddress=*/ references.headOption
-                .map(x => x.getToAddress())
-                .map(x => get_thunk_redirection(x).getOffset())
+              /*noreturn*/ noreturn,
+              /*targetAddress=*/ call_target_offset
             )
           )
         );
 
       } else {
+        val noreturn = false;
+        // if there is no fallthrough and there is a call, treat as stop
         return Some(
           ControlFlowOverride.SCall(
             Call(
               addr,
               /*returnAddress=*/ None,
               /*isTailcall=*/ false,
-              /*stop=*/ is_terminal,
-              /*targetAddress=*/ references.headOption
-                .map(x => x.getToAddress())
-                .map(x => get_thunk_redirection(x).getOffset())
+              /*stop=*/ true,
+              /*noreturn=*/ noreturn,
+              /*targetAddress=*/ call_target_offset
             )
           )
         );
