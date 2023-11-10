@@ -49,7 +49,7 @@ class TestLiveness extends BaseProgramLoadTest {
       bb_cont.liveness(getBlockByAddr(cfg, target_addr.getOffset).get)
 
     assertEquals(
-      Set("R14", "RBX", "R13", "RSP", "R12", "R15", "RBP"),
+      Set("R14", "RBX", "R13", "RSP", "R12", "R15", "RBP", "RAX"),
       live_info.live_after
         .filter(p => p.reprVar.get.values(0).innerValue.isReg)
         .map(p => p.reprVar.get.values(0).innerValue.reg.get)

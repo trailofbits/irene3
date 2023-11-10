@@ -228,6 +228,7 @@ object BasicBlockSplit {
   def getGhidraDecompilation(func: Function): Option[ClangTokenGroup] = {
     // We use Ghidra's decompiler to detect prologue/epilogue blocks.
     // Decompile the function and get its C output ahead of time.
+    Msg.info(this, s"Decompiling ${func.getName()}")
     val decomp_options = new DecompileOptions()
     val decomp_ifc = new DecompInterface()
     decomp_ifc.setOptions(decomp_options)

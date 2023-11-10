@@ -150,8 +150,12 @@ class BasicBlockContextProducer(
   }
 
   val AllowedConstRegisterNames = Map(
-    "PowerPC:BE:64:VLE-32addr" -> Seq(("R13", true), ("R2", true)),
-    "PowerPC:BE:32:e200:VLE" -> Seq(("R13", true), ("R2", true))
+    "PowerPC:BE:64:VLE-32addr" -> Seq(("R13", true, None), ("R2", true, None)),
+    "PowerPC:BE:32:e200:VLE" -> Seq(("R13", true, None), ("R2", true, None)),
+    "sparc:BE:32:default" -> Seq(
+      ("DECOMPILE_MODE", false, Some(1)),
+      ("didrestore", false, Some(0))
+    )
   )
 
   def produceGlobalRegOverrides(block_addr: Address): Seq[ValueMapSpec] = {
@@ -162,31 +166,50 @@ class BasicBlockContextProducer(
         gfunc.getProgram().getLanguage().getLanguageID().getIdAsString(),
         Seq.empty
       )
-      .collect(scala.Function.unlift((rname, should_taint_by_pc) => {
-        val reg = gfunc.getProgram().getRegister(rname)
-        Option(ctxt.getRegisterValue(reg, block_addr)).flatMap(reg_val =>
-          if (reg_val.hasValue()) {
-            Some(
-              ValueMapSpec(
-                Some(registerToVariable(reg)),
-                Some(
-                  ValueDomain(
-                    ValueDomain.Inner
-                      .Constant(
-                        specification.specification.Constant(
-                          reg_val.getUnsignedValue().longValue(),
-                          should_taint_by_pc
+      .collect(
+        scala.Function.unlift((rname, should_taint_by_pc, default_val) => {
+          val reg = gfunc.getProgram().getRegister(rname)
+          Option(ctxt.getRegisterValue(reg, block_addr)).flatMap(reg_val =>
+            if (reg_val.hasValue()) {
+              Some(
+                ValueMapSpec(
+                  Some(registerToVariable(reg)),
+                  Some(
+                    ValueDomain(
+                      ValueDomain.Inner
+                        .Constant(
+                          specification.specification.Constant(
+                            reg_val.getUnsignedValue().longValue(),
+                            should_taint_by_pc
+                          )
                         )
-                      )
+                    )
                   )
                 )
               )
-            )
-          } else {
-            None
-          }
-        )
-      }))
+            } else if (default_val.isDefined) {
+              Some(
+                ValueMapSpec(
+                  Some(registerToVariable(reg)),
+                  Some(
+                    ValueDomain(
+                      ValueDomain.Inner
+                        .Constant(
+                          specification.specification.Constant(
+                            default_val.get,
+                            should_taint_by_pc
+                          )
+                        )
+                    )
+                  )
+                )
+              )
+            } else {
+              None
+            }
+          )
+        })
+      )
 
   }
 

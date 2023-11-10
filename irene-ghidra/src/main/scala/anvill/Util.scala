@@ -4,7 +4,9 @@ import ghidra.program.model.listing.Function
 import ghidra.program.model.block.BasicBlockModel
 import ghidra.util.task.TaskMonitor
 import ghidra.program.model.address.Address
-
+import scalax.collection.OuterEdge
+import scalax.collection.io.dot.*
+import implicits._
 import java.util as ju
 import scalax.collection.immutable.Graph
 import scalax.collection.edges.DiEdge
@@ -292,5 +294,26 @@ object Util {
         .map(v => v.values.flatMap(v => v.innerValue.reg))
         .getOrElse(Seq.empty)
     )
+  }
+
+  def renderCfg(cfg: ComputeNodeContext.CFG): String = {
+    val root = DotRootGraph(directed = true, id = Some("CFG"))
+
+    def edgeTransformer(
+        edge: ComputeNodeContext.CFG#InnerEdge
+    ): Option[(DotGraph, DotEdgeStmt)] = {
+      val eo = edge.outer
+      val label = eo.label
+      Some(
+        root,
+        DotEdgeStmt(
+          NodeId(eo.source.toString),
+          NodeId(eo.target.toString),
+          List(DotAttr(Id("label"), Id(label.toString)))
+        )
+      )
+    }
+
+    cfg.toDot(root, edgeTransformer)
   }
 }

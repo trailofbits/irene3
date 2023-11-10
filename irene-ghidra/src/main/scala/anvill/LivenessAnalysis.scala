@@ -25,7 +25,7 @@ import specification.specification.Variable as VarSpec
 import specification.specification.Parameter as ParamSpec
 import specification.specification.Value.InnerValue as ValueInner
 import ghidra.program.model.data.Structure
-import Util.registerToVariable
+import Util.{ProgramAnalysisUtilMixin, registerToVariable}
 
 import scala.collection.immutable.Set
 import scala.collection.Set as MutableSet
@@ -37,8 +37,8 @@ import ghidra.program.model.lang.Register
 import specification.specification.TypeSpec
 import ghidra.util.task.TaskMonitor
 import ghidra.util.Msg
-import anvill.Util.ProgramAnalysisUtilMixin
 import ghidra.program.model.block.BasicBlockModel
+import ghidra.program.model.symbol.FlowType
 
 case class BlockLiveness(
     val live_before: Set[ParamSpec],
@@ -76,6 +76,13 @@ class LivenessAnalysis(
     val blks: Map[Long, CodeBlockSpec]
 ) extends ProgramAnalysisUtilMixin
     with PcodeFixpoint[LivenessAnalysis.D] {
+
+  val unmodeled_calling_conventions: List[String] = List("SPARC")
+
+  val should_include_unaffected_list: Boolean = {
+    val procstr = func.getProgram.getLanguage.getProcessor.toString
+    !unmodeled_calling_conventions.exists(ov_id => procstr.contains(ov_id))
+  }
 
   val prog: Program = func.getProgram
   val lang = func.getProgram().getLanguage()
@@ -161,7 +168,7 @@ class LivenessAnalysis(
   }
 
   def kill_call_live(insn: Instruction, op: PcodeOp): Set[ParamSpec] = {
-    if (op.getOpcode() == PcodeOp.CALL) {
+    if (op.getOpcode() == PcodeOp.CALL || op.getOpcode == PcodeOp.CALLIND) {
       getUniqueCallee(insn)
         .flatMap(f => Option(f.getReturn()))
         .flatMap(r => Option(r.getRegisters()).map(r => r.asScala))
@@ -173,44 +180,47 @@ class LivenessAnalysis(
     }
   }
 
+  def live_call_set(insn: Instruction): Set[ParamSpec] =
+    getUniqueCallee(insn)
+      .map(f =>
+        getOverrideForInsn(insn) match
+          case Some(dsm) =>
+            val sig = dsm.getDataType.asInstanceOf[FunctionSignature]
+            val prog = f.getProgram()
+            val compiler_spec = prog.getCompilerSpec()
+            val proto = Option(
+              compiler_spec.getCallingConvention(sig.getCallingConventionName)
+            )
+              .getOrElse(compiler_spec.getDefaultCallingConvention())
+            val types = Array(sig.getReturnType()) ++ sig
+              .getArguments()
+              .map(param => param.getDataType())
+
+            val locs = proto.getStorageLocations(prog, types, false)
+            // first element is the return storage which we don't care about
+            val o = locs
+              .drop(1)
+              .toSeq
+              .flatMap(p =>
+                Option(p.getRegisters())
+                  .map(rs => rs.asScala)
+                  .getOrElse(Seq.empty)
+              )
+            Msg.info(this, "Overriden call " + insn + ": " + o)
+            o
+          case None =>
+            get_live_registers(f.getParameters().toSeq)
+      )
+      .getOrElse(Seq.empty)
+      .map(registerToParam)
+      .toSet
+
   def gen_call_live(insn: Instruction, op: PcodeOp): Set[ParamSpec] = {
-    if (op.getOpcode() == PcodeOp.CALL) {
+    if (op.getOpcode() == PcodeOp.CALL || op.getOpcode == PcodeOp.CALLIND) {
       // TODO(Ian): this assumes that we arent going to build up a stack parameter in a calling block
       // this requires handling stack extensions, which we dont handle... this could come up with something like int a; if (x<0) a= b else a = c; call(a)
       // A reasonable thing for a compile to do would be to either push b or c to the stack in each of those blocks.
-      getUniqueCallee(insn)
-        .map(f =>
-          getOverrideForInsn(insn) match
-            case Some(dsm) =>
-              val sig = dsm.getDataType.asInstanceOf[FunctionSignature]
-              val prog = f.getProgram()
-              val compiler_spec = prog.getCompilerSpec()
-              val proto = Option(
-                compiler_spec.getCallingConvention(sig.getCallingConventionName)
-              )
-                .getOrElse(compiler_spec.getDefaultCallingConvention())
-              val types = Array(sig.getReturnType()) ++ sig
-                .getArguments()
-                .map(param => param.getDataType())
-
-              val locs = proto.getStorageLocations(prog, types, false)
-              // first element is the return storage which we don't care about
-              val o = locs
-                .drop(1)
-                .toSeq
-                .flatMap(p =>
-                  Option(p.getRegisters())
-                    .map(rs => rs.asScala)
-                    .getOrElse(Seq.empty)
-                )
-              Msg.info(this, "Overriden call " + insn + ": " + o)
-              o
-            case None =>
-              get_live_registers(f.getParameters().toSeq)
-        )
-        .getOrElse(Seq.empty)
-        .map(registerToParam)
-        .toSet
+      live_call_set(insn)
     } else {
       Set.empty
     }
@@ -266,27 +276,40 @@ class LivenessAnalysis(
     (live_after -- kill(n, insn)) ++ gen(n, insn)
   }
 
-  def get_initial_after_liveness(): Set[ParamSpec] = {
-    // If a block can return then the saves need to be live at that point,
-    // + returns
-    // Returns no longer need to be considered live with tail calling representations
-    // Native returns already lift the return value
-    Option(
-      func
-        .getCallingConvention()
-    ).getOrElse(
-      func.getProgram().getCompilerSpec().getDefaultCallingConvention()
-    ).getUnaffectedList()
-      .filter(vnode => vnode.isRegister())
-      .map(r =>
-        registerToParam(
-          func
-            .getProgram()
-            .getLanguage()
-            .getRegister(r.getAddress(), r.getSize())
-        )
-      )
-      .toSet
+  def get_return_liveness(): Set[ParamSpec] = {
+    get_live_registers(Option(func.getReturn()).toSeq)
+      .map(registerToParam)
+  }
+  def get_initial_after_liveness(addr: Address): Set[ParamSpec] = {
+    val insn = prog.getListing.getInstructionAt(addr)
+    val flow = insn.getFlowType
+
+    if (flow.isCall && flow.isTerminal) {
+      live_call_set(insn)
+    } else {
+      // If a block can return then the saves need to be live at that point,
+      // + returns
+      // Returns no longer need to be considered live with tail calling representations
+      // Native returns already lift the return value
+      (if should_include_unaffected_list then
+         Option(
+           func
+             .getCallingConvention()
+         ).getOrElse(
+           func.getProgram().getCompilerSpec().getDefaultCallingConvention()
+         ).getUnaffectedList()
+           .filter(vnode => vnode.isRegister())
+           .map(r =>
+             registerToParam(
+               func
+                 .getProgram()
+                 .getLanguage()
+                 .getRegister(r.getAddress(), r.getSize())
+             )
+           )
+           .toSet
+       else Set()) ++ get_return_liveness()
+    }
   }
 
   def get_liveness_entrypoints(
@@ -295,7 +318,7 @@ class LivenessAnalysis(
     cfg.nodes
       .filter(_.outgoing.isEmpty)
       .map(x => {
-        (x.outer, get_initial_after_liveness())
+        (x.outer, get_initial_after_liveness(x.outer.getAddress))
       })
       .toMap
   }
@@ -425,7 +448,7 @@ class LivenessAnalysis(
       val live_on_exit: Set[ParamSpec] = exit_nodes
         .map(x => {
           if (x.diSuccessors.isEmpty)
-            get_initial_after_liveness()
+            get_initial_after_liveness(x.outer.getAddress)
           else
             x.diSuccessors
               .filter(y => !addr_in_blk(y.outer.getAddress))
