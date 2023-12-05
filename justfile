@@ -1,12 +1,12 @@
 set dotenv-load
 LLVM_VERSION := "17"
-CXX_COMMON_VERSION := "0.6.0"
+CXX_COMMON_VERSION := "0.6.4rc1"
 CXX_COMMON_ARCH := if "x86_64" == arch() { "amd64" } else { "arm64" }
 XCODE_VERSION := "15.0"
 CXX_COMMON_NAME := if "macos" == os() {
-      "vcpkg_macos-13_llvm-" + LLVM_VERSION + "_xcode-" + XCODE_VERSION + "_" + CXX_COMMON_ARCH
+      "vcpkg_macos-13_llvm-" + LLVM_VERSION + "-liftingbits-llvm_xcode-" + XCODE_VERSION + "_" + CXX_COMMON_ARCH
     } else {
-      "vcpkg_ubuntu-22.04_llvm-" + LLVM_VERSION + "_" + CXX_COMMON_ARCH
+      "vcpkg_ubuntu-22.04_llvm-" + LLVM_VERSION + "-liftingbits-llvm_" + CXX_COMMON_ARCH
     }
 CXX_COMMON_URL := "https://github.com/lifting-bits/cxx-common/releases/download/v" + CXX_COMMON_VERSION + "/" + CXX_COMMON_NAME + ".tar.xz"
 

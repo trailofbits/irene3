@@ -1,5 +1,7 @@
 #pragma once
 
+#include "anvill/Declarations.h"
+
 #include <anvill/Lifters.h>
 #include <anvill/Specification.h>
 #include <clang/AST/Decl.h>
@@ -133,6 +135,8 @@ namespace irene3
         std::string name;
         uint64_t address;
         size_t size;
+        anvill::MachineAddr binary_addr;
+        llvm::Type* ty;
     };
 
     struct FunctionInfo {

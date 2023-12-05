@@ -5,16 +5,21 @@ import java.security as js
 import java.util as ju
 import collection.JavaConverters.*
 import com.google.protobuf.ByteString
-import ghidra.program.model.data.DataType
-import ghidra.program.model.data.VoidDataType
-import ghidra.program.model.data.Undefined
-import ghidra.program.model.data.DefaultDataType
-import ghidra.program.model.data.AbstractIntegerDataType
-import ghidra.program.model.data.AbstractFloatDataType
-import ghidra.program.model.data.Pointer
-import ghidra.program.model.data.TypeDef
-import ghidra.program.model.data.Structure
-import ghidra.program.model.data.DataTypeComponent
+import ghidra.program.model.data.{
+  AbstractFloatDataType,
+  AbstractIntegerDataType,
+  AbstractStringDataType,
+  Composite,
+  DataType,
+  DataTypeComponent,
+  DefaultDataType,
+  GenericCallingConvention,
+  Pointer,
+  Structure,
+  TypeDef,
+  Undefined,
+  VoidDataType
+}
 import ghidra.program.model.listing.Function
 import ghidra.program.model.listing.Program
 import ghidra.program.model.listing.Parameter
@@ -24,42 +29,47 @@ import ghidra.program.model.symbol.Symbol
 import ghidra.program.model.symbol.SymbolType.GLOBAL_VAR
 import scalaz.*
 import Scalaz.*
-import specification.specification.FunctionLinkage
-import specification.specification.Function as FuncSpec
-import specification.specification.Memory as MemSpec
-import specification.specification.Parameter as ParamSpec
-import specification.specification.Value as ValueSpec
-import specification.specification.Variable as VariableSpec
-import specification.specification.BlockContext as BlockContextSpec
-import specification.specification.MemoryRange
-import specification.specification.Specification
-import specification.specification.Symbol as SymbolSpec
-import specification.specification.GlobalVariable
+import specification.specification.{
+  Arch,
+  Call,
+  Callable,
+  CallingConvention,
+  Callsite,
+  ControlFlowOverrides,
+  FunctionLinkage,
+  GlobalVariable,
+  Jump,
+  JumpTarget,
+  MemoryRange,
+  OS,
+  Other,
+  ProgramAddress,
+  Return,
+  ReturnStackPointer,
+  Specification,
+  StackEffects,
+  StackFrame,
+  TypeHint,
+  TypeSpec,
+  Variables,
+  BlockContext as BlockContextSpec,
+  CodeBlock as CodeBlockSpec,
+  Function as FuncSpec,
+  Memory as MemSpec,
+  Parameter as ParamSpec,
+  Register as RegSpec,
+  Symbol as SymbolSpec,
+  Value as ValueSpec,
+  Variable as VariableSpec
+}
 import specification.specification.Value.InnerValue
 import specification.specification.Value.InnerValue.Reg
 import specification.specification.Value.InnerValue.Mem
 import specification.specification.BaseType.*
-import specification.specification.TypeSpec
 import specification.specification.TypeSpec.Type
-import specification.specification.Register as RegSpec
-import specification.specification.ReturnStackPointer
-import specification.specification.ControlFlowOverrides
-import specification.specification.Jump
-import specification.specification.JumpTarget
-import specification.specification.Call
-import specification.specification.Return
-import specification.specification.Other
 import specification.specification.CallingConvention.*
-import specification.specification.OS
 import specification.specification.OS.*
-import specification.specification.Arch
 import specification.specification.Arch.*
-import specification.specification.CallingConvention
-import specification.specification.Callable
-import specification.specification.CodeBlock as CodeBlockSpec
-import specification.specification.StackEffects
-import specification.specification.Variables
-import ghidra.program.model.data.GenericCallingConvention
 import ghidra.program.model.lang.CompilerSpec
 import ghidra.program.model.block.BasicBlockModel
 import ghidra.program.model.block.CodeBlock
@@ -94,7 +104,7 @@ import ghidra.program.model.listing.ThunkFunction
 
 import java.util.ResourceBundle.Control
 import ghidra.program.model.lang.Register
-import ghidra.util.Msg
+import ghidra.util.{Msg, UniversalID}
 import ghidra.program.model.symbol.Symbol
 import ghidra.program.model.listing.Function
 import ghidra.program.model.pcode.DataTypeSymbol
@@ -106,12 +116,8 @@ import ghidra.program.model.pcode.FunctionPrototype
 import ghidra.program.model.pcode.HighVariable
 import ghidra.program.model.pcode.HighParam
 import ghidra.program.model.pcode.HighSymbol
-import specification.specification.Callsite
-import specification.specification.TypeHint
 
 import java.util.Objects
-import ghidra.program.model.data.AbstractStringDataType
-import specification.specification.StackFrame
 import ghidra.app.cmd.function.CallDepthChangeInfo
 import ghidra.util.task.TaskMonitor
 
@@ -204,7 +210,7 @@ object ProgramSpecifier {
       comp.left.foreach(getTypeSpec(_, aliases))
     }
 
-    parent_spec
+    TypeSpec(Type.Alias(repr_type.getUniversalID.getValue))
   }
 
   def getTypeSpec(
@@ -213,9 +219,12 @@ object ProgramSpecifier {
   ): Option[TypeSpec] = {
     Option(maybe_t)
       .flatMap(t =>
-        val t_id = Option(t.getUniversalID()).map(id => id.getValue())
+        val t_id = Option(t.getUniversalID).map(id => id.getValue)
+        // Even if we've built the type we want to refer to the type by name so we refer to the alias
+        // Named types are built once, we could really probably get rid of the alias map and only have a named type map
         val spec = t_id
-          .flatMap(id => aliases.get(id))
+          .flatMap(l => Option.when(aliases.contains(l))(l))
+          .flatMap(l => Some(TypeSpec(Type.Alias(l))))
           .orElse(
             t match
               case _: VoidDataType => Some(TypeSpec(Type.Base(BT_VOID)))
@@ -239,7 +248,11 @@ object ProgramSpecifier {
                   )
                 )
               }
-              case tdef: TypeDef => getTypeSpec(tdef.getBaseDataType(), aliases)
+              case tdef: TypeDef => {
+                val tdefspec = getTypeSpec(tdef.getBaseDataType(), aliases)
+                tdefspec.foreach(aliases.put(tdef.getUniversalID.getValue, _))
+                tdefspec
+              }
               case arr: ghidra.program.model.data.Array => {
                 val base = getTypeSpec(arr.getDataType(), aliases)
                 Some(
@@ -301,7 +314,7 @@ object ProgramSpecifier {
               }
               case _ => Some(TypeSpec(Type.Unknown(t.getLength())))
           )
-        pair(t_id, spec).foreach((id, s) => aliases.put(id, s))
+
         spec
       )
   }
@@ -761,7 +774,8 @@ object ProgramSpecifier {
         )
       ),
       getInScopeVars(func.getProgram(), block_ctxts).toSeq,
-      ty_hints
+      ty_hints,
+      Some(ProgramAddress(ProgramAddress.Inner.InternalAddress(entry_addr)))
     )
   }
 
@@ -1019,11 +1033,17 @@ object ProgramSpecifier {
     val listing = program.getListing()
     val addr = symbol.getAddress()
     Option(listing.getDataAt(addr))
+      .filter(_ => symbol.getSymbolType() != SymbolType.FUNCTION)
       .flatMap(data => Option(data.getDataType()))
       .map(datatype =>
         GlobalVariable(
           getTypeSpec(datatype, aliases),
-          addr.getOffset()
+          addr.getOffset(),
+          Some(
+            ProgramAddress(
+              ProgramAddress.Inner.InternalAddress(addr.getOffset())
+            )
+          )
         )
       )
   }
@@ -1238,7 +1258,7 @@ object ProgramSpecifier {
         prog,
         function_decl_list ++ required_funcs
       ) -- func_defs_redirected
-
+    Msg.info(this, "Func decls redirected: " + func_decls_redirected.toString)
     val func_specs = (func_decls_redirected.toSeq
       .sortBy(_.getEntryPoint)
       .map(
@@ -1295,6 +1315,14 @@ object ProgramSpecifier {
           specifyCallsite(insn, dsm, defaultRetAddr, aliases)
         )
 
+    val type_names = aliases.view
+      .flatMap((tid, _) => {
+        Option(prog.getDataTypeManager.findDataTypeForID(UniversalID(tid)))
+          .flatMap(dt => Option.when(dt.isInstanceOf[Composite])(dt))
+          .map(dt => (tid, dt.getName()))
+      })
+      .toMap
+
     Specification(
       arch,
       os,
@@ -1307,7 +1335,8 @@ object ProgramSpecifier {
       aliases.view.toMap,
       image_name,
       image_base,
-      required_globals.map(_.getName).toSeq
+      required_globals.map(_.getName).toSeq,
+      type_names
     )
   }
 
@@ -1379,6 +1408,7 @@ object ProgramSpecifier {
       required_globals: Set[Symbol] = Set.empty
   ) = {
     val splits_man = SplitsManager(func.getProgram)
+    Msg.info(this, "Required globals: " + required_globals.toString)
     specifySingleFunctionWithSplits(
       func,
       splits_man.getSplitsForAddressJava(func.getEntryPoint),

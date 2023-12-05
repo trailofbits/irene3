@@ -18,8 +18,10 @@ import ghidra.program.model.reloc.*;
 import ghidra.program.model.scalar.*;
 import ghidra.program.model.symbol.*;
 import ghidra.program.model.util.*;
+import ghidra.util.Msg;
 import java.io.FileOutputStream;
 import java.util.Arrays;
+import java.util.HashSet;
 import scalapb.json4s.JsonFormat;
 
 public class SpecifySingleFunction extends GhidraScript {
@@ -32,8 +34,22 @@ public class SpecifySingleFunction extends GhidraScript {
         this.currentProgram
             .getFunctionManager()
             .getFunctionContaining(currentLocation.getAddress());
-    var spec =
-        ProgramSpecifier.specifySingleFunction(func, new scala.collection.immutable.HashSet<>());
+    var res_string = askString("Additional Symbols", "", "");
+    var components = res_string.split(";");
+    Msg.info(this, "Split string " + Arrays.toString(components));
+    var compset = new HashSet<>(Arrays.asList(components));
+
+    scala.collection.mutable.HashSet<Symbol> s = new scala.collection.mutable.HashSet<>();
+    for (var sym : currentProgram.getSymbolTable().getAllSymbols(false)) {
+      if (compset.contains(sym.getName())) {
+        Msg.info(this, "Found sym " + sym.getName());
+        s.$plus$eq(sym);
+      }
+    }
+
+    Msg.info(this, "Set: " + s);
+
+    var spec = ProgramSpecifier.specifySingleFunction(func, s.toSet());
 
     var format =
         askChoice(

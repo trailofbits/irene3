@@ -1,5 +1,6 @@
 #pragma once
 
+#include <llvm/ADT/StringRef.h>
 #include <mlir/IR/Dialect.h>
 
 //

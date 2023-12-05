@@ -10,6 +10,7 @@ add_subdirectory("Decompile")
 add_subdirectory("Kleeable")
 add_subdirectory("EvalProduceLinkableModule")
 add_subdirectory("PatchIRCodegen")
+add_subdirectory("PatchCompiler")
 
 set(IRENE3_DECOMP
     "${IRENE3_DECOMP}"

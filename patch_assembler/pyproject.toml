@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "patch-assembler"
+version = "0.1.0"
+description = ""
+authors = ["2over12 <ian.smith@trailofbits.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+povsim = { git = "https://github.com/mechaphish/povsim", rev = "78c192c" }
+compilerex = { git = "https://github.com/mechaphish/compilerex", rev = "6d49822" }
+patcherex = { path = "./patcherex", develop = true }
+shellphish_qemu = { path = "./shellphish_qemu" }
+keystone-engine = "^0.9.2"
+
+[tool.poetry.group.dev.dependencies]
+ipython = "^8.17.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

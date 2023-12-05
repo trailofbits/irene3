@@ -1,5 +1,6 @@
 #pragma once
 
+#include <irene3/PatchIR/PatchIRAttrs.h>
 #include <irene3/PatchIR/PatchIRTypes.h>
 #include <mlir/Dialect/LLVMIR/LLVMTypes.h>
 #include <mlir/IR/BuiltinTypes.h>

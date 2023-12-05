@@ -14,8 +14,9 @@ def PatchIR_RegisterAttr : PatchIR_Attr<"Register", "register"> {
         Builtin_StringAttr:$reg,
         "uint64_t":$size_bits);
 
-    let assemblyFormat = [{ $reg `:` $size_bits }];
+    let assemblyFormat = [{$reg `size` $size_bits }];
 }
+
 
 def PatchIR_MemoryAttr : PatchIR_Attr<"Memory", "memory"> {
     let summary = "The location of a value that exists in memory";
@@ -23,10 +24,12 @@ def PatchIR_MemoryAttr : PatchIR_Attr<"Memory", "memory"> {
         The value exists at address `$addr` and is `$size_bits` wide
     }];
     let parameters = (ins
-        "int64_t":$addr,
+        "uint64_t":$addr,
+        "int64_t": $disp,
+        "bool":$is_external,
         "uint64_t":$size_bits);
 
-    let assemblyFormat = [{ `[` $addr `]` `:` $size_bits }];
+    let assemblyFormat = [{ `[` $is_external `:` $addr `+` $disp`]` `:` $size_bits }];
 }
 
 def PatchIR_MemoryIndirectAttr : PatchIR_Attr<"MemoryIndirect", "memory.indirect"> {

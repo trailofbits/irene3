@@ -1,7 +1,11 @@
+#include "anvill/Type.h"
+#include "irene3/PatchIR/PatchIRTypes.h"
+
 #include <anvill/Declarations.h>
 #include <anvill/Optimize.h>
 #include <anvill/Providers.h>
 #include <anvill/Specification.h>
+#include <anvill/Utils.h>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -12,17 +16,26 @@
 #include <irene3/PatchIR/PatchIRAttrs.h>
 #include <irene3/PatchIR/PatchIRDialect.h>
 #include <irene3/PatchIR/PatchIROps.h>
+#include <irene3/Transforms/RemoveProgramCounterAndMemory.h>
 #include <irene3/TypeDecoder.h>
 #include <irene3/Util.h>
 #include <irene3/Version.h>
+#include <llvm/IR/Function.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/PassManager.h>
+#include <llvm/Passes/OptimizationLevel.h>
+#include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Transforms/Utils/Cloning.h>
+#include <memory>
 #include <mlir/Dialect/DLTI/DLTI.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/IR/Attributes.h>
 #include <mlir/IR/Builders.h>
+#include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/BuiltinTypes.h>
 #include <mlir/IR/DialectRegistry.h>
@@ -30,10 +43,15 @@
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/IR/Verifier.h>
 #include <mlir/Target/LLVMIR/Import.h>
+#include <mlir/Target/LLVMIR/TypeFromLLVM.h>
+#include <optional>
 #include <remill/BC/Error.h>
 #include <remill/BC/Util.h>
+#include <stdexcept>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 
 DEFINE_string(spec, "", "input spec");
 DEFINE_string(mlir_out, "", "MLIR output file");
@@ -84,7 +102,9 @@ static void removeIntrinsics(llvm::Module& mod) {
                 continue;
             }
 
-            if (!llvm::isLifetimeIntrinsic(intrinsic->getIntrinsicID())) {
+            if (!llvm::isLifetimeIntrinsic(intrinsic->getIntrinsicID())
+                && intrinsic->getIntrinsicID()
+                       != llvm::Intrinsic::experimental_noalias_scope_decl) {
                 continue;
             }
             to_remove.push_back(intrinsic);
@@ -98,13 +118,16 @@ static void removeIntrinsics(llvm::Module& mod) {
 class MLIRCodegen {
     llvm::LLVMContext llvm_context;
     std::unordered_map< uint64_t, std::string > symbol_map;
-    std::unordered_map< uint64_t, std::vector< irene3::GlobalVarInfo > > gvars;
+    std::unordered_map< std::string, irene3::GlobalVarInfo > gvars;
 
     mlir::MLIRContext& mlir_context;
     anvill::Specification spec;
+    std::unique_ptr< llvm::Module > module;
+
     mlir::OwningOpRef< mlir::ModuleOp > mlir_module;
     mlir::LLVM::LLVMPointerType ptr_type;
     anvill::SpecBlockContexts block_contexts;
+    mlir::LLVM::TypeFromLLVMIRTranslator llvm_to_mlir_type;
 
     void NameEntity(llvm::Constant* v, const anvill::EntityLifter& lifter) {
         if (auto addr = lifter.AddressOfEntity(v)) {
@@ -155,19 +178,6 @@ class MLIRCodegen {
             llvm::Function* func;
             if (target_funcs.empty() || target_funcs.find(decl->address) != target_funcs.end()) {
                 func = lifter.LiftEntity(*decl);
-
-                for (auto var : irene3::UsedGlobalValue< llvm::GlobalVariable >(
-                         func, spec.GetRequiredGlobals())) {
-                    auto pc_metadata = irene3::GetPCMetadata(var);
-                    if (!pc_metadata) {
-                        continue;
-                    }
-                    auto v = spec.VariableAt(*pc_metadata);
-                    if (v) {
-                        size_t sz = v->type->getScalarSizeInBits();
-                        gvars[decl->address].push_back({ var->getName().str(), *pc_metadata, sz });
-                    }
-                }
             } else {
                 func = lifter.DeclareEntity(*decl);
             }
@@ -184,13 +194,64 @@ class MLIRCodegen {
         });
 
         anvill::OptimizeModule(lifter, *llvm_module, spec.GetBlockContexts(), spec);
+
+        auto cont = spec.GetBlockContexts();
+        irene3::RemoveProgramCounterAndMemory pass(cont);
+        llvm::PassBuilder pb;
+
+        llvm::ModulePassManager mpm;
+        llvm::ModuleAnalysisManager mam;
+        llvm::LoopAnalysisManager lam;
+        llvm::CGSCCAnalysisManager cam;
+        //  llvm::InlineParams params;
+        llvm::FunctionAnalysisManager fam;
+        pb.registerFunctionAnalyses(fam);
+        pb.registerCGSCCAnalyses(cam);
+        pb.registerLoopAnalyses(lam);
+        pb.registerModuleAnalyses(mam);
+        pb.crossRegisterProxies(lam, fam, cam, mam);
+
+        pass.run(*llvm_module, mam);
+        auto pipeline = pb.buildModuleOptimizationPipeline(
+            llvm::OptimizationLevel::O3, llvm::ThinOrFullLTOPhase::None);
+
+        pipeline.run(*llvm_module, mam);
+
+        // Manually clear the analyses to prevent ASAN failures in the destructors.
+        mam.clear();
+        fam.clear();
+        cam.clear();
+        lam.clear();
+
         removeIntrinsics(*llvm_module);
+
+        for (auto& f : llvm_module->functions()) {
+            auto uid = anvill::GetBasicBlockUid(&f);
+            if (uid) {
+                for (auto var : irene3::UsedGlobalValue< llvm::GlobalVariable >(
+                         &f, spec.GetRequiredGlobals())) {
+                    auto pc_metadata = irene3::GetPCMetadata(var);
+                    if (!pc_metadata) {
+                        continue;
+                    }
+                    auto v = spec.VariableAt(*pc_metadata);
+                    if (v) {
+                        size_t sz = v->type->getScalarSizeInBits();
+                        gvars.insert({
+                            var->getName().str(),
+                            {var->getName().str(), *pc_metadata, sz, v->binary_addr,
+                                               var->getValueType()}
+                        });
+                    }
+                }
+            }
+        }
 
         return llvm_module;
     }
 
     anvill::Specification DecodeSpec(std::istream& spec_stream) {
-        auto maybe_spec = anvill::Specification::DecodeFromPB(llvm_context, spec_stream);
+        auto maybe_spec = anvill::Specification::DecodeFromPB(this->llvm_context, spec_stream);
         CHECK(maybe_spec.Succeeded()) << maybe_spec.TakeError();
         return maybe_spec.TakeValue();
     }
@@ -202,12 +263,13 @@ class MLIRCodegen {
     mlir::Attribute CreateLowLoc(const anvill::LowLoc& loc) {
         if (loc.reg) {
             return irene3::patchir::RegisterAttr::get(
-                &mlir_context, StringAttr(loc.reg->name), loc.Size());
+                &mlir_context, StringAttr(loc.reg->name), loc.Size() * 8);
         } else if (loc.mem_reg) {
             return irene3::patchir::MemoryIndirectAttr::get(
-                &mlir_context, StringAttr(loc.mem_reg->name), loc.mem_offset, loc.Size());
+                &mlir_context, StringAttr(loc.mem_reg->name), loc.mem_offset, loc.Size() * 8);
         } else {
-            return irene3::patchir::MemoryAttr::get(&mlir_context, loc.mem_offset, loc.Size());
+            return irene3::patchir::MemoryAttr::get(
+                &mlir_context, loc.mem_offset, 0, false, loc.Size() * 8);
         }
     }
 
@@ -229,72 +291,115 @@ class MLIRCodegen {
         mlir::Attribute at_exit  = bb_param.live_at_exit ? CreateLowLoc(loc) : nullptr;
 
         auto valueop = mlir_builder.create< irene3::patchir::ValueOp >(
-            unk_loc, ptr_type, StringAttr(bb_param.param.name), at_entry, at_exit);
+            unk_loc,
+            irene3::patchir::LowValuePointerType::get(
+                &this->mlir_context, this->llvm_to_mlir_type.translateType(bb_param.param.type)),
+            StringAttr(bb_param.param.name), at_entry, at_exit);
 
         param_locs.push_back(valueop);
     }
 
     auto CreateBlockFunc(
-        uint64_t func_addr,
+        anvill::Uid buid,
         const anvill::CodeBlock& block,
         const anvill::BasicBlockContext& block_ctx,
-        const std::vector< mlir::Value >& gvars,
-        mlir::Block& where) {
-        mlir::OpBuilder mlir_builder(&mlir_context);
-        auto unk_loc = mlir_builder.getUnknownLoc();
-        mlir_builder.setInsertionPointToEnd(&where);
+        mlir::Block& where,
+        const std::unordered_map< anvill::Uid, std::string >& repr_funcs) {
+        auto res = repr_funcs.find(buid);
+        if (res != repr_funcs.end()) {
+            mlir::OpBuilder mlir_builder(&mlir_context);
+            auto unk_loc = mlir_builder.getUnknownLoc();
+            mlir_builder.setInsertionPointToEnd(&where);
 
-        auto stack_entry = irene3::GetStackOffset(*spec.Arch(), block_ctx.GetStackOffsetsAtEntry());
-        auto stack_exit  = irene3::GetStackOffset(*spec.Arch(), block_ctx.GetStackOffsetsAtExit());
-        auto regionop    = mlir_builder.create< irene3::patchir::RegionOp >(
-            unk_loc, block.addr, block.size, stack_entry, stack_exit);
-        auto& region_body = regionop.getBody().emplaceBlock();
+            auto stack_entry
+                = irene3::GetStackOffset(*spec.Arch(), block_ctx.GetStackOffsetsAtEntry());
+            auto stack_exit
+                = irene3::GetStackOffset(*spec.Arch(), block_ctx.GetStackOffsetsAtExit());
+            auto regionop = mlir_builder.create< irene3::patchir::RegionOp >(
+                unk_loc, block.addr, buid.value, block.size, stack_entry, stack_exit);
+            auto& region_body = regionop.getBody().emplaceBlock();
 
-        std::vector< mlir::Value > param_locs;
-        for (auto& bb_param : block_ctx.LiveParamsAtEntryAndExit()) {
-            CreateParam(bb_param, param_locs, region_body);
+            std::vector< mlir::Value > param_locs;
+            for (auto& bb_param : block_ctx.LiveParamsAtEntryAndExit()) {
+                CreateParam(bb_param, param_locs, region_body);
+            }
+
+            mlir_builder.setInsertionPointToEnd(&region_body);
+            mlir_builder.create< irene3::patchir::CallOp >(
+                unk_loc, SymbolRefAttr(res->second), param_locs);
         }
-
-        // Put the globals as the last passed arguments
-        std::copy(gvars.begin(), gvars.end(), std::back_inserter(param_locs));
-
-        std::stringstream llvm_func_name;
-        llvm_func_name << "func" << func_addr << "basic_block" << block.addr;
-
-        mlir_builder.setInsertionPointToEnd(&region_body);
-        mlir_builder.create< irene3::patchir::CallOp >(
-            unk_loc, SymbolRefAttr(llvm_func_name.str()), param_locs);
     }
 
   public:
     MLIRCodegen(mlir::MLIRContext& mlir_context, std::istream& spec_stream)
         : mlir_context(mlir_context)
         , spec(DecodeSpec(spec_stream))
-        , mlir_module(mlir::translateLLVMIRToModule(LiftSpec(), &mlir_context))
-        , ptr_type(mlir::LLVM::LLVMPointerType::get(&mlir_context))
-        , block_contexts(spec.GetBlockContexts()) {
-        spec.ForEachFunction([this](auto fdecl) {
+        , module(LiftSpec())
+        , block_contexts(spec.GetBlockContexts())
+        , llvm_to_mlir_type(mlir_context) {
+        auto tmp_mod = llvm::CloneModule(*module);
+        removeIntrinsics(*tmp_mod);
+        mlir_module = mlir::translateLLVMIRToModule(std::move(tmp_mod), &mlir_context);
+        if (!mlir_module) {
+            throw std::runtime_error("failed to represent LLVM in mlir");
+        }
+        this->ptr_type = mlir::LLVM::LLVMPointerType::get(&mlir_context);
+        mlir_module->getOperation()->setAttr(
+            mlir::LLVM::LLVMDialect::getDataLayoutAttrName(),
+            StringAttr(spec.Arch()->DataLayout().getStringRepresentation()));
+        mlir_module->getOperation()->setAttr(
+            mlir::LLVM::LLVMDialect::getTargetTripleAttrName(),
+            StringAttr(spec.Arch()->Triple().str()));
+
+        for (const auto& [nm, gv] : this->gvars) {
             mlir::OpBuilder mlir_builder(&this->mlir_context);
             auto unk_loc = mlir_builder.getUnknownLoc();
 
             mlir_builder.setInsertionPointToEnd(mlir_module->getBody());
+            mlir_builder.create< irene3::patchir::Global >(
+                unk_loc, mlir::StringAttr::get(&mlir_context, nm), mlir::StringAttr(),
+                irene3::patchir::MemoryAttr::get(&mlir_context, gv.address, 0, false, gv.size),
+                this->llvm_to_mlir_type.translateType(gv.ty));
+        }
+        auto addr_ty = mlir::IntegerType::get(
+            &mlir_context, spec.Arch()->address_size, mlir::IntegerType::Unsigned);
+        auto img_base = this->spec.ImageBase();
+        mlir_module->getOperation()->setAttr(
+            irene3::patchir::PatchIRDialect::getImageBaseAttrName(),
+            mlir::IntegerAttr::get(addr_ty, img_base));
+
+        spec.ForEachFunction([this](auto fdecl) {
+            mlir::OpBuilder mlir_builder(&this->mlir_context);
+            auto unk_loc = mlir_builder.getUnknownLoc();
+
+            auto flat = irene3::BinaryAddrToFlat(fdecl->binary_addr);
+
+            mlir_builder.setInsertionPointToEnd(mlir_module->getBody());
+            auto i64 = mlir::IntegerType::get(&this->mlir_context, 64, mlir::IntegerType::Signed);
+            auto u64 = mlir::IntegerType::get(&this->mlir_context, 64, mlir::IntegerType::Unsigned);
             auto funcop = mlir_builder.create< irene3::patchir::FunctionOp >(
-                unk_loc, fdecl->address, StringAttr(symbol_map[fdecl->address]));
+                unk_loc, mlir::IntegerAttr::get(u64, flat.addr),
+                mlir::IntegerAttr::get(i64, flat.disp),
+                mlir::BoolAttr::get(&this->mlir_context, flat.is_external),
+                StringAttr(symbol_map[fdecl->address]));
             auto& func_body = funcop.getBody().emplaceBlock();
             mlir_builder.setInsertionPointToEnd(&func_body);
-            std::vector< mlir::Value > gvar_values;
-            for (auto& gvar : gvars[fdecl->address]) {
-                auto global_loc = irene3::patchir::MemoryAttr::get(
-                    &this->mlir_context, gvar.address, gvar.size);
-                gvar_values.push_back(mlir_builder.create< irene3::patchir::ValueOp >(
-                    unk_loc, ptr_type, StringAttr(gvar.name), global_loc, global_loc));
+
+            std::unordered_map< anvill::Uid, std::string > repr_funcs;
+            for (llvm::Function& f : module->functions()) {
+                auto addr = anvill::GetBasicBlockUid(&f);
+                if (addr) {
+                    repr_funcs.insert({ *addr, f.getName().str() });
+                }
             }
 
             for (auto& [uid, block] : fdecl->cfg) {
                 const anvill::BasicBlockContext& block_ctx
                     = block_contexts.GetBasicBlockContextForUid(uid).value();
-                CreateBlockFunc(fdecl->address, block, block_ctx, gvar_values, func_body);
+
+                CreateBlockFunc(uid, block, block_ctx, func_body, repr_funcs);
             }
+
             return true;
         });
         CHECK(mlir_module->verify().succeeded());
@@ -331,7 +436,7 @@ int main(int argc, char* argv[]) {
     std::ifstream spec_stream(FLAGS_spec);
     MLIRCodegen codegen(mlir_context, spec_stream);
     auto mlir_module = codegen.GetMLIRModule();
-
+    CHECK(mlir_module->verify().succeeded());
     if (FLAGS_mlir_out.empty()) {
         mlir_module->print(llvm::outs());
     } else {
