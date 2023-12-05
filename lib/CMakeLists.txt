@@ -16,6 +16,8 @@ set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/Version.cpp")
 set(GIT_WORKING_DIR "${PROJECT_SOURCE_DIR}")
 include("${PROJECT_SOURCE_DIR}/cmake/git_watcher.cmake")
 
+add_subdirectory(PatchIR)
+
 set(include_dir "${PROJECT_SOURCE_DIR}/include")
 
 set(VERSION_HEADERS "${include_dir}/${PROJECT_NAME}/Version.h")
@@ -32,6 +34,12 @@ set(irene3_SOURCES
   SpecLayoutOverride.cpp
   TypeDecoder.cpp
   UnsafeSpecLayoutOverride.cpp
+  PatchCompiler.cpp
+  PhysicalLocationDecoder.cpp
+  LowLocCCBuilder.cpp
+  Transforms/RemoveProgramCounterAndMemory.cpp
+  Transforms/WrapFunctionWithMachineWrapper.cpp
+  Transforms/ReplaceRelReferences.cpp
 )
 
 add_library("${PROJECT_NAME}" STATIC ${irene3_PUBLIC_HEADERS} ${irene3_SOURCES})
@@ -40,8 +48,10 @@ set_target_properties(
   "${PROJECT_NAME}" PROPERTIES PUBLIC_HEADER "${irene3_PUBLIC_HEADERS}" LINKER_LANGUAGE CXX
 )
 
+llvm_map_components_to_libnames(llvm_libs AllTargetsCodeGens)
+
 # link version information
-target_link_libraries("${PROJECT_NAME}" PUBLIC glog::glog "${llvm_libs}" gflags rellic anvill)
+target_link_libraries("${PROJECT_NAME}" PUBLIC glog::glog "${llvm_libs}" gflags rellic anvill PatchIR)
 
 target_include_directories(
   "${PROJECT_NAME}"
@@ -50,8 +60,6 @@ target_include_directories(
 )
 
 add_dependencies(irene3 check_git_irene3)
-
-add_subdirectory(PatchIR)
 
 if(IRENE3_ENABLE_INSTALL)
   include(GNUInstallDirs)

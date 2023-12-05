@@ -1,3 +1,6 @@
+#include "anvill/Declarations.h"
+#include "irene3/PatchIR/PatchIROps.h"
+
 #include <anvill/ABI.h>
 #include <filesystem>
 #include <iostream>
@@ -5,8 +8,10 @@
 #include <irene3/TypeDecoder.h>
 #include <irene3/Util.h>
 #include <llvm/IR/Attributes.h>
+#include <llvm/IR/GlobalValue.h>
 #include <llvm/Support/JSON.h>
 #include <llvm/Support/MemoryBuffer.h>
+#include <mlir/Support/LLVM.h>
 #include <rellic/Result.h>
 #include <remill/BC/Error.h>
 #include <remill/BC/Util.h>
@@ -14,6 +19,8 @@
 
 namespace irene3
 {
+
+    const std::string kSSAedBlockFunctionMetadata("ssaed_bbfunc");
 
     llvm::Function* GetOrCreateGotoInstrinsic(llvm::Module* mod, llvm::IntegerType* addr_ty) {
         auto fun = mod->getFunction(anvill::kAnvillGoto);
@@ -46,6 +53,15 @@ namespace irene3
         return SpecDecompilationJobBuilder::CreateDefaultBuilder(
             buff->getBuffer().str(), propagate_types, args_as_locals, unsafe_stack_locations,
             type_decoder);
+    }
+
+    void SetPCMetadata(llvm::GlobalObject* value, uint64_t pc) {
+        auto& context      = value->getContext();
+        auto& dl           = value->getParent()->getDataLayout();
+        auto* address_type = llvm::Type::getIntNTy(context, dl.getPointerSizeInBits(0));
+        auto* cam  = llvm::ConstantAsMetadata::get(llvm::ConstantInt::get(address_type, pc));
+        auto* node = llvm::MDNode::get(context, cam);
+        value->setMetadata("pc", node);
     }
 
     std::optional< uint64_t > GetPCMetadata(const llvm::Value* value) {
@@ -140,4 +156,58 @@ namespace irene3
         LOG(ERROR) << "Couldn't find stack pointer";
         return 0;
     }
+
+    LowLoc ConvertToVariant(mlir::Attribute attr) {
+        attr.dump();
+        if (irene3::patchir::MemoryAttr mem = mlir::dyn_cast< irene3::patchir::MemoryAttr >(attr)) {
+            return mem;
+        } else if (auto mem_ind = llvm::dyn_cast< irene3::patchir::MemoryIndirectAttr >(attr)) {
+            return mem_ind;
+        } else if (auto reg = mlir::dyn_cast< irene3::patchir::RegisterAttr >(attr)) {
+            return reg;
+        }
+
+        LOG(FATAL) << "Expected PatchIR_LowLocAttr";
+    }
+
+    CallOpInfo::CallOpInfo(irene3::patchir::CallOp op) {
+        auto reg                 = mlir::dyn_cast< irene3::patchir::RegionOp >(op->getParentOp());
+        this->entry_stack_offset = reg.getStackOffsetEntryBytesAttr().getInt();
+        this->exit_stack_offset  = reg.getStackOffsetExitBytesAttr().getInt();
+        for (auto op : op->getOperands()) {
+            if (auto val = mlir::dyn_cast< irene3::patchir::ValueOp >(op.getDefiningOp())) {
+                auto at_ent  = val.getAtEntry();
+                auto at_exit = val.getAtExit();
+                if (at_ent) {
+                    this->at_entry.push_back(ConvertToVariant(*at_ent));
+                }
+                if (at_exit) {
+                    this->at_exit.push_back(ConvertToVariant(*at_exit));
+                }
+            }
+        }
+    }
+
+    anvill::MachineAddr MachineAddrFromFlatValues(
+        uint64_t address, std::int64_t disp, bool is_external) {
+        if (is_external) {
+            return address;
+        }
+
+        return anvill::RelAddr{ address, disp };
+    }
+
+    FlatAddr BinaryAddrToFlat(const anvill::MachineAddr& addr) {
+        FlatAddr res;
+        if (std::holds_alternative< anvill::RelAddr >(addr)) {
+            auto rel        = std::get< anvill::RelAddr >(addr);
+            res.addr        = rel.vaddr;
+            res.disp        = rel.disp;
+            res.is_external = true;
+        } else if (std::holds_alternative< uint64_t >(addr)) {
+            res.addr = std::get< uint64_t >(addr);
+        }
+        return res;
+    }
+
 } // namespace irene3

@@ -16,10 +16,12 @@ def PatchIR_Dialect : Dialect {
     let extraClassDeclaration = [{
         void registerTypes();
         void registerAttrs();
+
+        static llvm::StringRef getImageBaseAttrName() { return "patchir.image_base"; }
     }];
 
     // Uncomment if adding custom types
-    // let useDefaultTypePrinterParser = 1;
+    let useDefaultTypePrinterParser = 1;
     let useDefaultAttributePrinterParser = 1;
 }
 

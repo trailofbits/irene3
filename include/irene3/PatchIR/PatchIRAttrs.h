@@ -8,5 +8,7 @@
 #include <mlir/IR/TypeSupport.h>
 #include <mlir/IR/Types.h>
 
+class Address {};
+
 #define GET_ATTRDEF_CLASSES
 #include <irene3/PatchIR/PatchIRAttrs.h.inc>

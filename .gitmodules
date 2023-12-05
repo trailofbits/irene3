@@ -7,3 +7,6 @@
 [submodule "vendor/rellic"]
 	path = vendor/rellic
 	url = https://github.com/lifting-bits/rellic.git
+[submodule "patch_assembler/patcherex"]
+	path = patch_assembler/patcherex
+	url = git@github.com:trail-of-forks/patcherex.git

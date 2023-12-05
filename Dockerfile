@@ -10,7 +10,7 @@ ENV TZ="America/New_York"
 RUN apt-get update && apt-get install -yq tzdata && \
     ln -fs /usr/share/zoneinfo/${TZ} /etc/localtime && \
     dpkg-reconfigure -f noninteractive tzdata && \
-    apt-get install -yq curl gpg sudo git tar xz-utils unzip lsb-release wget software-properties-common gnupg build-essential python3-venv && \
+    apt-get install -yq curl gpg sudo git tar xz-utils unzip lsb-release wget software-properties-common gnupg build-essential python3-venv python3-pip && \
     curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to "/usr/local/bin"
 
 ENV PATH=${LIBRARIES}/bin:/root/.cargo/bin:${PATH}
@@ -27,6 +27,9 @@ WORKDIR /app
 ENV CMAKE_INSTALL_PREFIX=${LIBRARIES}
 ENV VIRTUAL_ENV=${LIBRARIES}
 
+
+RUN pip install poetry
+
 RUN just install-prereqs && \
     rm -rf deps/cxx-common.tar.xz && \
     rm -rf deps/cmake.tar.gz && \
@@ -38,6 +41,9 @@ RUN git config --global user.email "root@localhost" && \
     git config --global user.name "root" && \
     just install-irene3
 
+WORKDIR /app/patch_assembler
+RUN poetry build
+
 FROM base as dist
 ARG LIBRARIES
 
@@ -45,6 +51,10 @@ ENV VIRTUAL_ENV=${LIBRARIES}
 
 VOLUME /workspace
 WORKDIR /workspace
-
+RUN mkdir -p /app
 COPY --from=build ${LIBRARIES} ${LIBRARIES}
-
+COPY --from=build /app/patch_assembler/dist/patch_assembler-*-py3-none-any.whl ./
+COPY --from=build /app/patch_assembler /app/patch_assembler
+RUN ls
+RUN ls /app/patch_assembler
+RUN pip install patch_assembler-*-py3-none-any.whl

@@ -1,12 +1,41 @@
+#pragma once
+
+#include <cstdint>
 #include <filesystem>
 #include <irene3/DecompileSpec.h>
+#include <irene3/PatchIR/PatchIRAttrs.h>
+#include <irene3/PatchIR/PatchIRDialect.h>
+#include <irene3/PatchIR/PatchIROps.h>
 #include <irene3/TypeDecoder.h>
 #include <llvm/IR/GlobalVariable.h>
 #include <unordered_set>
+#include <variant>
 #include <vector>
-
 namespace irene3
 {
+    template< class... Ts >
+    struct overload : Ts... {
+        using Ts::operator()...;
+    };
+
+    template< class... Ts >
+    overload(Ts...) -> overload< Ts... >;
+
+    extern const std::string kSSAedBlockFunctionMetadata;
+    using LowLoc = std::variant<
+        irene3::patchir::MemoryIndirectAttr,
+        irene3::patchir::RegisterAttr,
+        irene3::patchir::MemoryAttr >;
+    struct CallOpInfo {
+        std::vector< LowLoc > at_entry;
+        std::vector< LowLoc > at_exit;
+
+        std::int64_t entry_stack_offset;
+        std::int64_t exit_stack_offset;
+
+        explicit CallOpInfo(irene3::patchir::CallOp op);
+    };
+
     // Produces a default decompilation job builder from a path to an anvill spec.
     rellic::Result< SpecDecompilationJobBuilder, std::string > ProtobufPathToDecompilationBuilder(
         const std::filesystem::path& input_spec,
@@ -14,6 +43,8 @@ namespace irene3
         bool args_as_locals,
         bool unsafe_stack_locations,
         TypeDecoder& type_decoder);
+
+    void SetPCMetadata(llvm::GlobalObject* value, uint64_t pc);
 
     // Gets pc metadata repersented in irene3 by the "pc" metadata kind.
     std::optional< uint64_t > GetPCMetadata(const llvm::Value* value);
@@ -55,6 +86,8 @@ namespace irene3
         return { vars.begin(), vars.end() };
     }
 
+    LowLoc ConvertToVariant(mlir::Attribute attr);
+
     llvm::Function* GetOrCreateGotoInstrinsic(llvm::Module* mod, llvm::IntegerType* addr_ty);
 
     std::optional< std::int64_t > GetDepthForBlockEntry(
@@ -69,4 +102,15 @@ namespace irene3
     StackOffsets ComputeStackOffsets(
         const remill::Register* stack_reg, const anvill::FunctionDecl& decl, anvill::Uid uid);
     int64_t GetStackOffset(const remill::Arch& arch, const anvill::SpecStackOffsets& stack_offs);
+
+    struct FlatAddr {
+        uint64_t addr    = 0;
+        int64_t disp     = 0;
+        bool is_external = false;
+    };
+
+    FlatAddr BinaryAddrToFlat(const anvill::MachineAddr& addr);
+
+    anvill::MachineAddr MachineAddrFromFlatValues(
+        uint64_t address, std::int64_t disp, bool is_external);
 } // namespace irene3

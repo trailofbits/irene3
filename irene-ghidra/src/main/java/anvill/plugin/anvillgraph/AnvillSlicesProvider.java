@@ -77,6 +77,9 @@ public class AnvillSlicesProvider extends ComponentProviderAdapter {
   }
 
   public void setLocation(ProgramLocation loc) {
+    if (Objects.isNull(loc)) {
+      this.model.clearFunction();
+    }
     if (!Objects.isNull(this.model.getProgram())) {
       var f = this.model.getProgram().getFunctionManager().getFunctionContaining(loc.getAddress());
       if (Objects.isNull(f)) {
