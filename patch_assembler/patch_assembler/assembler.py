@@ -4,9 +4,11 @@ from patcherex.backends.detourbackend import DetourBackend
 from patcherex.patches import InsertCodePatch
 from IPython import embed
 import json
+import os
 import sys
 
 START_TOK = ".fnstart"
+END_TOK = ".Lfunc_end"
 
 
 # THUNK:
@@ -37,7 +39,7 @@ def main():
     prsr = argparse.ArgumentParser("patch assembly compiler")
     prsr.add_argument("--in_assembly", type=argparse.FileType('r'))
     prsr.add_argument("--metadata", type=argparse.FileType('r'))
-    prsr.add_argument("--trim_heuristics", action="store_true", default=False)
+    prsr.add_argument("--trim_heuristics", action="store_true", default=True)
     prsr.add_argument("target_binary")
     args = prsr.parse_args()
 
@@ -59,17 +61,16 @@ def main():
     asm: str = args.in_assembly.read()
 
     if args.trim_heuristics:
-        if START_TOK in asm:
-            st = asm.find(START_TOK)
-            asm = asm[st + len(START_TOK):]
-
-            buf = ""
-            for line in asm:
-                if line.startswith("."):
-                    break
-
-                buf += line
-            asm = buf
+        buf = ""
+        for line in asm.split(os.linesep):
+            if START_TOK in line:
+                st = asm.find(START_TOK)
+                asm = asm[st + len(START_TOK):]
+                buf = ""
+            if END_TOK in line:
+                break
+            buf += line + os.linesep
+        asm = buf
 
     def create_patch(insert_addr: int) -> str:
         # TODO(Ian): this is only right if we are in thumb
