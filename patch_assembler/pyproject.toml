@@ -6,7 +6,7 @@ authors = ["2over12 <ian.smith@trailofbits.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.10,<3.12"
 povsim = { git = "https://github.com/mechaphish/povsim", rev = "78c192c" }
 compilerex = { git = "https://github.com/mechaphish/compilerex", rev = "6d49822" }
 patcherex = { path = "./patcherex", develop = true }
@@ -19,3 +19,6 @@ ipython = "^8.17.2"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[virtualenvs]
+prefer-active-python = true
