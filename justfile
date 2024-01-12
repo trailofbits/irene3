@@ -1,6 +1,6 @@
 set dotenv-load
 LLVM_VERSION := "17"
-CXX_COMMON_VERSION := "0.6.4rc1"
+CXX_COMMON_VERSION := "0.6.4"
 CXX_COMMON_ARCH := if "x86_64" == arch() { "amd64" } else { "arm64" }
 XCODE_VERSION := "15.0"
 CXX_COMMON_NAME := if "macos" == os() {
@@ -168,27 +168,17 @@ git-submodules:
         git submodule update --init --recursive
     fi
 
-clone-gap-cpp:
-    #!/usr/bin/env bash
-    mkdir -p deps
-    if [[ ! -d "deps/gap" ]]; then
-        git clone https://github.com/lifting-bits/gap deps/gap
-    fi
-    git -C deps/gap checkout {{GAP_COMMIT}}
-
-build-gap-cpp: clone-gap-cpp
+build-gap-cpp: git-submodules
     mkdir -p builds
     cmake \
-        -S deps/gap \
+        -S vendor/gap \
         -B builds/gap \
-        -DVCPKG_MANIFEST_MODE=OFF \
         -DCMAKE_TOOLCHAIN_FILE="${CMAKE_TOOLCHAIN_FILE}" \
         -DVCPKG_TARGET_TRIPLET="${VCPKG_TARGET_TRIPLET}" \
-        -DGAP_ENABLE_VCPKG=OFF \
+        -DVCPKG_MANIFEST_INSTALL=OFF \
         -DGAP_ENABLE_TESTING=OFF \
         -DGAP_ENABLE_EXAMPLES=OFF \
         -DGAP_ENABLE_WARNINGS=OFF \
-        -DUSE_SYSTEM_DEPENDENCIES=ON \
         -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
     cmake --build builds/gap
 
@@ -204,7 +194,16 @@ install-remill: build-remill-cpp
     cmake --build builds/remill-build --target install
 
 build-irene3-cpp: install-gap install-remill
-    cmake -S . -DCMAKE_TOOLCHAIN_FILE="${CMAKE_TOOLCHAIN_FILE}" -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} -DVCPKG_TARGET_TRIPLET="${VCPKG_TARGET_TRIPLET}" -DIRENE3_ENABLE_INSTALL=ON --preset ninja-multi-vcpkg  && cmake --build --preset ninja-vcpkg-deb -j $(nproc)
+    cmake -S . \
+      -DCMAKE_TOOLCHAIN_FILE="${CMAKE_TOOLCHAIN_FILE}" \
+      -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} \
+      -DVCPKG_TARGET_TRIPLET="${VCPKG_TARGET_TRIPLET}" \
+      -DIRENE3_ENABLE_INSTALL=ON \
+      --preset ninja-multi-vcpkg  && \
+    cmake --build --preset ninja-vcpkg-deb -j $(nproc)
+
+install-patch-assembler:
+    cd patch_assembler && poetry install
 
 install-irene3: build-irene3-cpp
     cmake --build --preset ninja-vcpkg-deb --target install
