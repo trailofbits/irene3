@@ -1,13 +1,14 @@
 
-#include "anvill/ABI.h"
-#include "anvill/Declarations.h"
-#include "irene3/LowLocCCBuilder.h"
-#include "irene3/PatchIR/PatchIROps.h"
-#include "irene3/PatchIR/PatchIRTypes.h"
-
 #include <algorithm>
+#include <anvill/ABI.h>
+#include <anvill/Declarations.h>
 #include <glog/logging.h>
+#include <irene3/LowLocCCBuilder.h>
+#include <irene3/PatchIR/PatchIRAttrs.h>
+#include <irene3/PatchIR/PatchIROps.h>
+#include <irene3/PatchIR/PatchIRTypes.h>
 #include <irene3/PhysicalLocationDecoder.h>
+#include <irene3/Transforms/PostPass.h>
 #include <irene3/Transforms/WrapFunctionWithMachineWrapper.h>
 #include <irene3/Util.h>
 #include <iterator>
@@ -31,6 +32,8 @@
 #include <llvm/IR/Value.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/raw_ostream.h>
+#include <mlir/Dialect/LLVMIR/LLVMDialect.h>
+#include <mlir/IR/BuiltinOps.h>
 #include <mlir/Support/LLVM.h>
 #include <optional>
 #include <sstream>
@@ -117,21 +120,22 @@ namespace irene3
         auto lowered        = this->LowerVariables(cop);
         for (auto &insn : llvm::instructions(F)) {
             if (llvm::CallBase *cb = llvm::dyn_cast< llvm::CallBase >(&insn)) {
-                if (cb->getCalledFunction()->getName() == anvill::kAnvillGoto) {
+                if (cb->getCalledFunction()
+                    && cb->getCalledFunction()->getName() == anvill::kAnvillGoto) {
                     calls_to_goto.push_back(cb);
                 }
             }
         }
 
         for (auto cb : calls_to_goto) {
-            auto target_pc = llvm::cast< llvm::ConstantInt >(cb->getArgOperand(0));
             llvm::IRBuilder<> bldr(cb);
-
+            auto target_pc = bldr.CreateIntToPtr(
+                cb->getArgOperand(0), llvm::PointerType::get(cb->getContext(), 0));
             auto old_block = cb->getParent();
             // split off everything after the
             old_block->erase(cb->getIterator(), old_block->end());
             bldr.SetInsertPoint(old_block);
-            this->CreateExitFunction(cop, F, lowered, bldr, target_pc->getLimitedValue());
+            this->CreateExitFunction(cop, F, lowered, bldr, target_pc);
         }
     }
 
@@ -148,8 +152,8 @@ namespace irene3
 
     namespace
     {
-        llvm::Function *CreateExitingFunction(
-            llvm::Function &target, const LoweredVariables &lv, std::optional< uint64_t > addr) {
+        llvm::FunctionType *CreateExitingFunctionTy(
+            llvm::Function &target, const LoweredVariables &lv) {
             std::vector< llvm::Type * > args;
 
             for (const auto &vs : lv.at_exit) {
@@ -157,20 +161,7 @@ namespace irene3
                 args.push_back(ty);
             }
 
-            auto fty
-                = llvm::FunctionType::get(llvm::Type::getVoidTy(target.getContext()), args, false);
-
-            auto tsring = addr ? std::to_string(*addr) : "ret";
-
-            auto f = llvm::Function::Create(
-                fty, llvm::GlobalValue::ExternalLinkage, target.getName() + "_exiter_" + tsring,
-                target.getParent());
-
-            if (addr) {
-                irene3::SetPCMetadata(f, *addr);
-            }
-
-            return f;
+            return llvm::FunctionType::get(llvm::Type::getVoidTy(target.getContext()), args, false);
         }
 
     } // namespace
@@ -188,7 +179,8 @@ namespace irene3
         llvm::Function &target,
         const LoweredVariables &lowered,
         llvm::IRBuilder<> &exit_bldr,
-        std::optional< uint64_t > addr) {
+        llvm::Value *addr) {
+        CHECK(addr->getType()->isPointerTy());
         std::vector< llvm::Value * > exiter_args;
 
         for (auto ent : lowered.at_exit) {
@@ -200,17 +192,17 @@ namespace irene3
         // to hit an exit we declare an exit function with a custom calling convention
         // target.setDoesNotReturn();
 
-        auto ex = CreateExitingFunction(target, lowered, addr);
-
         CallOpInfo copinfo(cop);
         auto cc_vals = copinfo.at_exit;
 
-        auto cc_id = this->collected_ccs.AddCC(
-            ex->getName().str(), CCBuilder(
-                                     copinfo.at_exit, copinfo.at_exit, copinfo.exit_stack_offset,
-                                     copinfo.exit_stack_offset));
+        auto cc_id = this->collected_ccs.AddCC(CCBuilder(
+            copinfo.at_exit, copinfo.at_exit, copinfo.exit_stack_offset,
+            copinfo.exit_stack_offset));
 
-        auto call = exit_bldr.CreateCall(ex, exiter_args);
+        auto call
+            = exit_bldr.CreateCall(CreateExitingFunctionTy(target, lowered), addr, exiter_args);
+
+        SetRelativeCallMetada(call);
         call->setCallingConv(cc_id);
         // call->setDoesNotReturn();
         call->setTailCall(true);
@@ -243,7 +235,6 @@ namespace irene3
 
         auto i32 = llvm::IntegerType::getInt32Ty(target.getContext());
 
-        size_t ind = 0;
         std::vector< llvm::Value * > args;
         for (size_t i = 0; i < parms.size(); i++) {
             args.push_back(bldr.CreateGEP(
@@ -251,6 +242,7 @@ namespace irene3
                 { llvm::ConstantInt::getNullValue(i32), llvm::ConstantInt::get(i32, i) }));
         }
 
+        size_t ind = 0;
         for (auto ent : lowered.at_entry) {
             bldr.CreateStore(target.getArg(ind), AccessHv(bldr, ent));
             ind += 1;
@@ -262,7 +254,10 @@ namespace irene3
         this->exit_block = exit_block;
 
         llvm::IRBuilder<> exit_bldr(exit_block);
-        CreateExitFunction(cop, target, lowered, exit_bldr, std::nullopt);
+        // TODO(Ian): support returning out of a block...
+        CreateExitFunction(
+            cop, target, lowered, exit_bldr,
+            llvm::UndefValue::get(llvm::PointerType::get(target.getContext(), 0)));
 
         return cb;
     }

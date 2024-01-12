@@ -1,13 +1,12 @@
 #pragma once
 
-#include "anvill/Declarations.h"
-#include "irene3/PatchIR/PatchIROps.h"
-#include "irene3/Transforms/PostPass.h"
-#include "irene3/Transforms/WrapBBFuncPassCodegen.h"
-
+#include <anvill/Declarations.h>
 #include <irene3/LowLocCCBuilder.h>
+#include <irene3/PatchIR/PatchIROps.h>
 #include <irene3/PhysicalLocationDecoder.h>
+#include <irene3/Transforms/PostPass.h>
 #include <irene3/Transforms/WrapBBFuncPass.h>
+#include <irene3/Transforms/WrapBBFuncPassCodegen.h>
 #include <llvm/CodeGen/TargetRegisterInfo.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DerivedTypes.h>
@@ -63,7 +62,7 @@ namespace irene3
             llvm::Function &target,
             const LoweredVariables &lowered,
             llvm::IRBuilder<> &exit_bldr,
-            std::optional< uint64_t > addr);
+            llvm::Value *addr);
     };
 
 } // namespace irene3

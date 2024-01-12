@@ -8,8 +8,7 @@
 
 #pragma once
 
-#include "irene3/LowLocCCBuilder.h"
-
+#include <irene3/LowLocCCBuilder.h>
 #include <irene3/PatchIR/PatchIRAttrs.h>
 #include <irene3/PatchIR/PatchIRDialect.h>
 #include <irene3/PatchIR/PatchIROps.h>
@@ -37,12 +36,19 @@ namespace irene3
       private:
         llvm::LLVMContext context;
         mlir::MLIRContext &mlir_cont;
+        std::string feature_string;
+        std::string cpu;
 
       public:
-        PatchCompiler(mlir::MLIRContext &mlir_cont)
-            : mlir_cont(mlir_cont) {}
+        PatchCompiler(mlir::MLIRContext &mlir_cont, std::string feature_string, std::string cpu)
+            : mlir_cont(mlir_cont)
+            , feature_string(std::move(feature_string))
+            , cpu(std::move(cpu)) {}
 
         void RewriteModuleToLLVM(mlir::Operation *op);
+
+        const llvm::TargetSubtargetInfo &GetSubTargetForRegion(
+            irene3::patchir::RegionOp &region, llvm::TargetMachine *tm);
 
         PatchMetada OptimizeIntoCompileableLLVM(
             llvm::Module *,

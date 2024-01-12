@@ -1,1 +1,2 @@
 add_subdirectory(PatchIR)
+add_subdirectory(PatchLang)

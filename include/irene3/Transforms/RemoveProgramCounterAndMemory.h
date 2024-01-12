@@ -1,12 +1,11 @@
 #pragma once
 
-#include "irene3/Transforms/WrapBBFuncPassCodegen.h"
-
 #include <anvill/Declarations.h>
 #include <anvill/Lifters.h>
 #include <anvill/Passes/BasicBlockPass.h>
 #include <irene3/Transforms/ModuleBBPass.h>
 #include <irene3/Transforms/WrapBBFuncPass.h>
+#include <irene3/Transforms/WrapBBFuncPassCodegen.h>
 #include <llvm/IR/PassManager.h>
 
 namespace irene3

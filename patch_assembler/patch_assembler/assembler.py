@@ -39,6 +39,7 @@ def main():
     prsr = argparse.ArgumentParser("patch assembly compiler")
     prsr.add_argument("--in_assembly", type=argparse.FileType('r'))
     prsr.add_argument("--metadata", type=argparse.FileType('r'))
+    prsr.add_argument("--output", required=True, type=str)
     prsr.add_argument("--trim_heuristics", action="store_true", default=True)
     prsr.add_argument("target_binary")
     args = prsr.parse_args()
@@ -72,9 +73,9 @@ def main():
             buf += line + os.linesep
         asm = buf
 
-    def create_patch(insert_addr: int) -> str:
+    def create_patch(insert_addr: int, is_thumb=False) -> str:
         # TODO(Ian): this is only right if we are in thumb
-        thunk_loc = insert_addr + 4
+        thunk_loc = insert_addr + (4 if is_thumb else 8)
         thunk_l = (0xffff & thunk_loc)
         thunk_h = (0xffff & (thunk_loc >> 16))
         # TODO(Ian) insert a free reg
@@ -92,7 +93,7 @@ def main():
     # so we want to setup the target reg with this thunk and then execute our code
 
     backend.apply_patches([InsertCodePatch(target_addr, create_patch)])
-    backend.save("/tmp/bin")
+    backend.save(args.output)
 
 
 if __name__ == "__main__":

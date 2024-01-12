@@ -44,8 +44,8 @@ def PatchIR_RegionOp : PatchIR_Op<"region",
         UI64Attr:$address,
         UI64Attr:$uid,
         UI64Attr:$size_bytes,
-        I64Attr:$stack_offset_entry_bytes,
-        I64Attr:$stack_offset_exit_bytes);
+        SI64Attr:$stack_offset_entry_bytes,
+        SI64Attr:$stack_offset_exit_bytes);
     let results = (outs);
 
     let regions = (region

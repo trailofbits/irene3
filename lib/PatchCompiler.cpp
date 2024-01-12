@@ -1,26 +1,28 @@
-#include "anvill/ABI.h"
-#include "anvill/Declarations.h"
-#include "anvill/Utils.h"
-#include "irene3/PatchIR/PatchIRAttrs.h"
-#include "irene3/Transforms/ReplaceRelReferences.h"
-
 #include <algorithm>
+#include <anvill/ABI.h>
+#include <anvill/Declarations.h>
+#include <anvill/Utils.h>
 #include <cctype>
 #include <functional>
 #include <glog/logging.h>
 #include <iostream>
 #include <irene3/LowLocCCBuilder.h>
 #include <irene3/PatchCompiler.h>
+#include <irene3/PatchIR/PatchIRAttrs.h>
 #include <irene3/PatchIR/PatchIROps.h>
 #include <irene3/PhysicalLocationDecoder.h>
+#include <irene3/Transforms/RemoveUnusedStackValueOperands.h>
+#include <irene3/Transforms/ReplaceRelReferences.h>
 #include <irene3/Transforms/WrapFunctionWithMachineWrapper.h>
 #include <irene3/Util.h>
 #include <iterator>
+#include <llvm/ADT/StringRef.h>
 #include <llvm/ADT/StringSwitch.h>
 #include <llvm/CodeGen/CallingConvLower.h>
 #include <llvm/CodeGen/MachineFunction.h>
 #include <llvm/CodeGen/TargetRegisterInfo.h>
 #include <llvm/CodeGen/TargetSubtargetInfo.h>
+#include <llvm/IR/Attributes.h>
 #include <llvm/IR/CallingConv.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/DerivedTypes.h>
@@ -61,6 +63,9 @@
 #include <mlir/IR/PatternMatch.h>
 #include <mlir/IR/Value.h>
 #include <mlir/IR/Visitors.h>
+#include <mlir/Pass/PassManager.h>
+#include <mlir/Pass/PassOptions.h>
+#include <mlir/Pass/PassRegistry.h>
 #include <mlir/Support/LLVM.h>
 #include <mlir/Support/LogicalResult.h>
 #include <mlir/Target/LLVMIR/Export.h>
@@ -113,7 +118,8 @@ namespace irene3
 
     } // namespace
 
-    std::unique_ptr< llvm::TargetMachine > BuildMachine(const llvm::Triple &triple) {
+    std::unique_ptr< llvm::TargetMachine > BuildMachine(
+        const llvm::Triple &triple, llvm::StringRef features, llvm::StringRef cpu) {
         std::string err;
         llvm::TargetOptions options;
 
@@ -124,7 +130,7 @@ namespace irene3
         auto tgt = llvm::TargetRegistry::lookupTarget(triple.str().c_str(), err);
         CHECK(tgt);
         auto target_machine = tgt->createTargetMachine(
-            triple.getTriple(), "", "+neon", options, std::optional< llvm::Reloc::Model >());
+            triple.getTriple(), cpu, features, options, std::optional< llvm::Reloc::Model >());
 
         return std::unique_ptr< llvm::TargetMachine >(target_machine);
     }
@@ -250,7 +256,6 @@ namespace irene3
             llvm::OptimizationLevel::O3, llvm::ThinOrFullLTOPhase::None);
 
         pipeline.run(*mod, mam);
-        // mod->dump();
 
         // mod->dump();
 
@@ -274,33 +279,61 @@ namespace irene3
         CHECK(res.succeeded());
     }
 
+    const llvm::TargetSubtargetInfo &PatchCompiler::GetSubTargetForRegion(
+        irene3::patchir::RegionOp &region, llvm::TargetMachine *tm) {
+        auto tmp_mod = mlir::cast< mlir::ModuleOp >(region->getParentOp()->getParentOp()->clone());
+        irene3::patchir::RegionOp found_r;
+        for (auto f : tmp_mod.getOps< irene3::patchir::FunctionOp >()) {
+            for (auto r : f.getOps< irene3::patchir::RegionOp >()) {
+                if (r.getUid() == region.getUid()) {
+                    found_r = r;
+                }
+            }
+        }
+
+        auto [mod, tgt_func] = CreateLLVMModForRegion(found_r);
+
+        return tm->getSubtarget< llvm::TargetSubtargetInfo >(*tgt_func);
+    }
+
     PatchMetada PatchCompiler::Compile(
         irene3::patchir::RegionOp &region, llvm::raw_pwrite_stream &os) {
         auto addr  = region.getAddress();
         auto modop = mlir::cast< mlir::ModuleOp >(region->getParentOp()->getParentOp());
-        modop->dump();
+
         llvm::Triple triple(
             mlir::cast< mlir::StringAttr >(
                 modop.getOperation()->getAttr(mlir::LLVM::LLVMDialect::getTargetTripleAttrName()))
                 .str());
 
+        auto tgt = BuildMachine(triple, this->feature_string, this->cpu);
+
+        auto reg_info = GetSubTargetForRegion(region, tgt.get()).getRegisterInfo();
+        RegTable rtable;
+        rtable.Populate(reg_info);
+
+        auto mlirpm = mlir::PassManager::on< mlir::ModuleOp >(modop->getContext());
+        mlirpm.addPass(std::make_unique< RemoveUnusedStackValueOperands >(rtable));
+        auto res = mlirpm.run(modop.getOperation());
+        CHECK(res.succeeded());
+        modop->dump();
+
         auto cloned_module = mlir::cast< mlir::ModuleOp >(modop->clone());
         ModuleCallingConventions cconv(cloned_module);
-        auto tgt = BuildMachine(triple);
         llvm::legacy::PassManager pm;
 
         auto [mod, tgt_func] = CreateLLVMModForRegion(region);
-        auto &reg_info       = tgt->getSubtarget< llvm::TargetSubtargetInfo >(*tgt_func);
-        auto stor            = this->OptimizeIntoCompileableLLVM(
-            mod.get(), cconv, cloned_module, reg_info.getRegisterInfo());
+        auto stor = this->OptimizeIntoCompileableLLVM(mod.get(), cconv, cloned_module, reg_info);
 
         // cloned_module->dump();
 
         cconv.ApplyTo(mod.get());
 
-        auto obj           = std::make_unique< CCObjSelector >(cconv.BuildCConvMap());
-        llvm::DebugFlag    = true;
-        llvm::PrintChanged = llvm::ChangePrinter::Verbose;
+        mod->dump();
+
+        auto obj = std::make_unique< CCObjSelector >(cconv.BuildCConvMap());
+        // llvm::DebugFlag    = false;
+        // llvm::PrintChanged = llvm::ChangePrinter::Verbose;
         tgt->addPassesToEmitFile(pm, os, &llvm::errs(), llvm::CodeGenFileType::CGFT_AssemblyFile);
         // obj->dump();
         llvm::CCRegistry::registerCCOverrride(tgt->getTarget().getName(), std::move(obj));

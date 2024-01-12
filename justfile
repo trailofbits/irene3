@@ -19,6 +19,8 @@ GHIDRA_TAG := "amp-ghidra-v0.0.3-rc2"
 GHIDRA_MAJOR_VERSION := "10.3_DEV"
 GHIDRA_MINOR_VERSION := "20231016"
 
+GAP_COMMIT := "ad8fefaf7235a9cd6670e272ca4487807ed81f8a"
+
 VIRTUAL_ENV := env_var_or_default("VIRTUAL_ENV", justfile_directory() + "/venv")
 DOCKER_CMD := "docker"
 
@@ -105,6 +107,7 @@ install-prereqs: install-cxx-common install-ghidra install-cmake install-clang i
         if [ "$(uname -m)" = "aarch64" ]; then dpkg --add-architecture armhf; fi
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
+          re2c \
           "$( [ "$(uname -m)" != "aarch64" ] && echo "g++-multilib")" \
           "$( [ "$(uname -m)" = "aarch64" ] && echo "libstdc++-*-dev:armhf")"
     fi
@@ -165,6 +168,33 @@ git-submodules:
         git submodule update --init --recursive
     fi
 
+clone-gap-cpp:
+    #!/usr/bin/env bash
+    mkdir -p deps
+    if [[ ! -d "deps/gap" ]]; then
+        git clone https://github.com/lifting-bits/gap deps/gap
+    fi
+    git -C deps/gap checkout {{GAP_COMMIT}}
+
+build-gap-cpp: clone-gap-cpp
+    mkdir -p builds
+    cmake \
+        -S deps/gap \
+        -B builds/gap \
+        -DVCPKG_MANIFEST_MODE=OFF \
+        -DCMAKE_TOOLCHAIN_FILE="${CMAKE_TOOLCHAIN_FILE}" \
+        -DVCPKG_TARGET_TRIPLET="${VCPKG_TARGET_TRIPLET}" \
+        -DGAP_ENABLE_VCPKG=OFF \
+        -DGAP_ENABLE_TESTING=OFF \
+        -DGAP_ENABLE_EXAMPLES=OFF \
+        -DGAP_ENABLE_WARNINGS=OFF \
+        -DUSE_SYSTEM_DEPENDENCIES=ON \
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+    cmake --build builds/gap
+
+install-gap: build-gap-cpp
+    cmake --install builds/gap
+
 build-remill-cpp: git-submodules
     mkdir -p builds
     cmake -S vendor/remill -B builds/remill-build -DCMAKE_TOOLCHAIN_FILE="${CMAKE_TOOLCHAIN_FILE}" -DVCPKG_TARGET_TRIPLET="${VCPKG_TARGET_TRIPLET}" -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} && cmake --build builds/remill-build -j $(nproc)
@@ -173,7 +203,7 @@ install-remill: build-remill-cpp
     mkdir -p builds
     cmake --build builds/remill-build --target install
 
-build-irene3-cpp: install-remill
+build-irene3-cpp: install-gap install-remill
     cmake -S . -DCMAKE_TOOLCHAIN_FILE="${CMAKE_TOOLCHAIN_FILE}" -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} -DVCPKG_TARGET_TRIPLET="${VCPKG_TARGET_TRIPLET}" -DIRENE3_ENABLE_INSTALL=ON --preset ninja-multi-vcpkg  && cmake --build --preset ninja-vcpkg-deb -j $(nproc)
 
 install-irene3: build-irene3-cpp

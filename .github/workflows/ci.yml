@@ -68,6 +68,7 @@ jobs:
         image:
           - { name: "ubuntu", tag: "22.04" }
         llvm: ["17"]
+        gap_commit: ["ad8fefaf7235a9cd6670e272ca4487807ed81f8a"]
         cxxcommon_version: ["0.6.4rc1"]
 
     runs-on:
@@ -79,6 +80,10 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
+      - name: "Install re2c"
+        run: |
+          apt-get update
+          apt-get install re2c
       - name: Setup the build paths
         shell: bash
         id: build_paths
@@ -241,6 +246,53 @@ jobs:
                 --target install
           echo "PATH=${DESTDIR}" >> ${GITHUB_OUTPUT}
 
+      - name: Obtain gap
+        run: |
+          rm -rf "${{ steps.build_paths.outputs.DOWNLOADS }}/gap"          # dont cache gap
+          git clone https://github.com/lifting-bits/gap "${{ steps.build_paths.outputs.DOWNLOADS }}/gap"
+          git -C "${{ steps.build_paths.outputs.DOWNLOADS }}/gap" checkout ${{ matrix.gap_commit }}
+
+      - name: Configure gap
+        working-directory: ${{ steps.build_paths.outputs.BUILD }}
+
+        env:
+          CCACHE_DIR: ${{ steps.build_paths.outputs.CCACHE }}
+
+        run: |
+          mkdir gap_build && cd gap_build
+          cmake \
+              -DGAP_ENABLE_VCPKG=OFF \
+              -DGAP_ENABLE_TESTING=OFF \
+              -DGAP_ENABLE_EXAMPLES=OFF \
+              -DGAP_ENABLE_WARNINGS=OFF \
+              -DUSE_SYSTEM_DEPENDENCIES=ON \
+              -G Ninja \
+              "${{ steps.build_paths.outputs.DOWNLOADS }}/gap"
+
+      - name: Build gap
+        working-directory: ${{ steps.build_paths.outputs.BUILD }}
+
+        env:
+          CCACHE_DIR: ${{ steps.build_paths.outputs.CCACHE }}
+
+        run: |
+          cmake \
+              --build gap_build \
+              -j ${{ steps.build_job_count.outputs.VALUE }}
+
+      - name: Install gap
+        id: gap_installer
+        working-directory: ${{ steps.build_paths.outputs.BUILD }}
+
+        env:
+          CCACHE_DIR: ${{ steps.build_paths.outputs.CCACHE }}
+
+        run: |
+          export DESTDIR=${{ steps.build_paths.outputs.INSTALL }}/gap
+          cmake --build gap_build \
+                --target install
+          echo "PATH=${DESTDIR}" >> ${GITHUB_OUTPUT}
+
       - name: Configure irene3
         working-directory: ${{ steps.build_paths.outputs.BUILD }}
 
@@ -254,6 +306,7 @@ jobs:
               -Dremill_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/remill/"\
               -Danvill_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/anvill/"\
               -Dsleigh_DIR="${{ steps.build_paths.outputs.INSTALL }}/remill/usr/local/lib/cmake/sleigh/"\
+              -Dgap_DIR="${{ steps.build_paths.outputs.INSTALL }}/gap/usr/local/lib/cmake/gap/"\
               -DCMAKE_VERBOSE_MAKEFILE=true \
               -DIRENE3_ENABLE_INSTALL=true \
               -G Ninja \

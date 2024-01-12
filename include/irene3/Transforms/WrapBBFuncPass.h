@@ -61,6 +61,11 @@ namespace irene3
             llvm::IRBuilder<> bldr(ent_bb);
             llvm::CallBase *call_inst = this->PopulateEntryBlock(basic_block_addr, bldr, new_f, F);
             llvm::InlineFunctionInfo info;
+
+            if (call_inst->getCalledFunction() && call_inst->getCalledFunction()->isDeclaration()) {
+                return llvm::PreservedAnalyses::none();
+            }
+
             auto res = llvm::InlineFunction(*call_inst, info);
             CHECK(res.isSuccess());
             this->Transform(basic_block_addr, new_f);

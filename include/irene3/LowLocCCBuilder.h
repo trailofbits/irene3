@@ -59,7 +59,7 @@ namespace irene3
             , exit(std::move(exit))
             , entry_stack_offset(entry_stack_offset)
             , exit_stack_offset(exit_stack_offset) {
-            this->dump();
+            // this->dump();
         }
 
         void dump() const;
@@ -79,7 +79,9 @@ namespace irene3
 
         void ApplyTo(llvm::Module *mod);
 
-        uint64_t AddCC(std::string name, CCBuilder builder);
+        uint64_t AddNamedCC(std::string name, CCBuilder builder);
+
+        uint64_t AddCC(CCBuilder builder);
 
         std::unordered_map< uint64_t, CCBuilder > BuildCConvMap();
 
@@ -87,7 +89,7 @@ namespace irene3
 
       private:
         // ordered map for ids
-        std::vector< std::pair< std::string, CCBuilder > > builders;
+        std::vector< std::pair< std::optional< std::string >, CCBuilder > > builders;
     };
 
     class CCObjSelector final : public llvm::CCObj {

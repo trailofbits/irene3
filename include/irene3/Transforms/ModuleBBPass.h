@@ -30,8 +30,6 @@ namespace irene3
                 auto bbaddr = anvill::GetBasicBlockUid(&f);
                 if (bbaddr.has_value()) {
                     anvill::Uid addr = *bbaddr;
-                    LOG(ERROR) << "Heres an addr: " << addr.value;
-
                     v.push_back({ addr, &f });
                 }
             }

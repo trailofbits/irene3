@@ -9,7 +9,7 @@ include "PatchIR.td"
 
 
 def PatchIRPtr :  PatchIR_Type<"LowValuePointer", "low.pointer", []> {
-    let summary = [{An llvm convertible pointer that sores into a low level location. Unlike an llvm pointer there is some
+    let summary = [{An llvm convertible pointer that stores into a low level location. Unlike an llvm pointer there is some
     high type associated with the pointer.}];
 
     let parameters = (ins "mlir::Type":$element );
