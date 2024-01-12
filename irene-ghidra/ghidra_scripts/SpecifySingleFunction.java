@@ -19,6 +19,7 @@ import ghidra.program.model.scalar.*;
 import ghidra.program.model.symbol.*;
 import ghidra.program.model.util.*;
 import ghidra.util.Msg;
+import ghidra.util.exception.CancelledException;
 import java.io.FileOutputStream;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -34,17 +35,21 @@ public class SpecifySingleFunction extends GhidraScript {
         this.currentProgram
             .getFunctionManager()
             .getFunctionContaining(currentLocation.getAddress());
-    var res_string = askString("Additional Symbols", "", "");
-    var components = res_string.split(";");
-    Msg.info(this, "Split string " + Arrays.toString(components));
-    var compset = new HashSet<>(Arrays.asList(components));
-
     scala.collection.mutable.HashSet<Symbol> s = new scala.collection.mutable.HashSet<>();
-    for (var sym : currentProgram.getSymbolTable().getAllSymbols(false)) {
-      if (compset.contains(sym.getName())) {
-        Msg.info(this, "Found sym " + sym.getName());
-        s.$plus$eq(sym);
+    try {
+      var res_string = askString("Additional Symbols", "", "");
+      var components = res_string.split(";");
+      Msg.info(this, "Split string " + Arrays.toString(components));
+      var compset = new HashSet<>(Arrays.asList(components));
+
+      for (var sym : currentProgram.getSymbolTable().getAllSymbols(false)) {
+        if (compset.contains(sym.getName())) {
+          Msg.info(this, "Found sym " + sym.getName());
+          s.$plus$eq(sym);
+        }
       }
+    } catch (CancelledException e) {
+      Msg.info(this, "No additional symbols");
     }
 
     Msg.info(this, "Set: " + s);

@@ -10,3 +10,6 @@
 [submodule "patch_assembler/patcherex"]
 	path = patch_assembler/patcherex
 	url = git@github.com:trail-of-forks/patcherex.git
+[submodule "vendor/gap"]
+	path = vendor/gap
+	url = https://github.com/lifting-bits/gap.git
