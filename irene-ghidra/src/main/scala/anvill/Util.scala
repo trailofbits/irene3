@@ -6,7 +6,8 @@ import ghidra.util.task.TaskMonitor
 import ghidra.program.model.address.Address
 import scalax.collection.OuterEdge
 import scalax.collection.io.dot.*
-import implicits._
+import implicits.*
+
 import java.util as ju
 import scalax.collection.immutable.Graph
 import scalax.collection.edges.DiEdge
@@ -23,7 +24,7 @@ import specification.specification.TypeSpec
 
 import scala.collection.mutable.ListBuffer
 import ghidra.program.model.lang.Register
-import ProgramSpecifier.getRegisterName
+import ProgramSpecifier.{getRegisterName, specifyContextAssignments}
 import specification.specification.TypeSpec.Type
 import specification.specification.BaseType.BT_U8
 import ghidra.util.Msg
@@ -36,12 +37,21 @@ import java.util.Objects
 import ghidra.program.model.listing.Program
 import ghidra.program.model.listing.Instruction
 import specification.specification.CodeBlock as CodeBlockSpec
-import anvill.ProgramSpecifier.specifyContextAssignments
 import ghidra.program.model.block.CodeBlockModel
 import aQute.bnd.service.progress.ProgressPlugin.Task
 import com.google.common.collect.{ImmutableRangeMap, Range, RangeMap}
+import ghidra.framework.model.{DomainFile, DomainObject}
 import ghidra.program.model.pcode.{PcodeOp, Varnode}
 import ghidra.program.model.listing.Function as GFunction
+import ghidra.program.model.symbol.{
+  ExternalLocation,
+  Namespace,
+  Symbol,
+  SymbolType
+}
+import ghidra.util.exception.{CancelledException, VersionException}
+
+import java.io.IOException
 
 object Util {
 
@@ -315,5 +325,89 @@ object Util {
     }
 
     cfg.toDot(root, edgeTransformer)
+  }
+
+  def getLocalSymbolByName(
+      program: Program,
+      name: String
+  ): Option[Symbol] = {
+    program.getSymbolTable
+      .getGlobalSymbols(name)
+      .iterator()
+      .asScala
+      .nextOption()
+  }
+
+  def getExtSymbolByName(program: Program, name: String): Option[Symbol] = {
+    program.getSymbolTable
+      .getExternalSymbols(name)
+      .iterator()
+      .asScala
+      .nextOption()
+  }
+
+  def getGotAddr(symbol: Symbol): Option[Address] = {
+    symbol.getProgram.getRelocationTable.getRelocations.asScala
+      .find(relocation => symbol.getName == relocation.getSymbolName)
+      .map(relocation => relocation.getAddress)
+  }
+
+  def createLibraryProgram(
+      libraryFile: DomainFile,
+      monitor: TaskMonitor
+  ): Option[Program] = {
+    var libraryObject: DomainObject = null
+    try {
+      libraryObject = libraryFile.getImmutableDomainObject(
+        this,
+        DomainFile.DEFAULT_VERSION,
+        monitor
+      )
+      if (!libraryObject.isInstanceOf[Program]) return None
+    } catch {
+      case e: VersionException =>
+        Msg.showError(this, null, "Version Exception", e.getMessage)
+        return None
+      case e: IOException =>
+        Msg.showError(this, null, "IO Exception", e.getMessage)
+        return None
+      case e: CancelledException =>
+        monitor.cancel()
+        return None
+    }
+    Some(libraryObject.asInstanceOf[Program])
+  }
+
+  def getLinkedExternalProgram(symbol: Symbol): Option[Program] =
+    for {
+      program <- Option(symbol.getProgram)
+      externalLoc <- getExternalLocation(symbol)
+      extLibrary <- Option(
+        program.getExternalManager
+          .getExternalLibrary(externalLoc.getLibraryName)
+      )
+      libPath <- Option(extLibrary.getAssociatedProgramPath)
+      projectData <- Option(program.getDomainFile.getParent.getProjectData)
+      libFile <- Some(projectData.getFile(libPath))
+      extProg <- Util.createLibraryProgram(libFile, null)
+    } yield extProg
+
+  def getExternalLocation(symbol: Symbol): Option[ExternalLocation] = {
+    Option.when(symbol.isExternal)(
+      symbol.getProgram.getExternalManager.getExternalLocation(symbol)
+    )
+  }
+
+  def getSymbolLibraryName(symbol: Symbol): Option[String] = {
+    @annotation.tailrec
+    def loop(ns: Namespace): Option[String] = {
+      Option(ns) match {
+        case Some(namespace) if namespace.isLibrary => Some(namespace.getName)
+        case Some(namespace) => loop(namespace.getParentNamespace)
+        case None            => None
+      }
+    }
+
+    loop(symbol.getParentNamespace)
   }
 }

@@ -26,6 +26,9 @@ set(irene3_PUBLIC_HEADER_DIR "${PROJECT_SOURCE_DIR}/include/irene3")
 
 set(irene3_PUBLIC_HEADERS "${irene3_PUBLIC_HEADER_DIR}/Version.h" "${irene3_PUBLIC_HEADER_DIR}/DecompileSpec.h")
 
+find_program(RE2C "re2c" REQUIRED)
+find_package(gap CONFIG REQUIRED)
+
 set(irene3_SOURCES
   "${POST_CONFIGURE_FILE}"
   DecompileSpec.cpp
@@ -40,7 +43,23 @@ set(irene3_SOURCES
   Transforms/RemoveProgramCounterAndMemory.cpp
   Transforms/WrapFunctionWithMachineWrapper.cpp
   Transforms/ReplaceRelReferences.cpp
+  PatchLang/Expr.cpp
+  PatchLang/Parser.cpp
+  PatchLang/Lifter.cpp
+  "${CMAKE_CURRENT_BINARY_DIR}/Lexer.cpp"
+  PatchLang/Stmt.cpp
+  PatchLang/Type.cpp
 )
+
+add_custom_command(
+  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/Lexer.cpp"
+  COMMAND "${RE2C}"
+  ARGS
+  "${CMAKE_CURRENT_SOURCE_DIR}/PatchLang/Lexer.cpp.re"
+  -o "${CMAKE_CURRENT_BINARY_DIR}/Lexer.cpp"
+  --depfile "${CMAKE_CURRENT_BINARY_DIR}/Lexer.cpp.d"
+  DEPFILE "${CMAKE_CURRENT_BINARY_DIR}/Lexer.cpp.d"
+  COMMENT "Generating lexer")
 
 add_library("${PROJECT_NAME}" STATIC ${irene3_PUBLIC_HEADERS} ${irene3_SOURCES})
 
@@ -51,7 +70,7 @@ set_target_properties(
 llvm_map_components_to_libnames(llvm_libs AllTargetsCodeGens)
 
 # link version information
-target_link_libraries("${PROJECT_NAME}" PUBLIC glog::glog "${llvm_libs}" gflags rellic anvill PatchIR)
+target_link_libraries("${PROJECT_NAME}" PUBLIC gap::gap glog::glog "${llvm_libs}" gflags rellic anvill PatchIR)
 
 target_include_directories(
   "${PROJECT_NAME}"

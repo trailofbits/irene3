@@ -1,12 +1,11 @@
 #pragma once
 
-#include "anvill/Declarations.h"
-#include "irene3/PatchIR/PatchIROps.h"
-#include "irene3/Transforms/WrapBBFuncPassCodegen.h"
-
+#include <anvill/Declarations.h>
 #include <irene3/LowLocCCBuilder.h>
+#include <irene3/PatchIR/PatchIROps.h>
 #include <irene3/PhysicalLocationDecoder.h>
 #include <irene3/Transforms/WrapBBFuncPass.h>
+#include <irene3/Transforms/WrapBBFuncPassCodegen.h>
 #include <llvm/CodeGen/TargetRegisterInfo.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DerivedTypes.h>
@@ -23,16 +22,6 @@
 
 namespace irene3
 {
-
-    template< typename T, typename R >
-    std::optional< R > firstOp(T x) {
-        auto rng = x.template getOps< R >();
-        if (rng.empty()) {
-            return std::nullopt;
-        }
-
-        return *rng.begin();
-    }
 
     struct LowVar {
         LowAssignment assignment;

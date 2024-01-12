@@ -1,10 +1,8 @@
-#include "anvill/Type.h"
-#include "irene3/PatchIR/PatchIRTypes.h"
-
 #include <anvill/Declarations.h>
 #include <anvill/Optimize.h>
 #include <anvill/Providers.h>
 #include <anvill/Specification.h>
+#include <anvill/Type.h>
 #include <anvill/Utils.h>
 #include <cstdlib>
 #include <filesystem>
@@ -16,6 +14,7 @@
 #include <irene3/PatchIR/PatchIRAttrs.h>
 #include <irene3/PatchIR/PatchIRDialect.h>
 #include <irene3/PatchIR/PatchIROps.h>
+#include <irene3/PatchIR/PatchIRTypes.h>
 #include <irene3/Transforms/RemoveProgramCounterAndMemory.h>
 #include <irene3/TypeDecoder.h>
 #include <irene3/Util.h>
@@ -426,13 +425,16 @@ int main(int argc, char* argv[]) {
     google::HandleCommandLineHelpFlags();
 
     mlir::MLIRContext mlir_context;
+
     mlir::DialectRegistry registry;
     registry.insert< irene3::patchir::PatchIRDialect >();
     registry.insert< mlir::LLVM::LLVMDialect >();
     registry.insert< mlir::DLTIDialect >();
 
+    //    mlir_context.getOrLoadDialect< irene3::patchir::PatchIRDialect >();
+    //  mlir_context.getOrLoadDialect< mlir::LLVM::LLVMDialect >();
+    // mlir_context.getOrLoadDialect< mlir::DLTIDialect >();
     mlir_context.appendDialectRegistry(registry);
-
     std::ifstream spec_stream(FLAGS_spec);
     MLIRCodegen codegen(mlir_context, spec_stream);
     auto mlir_module = codegen.GetMLIRModule();

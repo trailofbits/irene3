@@ -121,17 +121,26 @@ namespace irene3
     void ModuleCallingConventions::ApplyTo(llvm::Module *mod) {
         uint64_t ent = llvm::CallingConv::CUSTOM_ID_RANGE_START;
         for (auto &[x, y] : this->builders) {
-            auto f = mod->getFunction(x);
-            if (f) {
-                f->setCallingConv(ent);
-                f->dump();
+            if (x) {
+                auto f = mod->getFunction(*x);
+                if (f) {
+                    f->setCallingConv(ent);
+                    LOG(INFO) << "Setting call conv " << ent;
+                    f->dump();
+                    y.dump();
+                }
             }
             ent += 1;
         }
     }
 
-    uint64_t ModuleCallingConventions::AddCC(std::string name, CCBuilder builder) {
+    uint64_t ModuleCallingConventions::AddNamedCC(std::string name, CCBuilder builder) {
         this->builders.emplace_back(std::move(name), std::move(builder));
+        return llvm::CallingConv::CUSTOM_ID_RANGE_START + this->builders.size() - 1;
+    }
+
+    uint64_t ModuleCallingConventions::AddCC(CCBuilder builder) {
+        this->builders.emplace_back(std::nullopt, std::move(builder));
         return llvm::CallingConv::CUSTOM_ID_RANGE_START + this->builders.size() - 1;
     }
 

@@ -1,11 +1,7 @@
-#include "irene3/PatchCompiler.h"
-#include "mlir/Parser/Parser.h"
-#include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
-#include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
-
 #include <cstdlib>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <irene3/PatchCompiler.h>
 #include <irene3/PatchIR/PatchIRAttrs.h>
 #include <irene3/PatchIR/PatchIRDialect.h>
 #include <irene3/PatchIR/PatchIROps.h>
@@ -27,14 +23,19 @@
 #include <mlir/IR/OpImplementation.h>
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/IR/Verifier.h>
+#include <mlir/Parser/Parser.h>
+#include <mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h>
+#include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
 #include <mlir/Target/LLVMIR/Import.h>
 #include <remill/BC/Error.h>
 
 DECLARE_bool(help);
 
 DEFINE_string(patch_def, "", "The mlir file containing the patch definition");
-DEFINE_uint64(region_addr, 0, "The target region");
+DEFINE_uint64(region_uid, 0, "The target region");
 DEFINE_string(out, "", "Output .s file");
+DEFINE_string(features, "", "Target feature list (comma separated)");
+DEFINE_string(cpu, "", "LLVM CPU Profile");
 DEFINE_string(
     json_metadata, "", "Where to write additional patch data required for patch situation");
 
@@ -74,7 +75,7 @@ int main(int argc, char* argv[]) {
         for (const auto& op : mod.getBodyRegion().getOps()) {
             if (auto fop = llvm::dyn_cast< irene3::patchir::FunctionOp >(op)) {
                 for (irene3::patchir::RegionOp reg : fop.getOps< irene3::patchir::RegionOp >()) {
-                    if (reg.getAddress() == FLAGS_region_addr) {
+                    if (reg.getUid() == FLAGS_region_uid) {
                         region = reg;
                     }
                 }
@@ -82,7 +83,7 @@ int main(int argc, char* argv[]) {
         }
     }
     CHECK(region);
-    irene3::PatchCompiler comp(mlir_context);
+    irene3::PatchCompiler comp(mlir_context, FLAGS_features, FLAGS_cpu);
 
     std::error_code ec;
     llvm::raw_fd_ostream os(FLAGS_out, ec);

@@ -8,11 +8,26 @@
 #include <irene3/PatchIR/PatchIROps.h>
 #include <irene3/TypeDecoder.h>
 #include <llvm/IR/GlobalVariable.h>
+#include <mlir/Dialect/LLVMIR/LLVMDialect.h>
+#include <mlir/IR/BuiltinOps.h>
+#include <mlir/IR/MLIRContext.h>
+#include <mlir/Parser/Parser.h>
+#include <mlir/Support/LLVM.h>
 #include <unordered_set>
 #include <variant>
 #include <vector>
 namespace irene3
 {
+    template< typename T, typename R >
+    std::optional< R > firstOp(T x) {
+        auto rng = x.template getOps< R >();
+        if (rng.empty()) {
+            return std::nullopt;
+        }
+
+        return *rng.begin();
+    }
+
     template< class... Ts >
     struct overload : Ts... {
         using Ts::operator()...;
@@ -46,6 +61,9 @@ namespace irene3
 
     void SetPCMetadata(llvm::GlobalObject* value, uint64_t pc);
 
+    void SetRelativeCallMetada(llvm::CallBase* cb);
+
+    bool IsRelativeCall(llvm::CallBase* cb);
     // Gets pc metadata repersented in irene3 by the "pc" metadata kind.
     std::optional< uint64_t > GetPCMetadata(const llvm::Value* value);
 
@@ -113,4 +131,6 @@ namespace irene3
 
     anvill::MachineAddr MachineAddrFromFlatValues(
         uint64_t address, std::int64_t disp, bool is_external);
+
+    void PatchIRContext(mlir::MLIRContext& context);
 } // namespace irene3

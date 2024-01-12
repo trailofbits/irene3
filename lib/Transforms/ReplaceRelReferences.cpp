@@ -1,11 +1,10 @@
-#include "anvill/Declarations.h"
-#include "irene3/LowLocCCBuilder.h"
-#include "irene3/PatchIR/PatchIRAttrs.h"
-#include "irene3/PatchIR/PatchIROps.h"
-#include "irene3/Util.h"
-
 #include <algorithm>
+#include <anvill/Declarations.h>
+#include <irene3/LowLocCCBuilder.h>
+#include <irene3/PatchIR/PatchIRAttrs.h>
+#include <irene3/PatchIR/PatchIROps.h>
 #include <irene3/Transforms/ReplaceRelReferences.h>
+#include <irene3/Util.h>
 #include <llvm/CodeGen/MachineValueType.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
@@ -112,24 +111,27 @@ namespace irene3
         std::vector< llvm::CallBase * > to_repl_funcs;
         for (auto &insn : llvm::instructions(f)) {
             if (auto *cb = llvm::dyn_cast< llvm::CallBase >(&insn)) {
-                if (cb->getCalledFunction() && GetPCMetadata(cb->getCalledFunction())) {
+                if (IsRelativeCall(cb)) {
                     to_repl_funcs.push_back(cb);
                 }
             }
         }
 
         for (auto cb : to_repl_funcs) {
-            uint64_t pc = *GetPCMetadata(cb->getCalledFunction());
-            auto old_ty = cb->getFunctionType();
-            llvm::IRBuilder<> builder(cb);
-            auto naddr = builder.CreateAdd(
-                (f.arg_end() - 1),
-                llvm::ConstantInt::get(AddressType(f.getParent()), pc - this->image_base));
-            auto casted = builder.CreateIntToPtr(naddr, cb->getCalledFunction()->getType());
+            if (IsRelativeCall(cb)) {
+                auto old_ty = cb->getFunctionType();
+                llvm::IRBuilder<> builder(cb);
+                auto addr_ty = AddressType(f.getParent());
+                auto base    = builder.CreatePtrToInt(cb->getCalledOperand(), addr_ty);
+                auto rebased_addr
+                    = builder.CreateSub(base, llvm::ConstantInt::get(addr_ty, this->image_base));
+                auto naddr  = builder.CreateAdd((f.arg_end() - 1), rebased_addr);
+                auto casted = builder.CreateIntToPtr(naddr, cb->getCalledOperand()->getType());
 
-            cb->setCalledOperand(casted);
+                cb->setCalledOperand(casted);
 
-            CHECK(old_ty == cb->getFunctionType());
+                CHECK(old_ty == cb->getFunctionType());
+            }
         }
     }
 
@@ -145,7 +147,8 @@ namespace irene3
     {
         const std::unordered_map< std::string, std::vector< std::string > >
             allocateableRegClassesForTarget = {
-                {"arm", { "tGPR" }}
+                {  "arm", { "tGPR" }},
+                {"thumb", { "tGPR" }}
         };
     }
 
@@ -211,9 +214,11 @@ namespace irene3
         auto norm_entry          = info.at_entry;
         this->image_base_storage = CreateAddrTypedReg(target.getParent(), info.at_entry);
         norm_entry.push_back(*this->image_base_storage);
-        auto ccid = this->collected_ccs.AddCC(
+        auto ccid = this->collected_ccs.AddNamedCC(
             oldfunc->getName().str(),
             CCBuilder(norm_entry, info.at_exit, info.entry_stack_offset, info.exit_stack_offset));
+
+        LOG(INFO) << "Post collected ccid " << ccid << " for " << oldfunc->getName().str();
 
         target.setCallingConv(ccid);
 

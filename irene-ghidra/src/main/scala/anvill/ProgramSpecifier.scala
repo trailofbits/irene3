@@ -1,9 +1,7 @@
 package anvill;
 
-import collection.JavaConverters.*
 import java.security as js
 import java.util as ju
-import collection.JavaConverters.*
 import com.google.protobuf.ByteString
 import ghidra.program.model.data.{
   AbstractFloatDataType,
@@ -25,8 +23,12 @@ import ghidra.program.model.listing.Program
 import ghidra.program.model.listing.Parameter
 import ghidra.program.model.mem.Memory
 import ghidra.program.model.mem.MemoryBlock
-import ghidra.program.model.symbol.Symbol
-import ghidra.program.model.symbol.SymbolType.GLOBAL_VAR
+import ghidra.program.model.symbol.{
+  ExternalLocation,
+  RefType,
+  Symbol,
+  SymbolType
+}
 import scalaz.*
 import Scalaz.*
 import specification.specification.{
@@ -44,6 +46,7 @@ import specification.specification.{
   OS,
   Other,
   ProgramAddress,
+  RelativeAddress,
   Return,
   ReturnStackPointer,
   Specification,
@@ -81,13 +84,12 @@ import ghidra.program.model.listing.Instruction
 
 import scala.collection.mutable.ListBuffer
 import ghidra.program.model.pcode.PcodeOp
-import ghidra.program.model.symbol.RefType
 import ghidra.program.model.lang.BasicCompilerSpec
 
 import javax.xml.parsers.DocumentBuilderFactory
 import org.xml.sax.InputSource
 
-import java.io.StringReader
+import java.io.{IOException, StringReader}
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 
@@ -108,7 +110,6 @@ import ghidra.util.{Msg, UniversalID}
 import ghidra.program.model.symbol.Symbol
 import ghidra.program.model.listing.Function
 import ghidra.program.model.pcode.DataTypeSymbol
-import ghidra.program.model.symbol.SymbolType
 import ghidra.program.model.pcode.HighFunctionDBUtil
 import org.python.modules.jffi.DynamicLibrary.DataSymbol
 import ghidra.program.model.listing.FunctionSignature
@@ -124,12 +125,25 @@ import ghidra.util.task.TaskMonitor
 import scala.collection.mutable.Map as MutableMap
 import scala.collection.mutable.Set as MutableSet
 import scala.collection.immutable.SortedMap
-import anvill.Util.{getReachableCodeBlocks, registerToVariable}
+import anvill.Util.{
+  getReachableCodeBlocks,
+  getExtSymbolByName,
+  getLocalSymbolByName,
+  getGotAddr,
+  getLinkedExternalProgram,
+  getExternalLocation,
+  getSymbolLibraryName
+}
+import ghidra.framework.model.{DomainFile, DomainObject}
+import ghidra.program.database.external.ExternalManagerDB
 import ghidra.program.model.address.AddressSet
 import ghidra.program.model.pcode.VarnodeTranslator
 import ghidra.program.model.pcode.SequenceNumber
+import ghidra.util.exception.{CancelledException, VersionException}
 
 import java.util.concurrent.atomic.AtomicLong
+import scala.jdk.CollectionConverters.*
+import scala.math.abs
 
 def pair[A, B](ma: Option[A], mb: Option[B]): Option[(A, B)] =
   ma.flatMap(a => mb.map(b => (a, b)))
@@ -733,9 +747,9 @@ object ProgramSpecifier {
     }
 
     val ty_hints = computeTypeHints(func, aliases)
+    val prog_addr = getProgramBinaryAddress(func.getSymbol)
     val entry_addr =
-      getThunkRedirection(func.getProgram(), func.getEntryPoint())
-        .getOffset()
+      getThunkRedirection(func.getProgram, func.getEntryPoint).getOffset
     val entry_uid = cfg
       .find((_, blk) => blk.address == func.getEntryPoint.getOffset)
       .map(_._2.uid)
@@ -775,7 +789,89 @@ object ProgramSpecifier {
       ),
       getInScopeVars(func.getProgram(), block_ctxts).toSeq,
       ty_hints,
-      Some(ProgramAddress(ProgramAddress.Inner.InternalAddress(entry_addr)))
+      prog_addr
+    )
+  }
+
+  def getProgramBinaryAddress(symbol: Symbol): Option[ProgramAddress] = {
+    // Check if symbol is internal
+    if (!symbol.isExternal) {
+      val entry_addr =
+        getThunkRedirection(symbol.getProgram, symbol.getAddress).getOffset
+      return Some(
+        ProgramAddress(ProgramAddress.Inner.InternalAddress(entry_addr))
+      )
+    }
+
+    // Check if we have a GOT address for the external symbol. This is usually
+    // the case unless the user has manually added a new symbol that the program
+    // didn't originally use
+    getGotAddr(symbol)
+      .map(addr =>
+        ProgramAddress(
+          ProgramAddress.Inner.ExtAddress(RelativeAddress(addr.getOffset))
+        )
+      ) match {
+      case Some(progAddr) => return Some(progAddr)
+      case None           => // continue
+    }
+
+    // The user has maually added a symbol that the program didn't originally
+    // use. Now, we search for a symbol that is close to this new symbol in the
+    // external program and return this information
+    val extProg = getLinkedExternalProgram(symbol)
+      .getOrElse {
+        Msg.error(
+          this,
+          "Could not find linked external library program for symbol: " + symbol
+        )
+        return None
+      }
+    val extLocation = getExternalLocation(symbol)
+      .getOrElse {
+        Msg.error(
+          this,
+          "Could not find external location in " + extProg + " for symbol " + symbol
+        )
+        return None
+      }
+    val extSymName = extLocation.getSymbol.getName
+    val extSymbol = getLocalSymbolByName(extProg, extSymName)
+      .getOrElse {
+        Msg.error(
+          this,
+          "Could not find local symbol '" + extSymName + "' in " + extProg
+        )
+        return None
+      }
+
+    val prog = symbol.getProgram
+    // Search for the closest external symbol to the manually defined symbol
+    val minExtOffSymbol = prog.getSymbolTable.getExternalSymbols
+      .iterator()
+      .asScala
+      .filter(symbol =>
+        getSymbolLibraryName(symbol)
+          .exists(libName =>
+            libName == extLocation.getLibraryName && getGotAddr(
+              symbol
+            ).isDefined
+          )
+      )
+      .flatMap(symbol => getLocalSymbolByName(extProg, symbol.getName))
+      .minBy(symbol =>
+        abs(symbol.getAddress.getOffset - extSymbol.getAddress.getOffset)
+      )
+
+    val offset =
+      extSymbol.getAddress.getOffset - minExtOffSymbol.getAddress.getOffset
+    for {
+      offSymbol <- getExtSymbolByName(prog, minExtOffSymbol.getName)
+      gotOffAddr <- getGotAddr(offSymbol)
+    } yield ProgramAddress(
+      ProgramAddress.Inner.ExtAddress(
+        RelativeAddress(gotOffAddr.getOffset, offset)
+      )
     )
   }
 
@@ -1032,6 +1128,7 @@ object ProgramSpecifier {
     val program = symbol.getProgram()
     val listing = program.getListing()
     val addr = symbol.getAddress()
+    val prog_addr = getProgramBinaryAddress(symbol)
     Option(listing.getDataAt(addr))
       .filter(_ => symbol.getSymbolType() != SymbolType.FUNCTION)
       .flatMap(data => Option(data.getDataType()))
@@ -1039,11 +1136,7 @@ object ProgramSpecifier {
         GlobalVariable(
           getTypeSpec(datatype, aliases),
           addr.getOffset(),
-          Some(
-            ProgramAddress(
-              ProgramAddress.Inner.InternalAddress(addr.getOffset())
-            )
-          )
+          prog_addr
         )
       )
   }

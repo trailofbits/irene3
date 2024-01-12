@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+
+
+def _main():
+    import argparse
+    import pathlib
+    import os
+    import subprocess
+
+    parser = argparse.ArgumentParser(
+        "irene3-lift",
+        description="Lifts an IRENE3 spec file into a human-readable and editable PatchLang file",
+    )
+    parser.add_argument("spec", type=pathlib.Path)
+    parser.add_argument("workdir", type=pathlib.Path)
+    parser.add_argument("--uid", type=int, required=True)
+    args = parser.parse_args()
+
+    specname = args.spec.stem
+    os.makedirs(args.workdir, exist_ok=True)
+
+    mlir_file = f"{args.workdir}/{specname}.mlir"
+    patch_file = f"{args.workdir}/{specname}.irene"
+
+    subprocess.run(
+        ["irene3-patchir-codegen", "--spec", args.spec, "--mlir-out", mlir_file]
+    )
+    subprocess.run(
+        [
+            "irene3-patchlang-lift",
+            "--mlir-in",
+            mlir_file,
+            "--target-uid",
+            f"{args.uid}",
+        ],
+        stdout=open(patch_file, mode="w"),
+    )
+
+
+if __name__ == "__main__":
+    _main()

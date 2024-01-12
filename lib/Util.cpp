@@ -1,17 +1,22 @@
-#include "anvill/Declarations.h"
-#include "irene3/PatchIR/PatchIROps.h"
-
+#include <algorithm>
 #include <anvill/ABI.h>
+#include <anvill/Declarations.h>
 #include <filesystem>
 #include <iostream>
 #include <irene3/DecompileSpec.h>
+#include <irene3/PatchIR/PatchIROps.h>
 #include <irene3/TypeDecoder.h>
 #include <irene3/Util.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/GlobalValue.h>
+#include <llvm/IR/InstrTypes.h>
+#include <llvm/IR/Metadata.h>
 #include <llvm/Support/JSON.h>
 #include <llvm/Support/MemoryBuffer.h>
+#include <mlir/Dialect/DLTI/DLTI.h>
 #include <mlir/Support/LLVM.h>
+#include <mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h>
+#include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
 #include <rellic/Result.h>
 #include <remill/BC/Error.h>
 #include <remill/BC/Util.h>
@@ -63,6 +68,12 @@ namespace irene3
         auto* node = llvm::MDNode::get(context, cam);
         value->setMetadata("pc", node);
     }
+
+    void SetRelativeCallMetada(llvm::CallBase* cb) {
+        cb->setMetadata("is_rel", llvm::MDNode::get(cb->getContext(), {}));
+    }
+
+    bool IsRelativeCall(llvm::CallBase* cb) { return cb->getMetadata("is_rel"); }
 
     std::optional< uint64_t > GetPCMetadata(const llvm::Value* value) {
         if (!value) {
@@ -172,8 +183,8 @@ namespace irene3
 
     CallOpInfo::CallOpInfo(irene3::patchir::CallOp op) {
         auto reg                 = mlir::dyn_cast< irene3::patchir::RegionOp >(op->getParentOp());
-        this->entry_stack_offset = reg.getStackOffsetEntryBytesAttr().getInt();
-        this->exit_stack_offset  = reg.getStackOffsetExitBytesAttr().getInt();
+        this->entry_stack_offset = reg.getStackOffsetEntryBytesAttr().getSInt();
+        this->exit_stack_offset  = reg.getStackOffsetExitBytesAttr().getSInt();
         for (auto op : op->getOperands()) {
             if (auto val = mlir::dyn_cast< irene3::patchir::ValueOp >(op.getDefiningOp())) {
                 auto at_ent  = val.getAtEntry();
@@ -208,6 +219,17 @@ namespace irene3
             res.addr = std::get< uint64_t >(addr);
         }
         return res;
+    }
+
+    void PatchIRContext(mlir::MLIRContext& context) {
+        mlir::DialectRegistry registry;
+        registry.insert< irene3::patchir::PatchIRDialect >();
+        registry.insert< mlir::LLVM::LLVMDialect >();
+        registry.insert< mlir::DLTIDialect >();
+        context.appendDialectRegistry(registry);
+
+        mlir::registerBuiltinDialectTranslation(context);
+        mlir::registerLLVMDialectTranslation(context);
     }
 
 } // namespace irene3
