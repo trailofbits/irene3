@@ -25,8 +25,13 @@ def _main():
     s_file = f"{args.workdir}/{patchname}.s"
     json_file = f"{args.workdir}/{patchname}.json"
 
+    install_dir = os.path.abspath(os.path.dirname(__file__))
+    env = os.environ.copy()
+    env["PATH"] = install_dir + os.pathsep + env["PATH"]
+
     subprocess.run(
-        ["irene3-patchlang2patchir", "--input", args.patch, "--output", mlir_file]
+        ["irene3-patchlang2patchir", "--input", args.patch, "--output", mlir_file],
+        env = env
     )
     subprocess.run(
         [
@@ -43,7 +48,8 @@ def _main():
             json_file,
             "--out",
             s_file,
-        ]
+        ],
+        env = env
     )
 
 

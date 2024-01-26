@@ -22,8 +22,13 @@ def _main():
     mlir_file = f"{args.workdir}/{specname}.mlir"
     patch_file = f"{args.workdir}/{specname}.irene"
 
+    install_dir = os.path.abspath(os.path.dirname(__file__))
+    env = os.environ.copy()
+    env["PATH"] = install_dir + os.pathsep + env["PATH"]
+
     subprocess.run(
-        ["irene3-patchir-codegen", "--spec", args.spec, "--mlir-out", mlir_file]
+        ["irene3-patchir-codegen", "--spec", args.spec, "--mlir-out", mlir_file],
+        env = env
     )
     subprocess.run(
         [
@@ -34,6 +39,7 @@ def _main():
             f"{args.uid}",
         ],
         stdout=open(patch_file, mode="w"),
+        env = env
     )
 
 
