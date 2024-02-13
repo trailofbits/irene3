@@ -3,6 +3,7 @@
 #include <anvill/ABI.h>
 #include <anvill/Declarations.h>
 #include <glog/logging.h>
+#include <irene3/IreneLoweringInterface.h>
 #include <irene3/LowLocCCBuilder.h>
 #include <irene3/PatchIR/PatchIRAttrs.h>
 #include <irene3/PatchIR/PatchIROps.h>
@@ -21,10 +22,13 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/GlobalValue.h>
+#include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/InstrTypes.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/PassManager.h>
@@ -43,28 +47,6 @@
 namespace irene3
 {
 
-    llvm::Type *ConvertMVT(llvm::LLVMContext &context, llvm::MVT svt) {
-        if (svt.isInteger()) {
-            return llvm::IntegerType::get(context, svt.getFixedSizeInBits());
-        } else if (svt.isFloatingPoint()) {
-            switch (svt.getFixedSizeInBits()) {
-                case 16: return llvm::Type::getHalfTy(context);
-                case 32: return llvm::Type::getFloatTy(context);
-                case 64: return llvm::Type::getDoubleTy(context);
-                case 128: return llvm::Type::getFP128Ty(context);
-                default: {
-                    LOG(FATAL) << "Unknown float " << svt.getFixedSizeInBits();
-                    return nullptr;
-                };
-            }
-        }
-
-        std::string s;
-        llvm::raw_string_ostream os(s);
-        svt.print(os);
-        LOG(FATAL) << "unable to convert mvt: " << s;
-    }
-
     llvm::FunctionType *SignatureForWrapper(
         llvm::LLVMContext &context, const LoweredVariables &copinfo) {
         std::vector< llvm::Type * > args;
@@ -82,7 +64,7 @@ namespace irene3
 
     namespace
     {
-        llvm::Type *AddressType(const llvm::Module *mod) {
+        llvm::IntegerType *AddressType(const llvm::Module *mod) {
             return llvm::IntegerType::get(
                 mod->getContext(), mod->getDataLayout().getPointerSizeInBits());
         }
@@ -102,11 +84,11 @@ namespace irene3
 
         std::vector< llvm::Type * > entry_types;
 
-        std::transform(
-            lowered.at_entry.begin(), lowered.at_entry.end(), std::back_inserter(entry_types),
-            [f](const LowVar &lv) -> llvm::Type * {
-                return ConvertMVT(f->getContext(), lv.assignment.type);
-            });
+        for (const auto &comps : lowered.at_entry.Components()) {
+            for (const auto &comp : comps) {
+                entry_types.push_back(ConvertMVT(f->getContext(), comp->GetMVT()));
+            }
+        }
 
         auto res
             = llvm::FunctionType::get(llvm::Type::getVoidTy(f->getContext()), entry_types, false);
@@ -129,13 +111,17 @@ namespace irene3
 
         for (auto cb : calls_to_goto) {
             llvm::IRBuilder<> bldr(cb);
-            auto target_pc = bldr.CreateIntToPtr(
-                cb->getArgOperand(0), llvm::PointerType::get(cb->getContext(), 0));
+            // auto addr      = AddressType(F.getParent());
+            CHECK(llvm::isa< llvm::Constant >(cb->getArgOperand(0)));
+            auto target_pc = llvm::ConstantExpr::getIntToPtr(
+                llvm::cast< llvm::Constant >(cb->getArgOperand(0)),
+                llvm::PointerType::get(cb->getContext(), 0));
+
             auto old_block = cb->getParent();
             // split off everything after the
             old_block->erase(cb->getIterator(), old_block->end());
             bldr.SetInsertPoint(old_block);
-            this->CreateExitFunction(cop, F, lowered, bldr, target_pc);
+            this->CreateExitFunction(F, lowered, bldr, target_pc);
         }
     }
 
@@ -153,51 +139,49 @@ namespace irene3
     namespace
     {
         llvm::FunctionType *CreateExitingFunctionTy(
-            llvm::Function &target, const LoweredVariables &lv) {
+            llvm::Function &target, const RegionSummary &lv) {
             std::vector< llvm::Type * > args;
 
-            for (const auto &vs : lv.at_exit) {
-                auto ty = ConvertMVT(target.getContext(), vs.assignment.type);
-                args.push_back(ty);
+            for (const auto &comp : lv.at_exit.Components()) {
+                for (const auto &ptr : comp) {
+                    auto ty = ConvertMVT(target.getContext(), ptr->GetMVT());
+                    args.push_back(ty);
+                }
             }
-
             return llvm::FunctionType::get(llvm::Type::getVoidTy(target.getContext()), args, false);
         }
 
     } // namespace
 
     llvm::Value *WrapFunctionWithMachineWrapper::AccessHv(
-        llvm::IRBuilder<> &target_bldr, const LowVar &ent) {
+        llvm::IRBuilder<> &target_bldr, size_t high_index) {
         auto i32 = llvm::IntegerType::getInt32Ty(target_bldr.getContext());
         return target_bldr.CreateGEP(
             *this->tmp_sty, *this->tmp_st,
-            { llvm::ConstantInt::getNullValue(i32), llvm::ConstantInt::get(i32, ent.high_index) });
+            { llvm::ConstantInt::getNullValue(i32), llvm::ConstantInt::get(i32, high_index) });
     }
 
     void WrapFunctionWithMachineWrapper::CreateExitFunction(
-        patchir::CallOp cop,
         llvm::Function &target,
-        const LoweredVariables &lowered,
+        const RegionSummary &lowered,
         llvm::IRBuilder<> &exit_bldr,
         llvm::Value *addr) {
         CHECK(addr->getType()->isPointerTy());
         std::vector< llvm::Value * > exiter_args;
 
-        for (auto ent : lowered.at_exit) {
-            auto value = exit_bldr.CreateLoad(
-                ConvertMVT(target.getContext(), ent.assignment.type), AccessHv(exit_bldr, ent));
-            exiter_args.push_back(value);
+        size_t high_index = 0;
+        for (auto ent : lowered.at_exit.Components()) {
+            for (const auto &comp : ent) {
+                exiter_args.push_back(comp->Load(exit_bldr, AccessHv(exit_bldr, high_index)));
+            }
+            high_index++;
         }
 
         // to hit an exit we declare an exit function with a custom calling convention
         // target.setDoesNotReturn();
 
-        CallOpInfo copinfo(cop);
-        auto cc_vals = copinfo.at_exit;
-
-        auto cc_id = this->collected_ccs.AddCC(CCBuilder(
-            copinfo.at_exit, copinfo.at_exit, copinfo.exit_stack_offset,
-            copinfo.exit_stack_offset));
+        // exiters have the semantics of entry at exit
+        auto cc_id = this->collected_ccs.AddCC(CCBuilder({ lowered.at_exit, lowered.at_exit }));
 
         auto call
             = exit_bldr.CreateCall(CreateExitingFunctionTy(target, lowered), addr, exiter_args);
@@ -242,10 +226,15 @@ namespace irene3
                 { llvm::ConstantInt::getNullValue(i32), llvm::ConstantInt::get(i32, i) }));
         }
 
-        size_t ind = 0;
-        for (auto ent : lowered.at_entry) {
-            bldr.CreateStore(target.getArg(ind), AccessHv(bldr, ent));
-            ind += 1;
+        size_t ind      = 0;
+        size_t high_ind = 0;
+        for (auto ent_comp : lowered.at_entry.Components()) {
+            for (auto comp : ent_comp) {
+                comp->Store(bldr, target.getArg(ind), AccessHv(bldr, high_ind));
+                ind += 1;
+            }
+
+            high_ind += 1;
         }
 
         auto cb         = bldr.CreateCall(oldfunc, args);
@@ -256,7 +245,7 @@ namespace irene3
         llvm::IRBuilder<> exit_bldr(exit_block);
         // TODO(Ian): support returning out of a block...
         CreateExitFunction(
-            cop, target, lowered, exit_bldr,
+            target, lowered, exit_bldr,
             llvm::UndefValue::get(llvm::PointerType::get(target.getContext(), 0)));
 
         return cb;

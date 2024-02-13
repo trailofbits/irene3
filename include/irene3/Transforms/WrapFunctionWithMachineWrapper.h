@@ -1,6 +1,7 @@
 #pragma once
 
 #include <anvill/Declarations.h>
+#include <irene3/IreneLoweringInterface.h>
 #include <irene3/LowLocCCBuilder.h>
 #include <irene3/PatchIR/PatchIROps.h>
 #include <irene3/PhysicalLocationDecoder.h>
@@ -35,7 +36,7 @@ namespace irene3
 
         llvm::Value *SuccessorStructValue(llvm::IRBuilder<> &, uint64_t value, bool should_return);
 
-        auto AccessHv(llvm::IRBuilder<> &target_bldr, const LowVar &ent) -> llvm::Value *;
+        auto AccessHv(llvm::IRBuilder<> &target_bldr, size_t high_index) -> llvm::Value *;
 
       public:
         static llvm::StringRef name();
@@ -44,8 +45,10 @@ namespace irene3
             llvm::LLVMContext &llcontext,
             mlir::ModuleOp mlir_module,
             const llvm::TargetRegisterInfo *reg_info,
-            ModuleCallingConventions &ccmod)
-            : PostPass< WrapFunctionWithMachineWrapper >(llcontext, mlir_module, reg_info, ccmod) {}
+            ModuleCallingConventions &ccmod,
+            const IreneLoweringInterface &ILI)
+            : PostPass< WrapFunctionWithMachineWrapper >(
+                llcontext, mlir_module, reg_info, ccmod, ILI) {}
 
         virtual llvm::FunctionType *GetSignature(anvill::Uid, const llvm::Function *) override;
 
@@ -58,9 +61,8 @@ namespace irene3
             llvm::Function *oldfunc) override;
 
         void CreateExitFunction(
-            patchir::CallOp cop,
             llvm::Function &target,
-            const LoweredVariables &lowered,
+            const RegionSummary &lowered,
             llvm::IRBuilder<> &exit_bldr,
             llvm::Value *addr);
     };

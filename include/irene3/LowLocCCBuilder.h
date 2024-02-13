@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <iostream>
+#include <irene3/ILIMixin.h>
+#include <irene3/IreneLoweringInterface.h>
 #include <irene3/PhysicalLocationDecoder.h>
 #include <irene3/Util.h>
 #include <llvm/IR/DataLayout.h>
@@ -16,6 +18,7 @@
 #include <llvm/MC/MCRegister.h>
 #include <llvm/MC/MCRegisterInfo.h>
 #include <llvm/MC/TargetRegistry.h>
+#include <mlir/Target/LLVMIR/TypeToLLVM.h>
 #include <vector>
 
 namespace irene3
@@ -50,30 +53,23 @@ namespace irene3
       public:
         std::function< llvm::CCAssignFn > BuidCCAssign(bool isReturn);
 
-        CCBuilder(
-            std::vector< LowLoc > entry,
-            std::vector< LowLoc > exit,
-            std::int64_t entry_stack_offset,
-            std::int64_t exit_stack_offset)
-            : entry(std::move(entry))
-            , exit(std::move(exit))
-            , entry_stack_offset(entry_stack_offset)
-            , exit_stack_offset(exit_stack_offset) {
+        CCBuilder(RegionSummary summary)
+            : summary(summary) {
             // this->dump();
         }
 
         void dump() const;
 
       private:
-        std::vector< LowLoc > entry;
-        std::vector< LowLoc > exit;
-        std::int64_t entry_stack_offset;
-        std::int64_t exit_stack_offset;
+        RegionSummary summary;
     };
 
-    class ModuleCallingConventions {
+    class ModuleCallingConventions : public ILIMixin< ModuleCallingConventions > {
+        friend class ILIMixin< ModuleCallingConventions >;
+
       public:
-        ModuleCallingConventions(mlir::ModuleOp mop);
+        ModuleCallingConventions(
+            mlir::ModuleOp mop, const IreneLoweringInterface &ILI, llvm::LLVMContext &context);
 
         void Populate(mlir::ModuleOp mop);
 
@@ -86,6 +82,10 @@ namespace irene3
         std::unordered_map< uint64_t, CCBuilder > BuildCConvMap();
 
         void dump() const;
+
+      protected:
+        const IreneLoweringInterface &ILI;
+        mlir::LLVM::TypeToLLVMIRTranslator type_decoder;
 
       private:
         // ordered map for ids

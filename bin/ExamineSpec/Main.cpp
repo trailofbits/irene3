@@ -35,7 +35,8 @@ int main(int argc, char* argv[]) {
             size_t indent = 4;
             for (auto [uid, blk] : func->cfg) {
                 std::cout << std::string(indent, ' ') << "Block uid: " << std::dec << uid.value
-                          << " address: " << std::hex << blk.addr << std::endl;
+                          << " address: " << std::hex << blk.addr << " size: " << blk.size
+                          << std::endl;
 
                 for (auto out_edge : blk.outgoing_edges) {
                     std::cout << std::string(indent + 4, ' ') << std::dec << out_edge.value

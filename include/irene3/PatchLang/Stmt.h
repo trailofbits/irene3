@@ -20,12 +20,22 @@ namespace irene3::patchlang
     class StoreStmt;
     class ReturnStmt;
     class CallStmt;
+    class CallIntrinsicStmt;
     class ValueStmt;
     class GotoStmt;
     class NopStmt;
+    class ConditionalGotoStmt;
 
-    using Stmt = std::
-        variant< LetDeclStmt, StoreStmt, ReturnStmt, CallStmt, ValueStmt, GotoStmt, NopStmt >;
+    using Stmt = std::variant<
+        LetDeclStmt,
+        StoreStmt,
+        ReturnStmt,
+        CallStmt,
+        CallIntrinsicStmt,
+        ValueStmt,
+        GotoStmt,
+        ConditionalGotoStmt,
+        NopStmt >;
     using StmtPtr = std::unique_ptr< Stmt >;
     template< typename T >
     concept IsStmt = std::is_same_v< std::remove_cv_t< T >, Stmt >;
@@ -124,6 +134,27 @@ namespace irene3::patchlang
         Token GetLastToken() const { return last_tok; }
     };
 
+    class CallIntrinsicStmt {
+        StrLitExpr callee;
+        std::vector< ExprPtr > args;
+        Token first_tok;
+        Token last_tok;
+
+      public:
+        CallIntrinsicStmt(
+            StrLitExpr&& callee, std::vector< ExprPtr >&& args, Token first_tok, Token last_tok)
+            : callee(std::move(callee))
+            , args(std::move(args))
+            , first_tok(first_tok)
+            , last_tok(last_tok) {}
+
+        const StrLitExpr& GetCallee() const { return callee; }
+        const std::vector< ExprPtr >& GetArgs() const { return args; }
+
+        Token GetFirstToken() const { return first_tok; }
+        Token GetLastToken() const { return last_tok; }
+    };
+
     class ValueStmt {
         std::string name;
         std::optional< Location > at_entry;
@@ -160,18 +191,37 @@ namespace irene3::patchlang
         Token GetLastToken() const { return last_tok; }
     };
 
-    class GotoStmt {
-        ExprPtr target;
+    class ConditionalGotoStmt {
+        IntLitExpr addr;
+        ExprPtr cond;
         Token first_tok;
         Token last_tok;
 
       public:
-        GotoStmt(ExprPtr&& target, Token first_tok, Token last_tok)
-            : target(std::move(target))
+        ConditionalGotoStmt(IntLitExpr&& addr, ExprPtr&& cond, Token first_tok, Token last_tok)
+            : addr(addr)
+            , cond(std::move(cond))
             , first_tok(first_tok)
             , last_tok(last_tok) {}
 
-        const Expr& GetTarget() const { return *this->target; }
+        const IntLitExpr& GetTarget() const { return this->addr; }
+        const Expr& GetCond() const { return *this->cond; }
+        Token GetFirstToken() const { return first_tok; }
+        Token GetLastToken() const { return last_tok; }
+    };
+
+    class GotoStmt {
+        IntLitExpr addr;
+        Token first_tok;
+        Token last_tok;
+
+      public:
+        GotoStmt(IntLitExpr&& addr, Token first_tok, Token last_tok)
+            : addr(addr)
+            , first_tok(first_tok)
+            , last_tok(last_tok) {}
+
+        const IntLitExpr& GetTarget() const { return this->addr; }
         Token GetFirstToken() const { return first_tok; }
         Token GetLastToken() const { return last_tok; }
     };

@@ -16,6 +16,7 @@
 #include <irene3/PatchLang/Stmt.h>
 #include <irene3/PatchLang/Types.h>
 #include <iterator>
+#include <llvm/ADT/APFloat.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/Support/raw_ostream.h>
 #include <mlir/Dialect/DLTI/DLTI.h>
@@ -63,6 +64,7 @@ class MLIRCodegen {
     mlir::OwningOpRef< mlir::ModuleOp > mlir_module;
     mlir::LLVM::LLVMPointerType ptr_type;
     std::unordered_map< std::string, mlir::Type > in_scope_types;
+    llvm::DataLayout layout;
 
     using SymbolMap = std::unordered_map< std::string, mlir::Value >;
 
@@ -137,9 +139,38 @@ class MLIRCodegen {
 
     mlir::Value ToLLVM(
         const irene3::patchlang::IntLitExpr& lit, mlir::OpBuilder& mlir_builder, const SymbolMap&) {
-        auto type = mlir::IntegerType::get(&mlir_context, 64);
-        return mlir_builder.create< mlir::LLVM::ConstantOp >(
-            ToLocAttr(lit), type, static_cast< uint64_t >(lit));
+        auto val  = lit.GetValue();
+        auto type = mlir::IntegerType::get(&mlir_context, val.getBitWidth());
+        return mlir_builder.create< mlir::LLVM::ConstantOp >(ToLocAttr(lit), type, val);
+    }
+
+    static mlir::Type FloatSemaToMLIR(mlir::MLIRContext* ctx, const llvm::fltSemantics& sema) {
+        using llvm::APFloatBase;
+        using mlir::FloatType;
+        switch (APFloatBase::SemanticsToEnum(sema)) {
+            case APFloatBase::S_IEEEhalf: return FloatType::getF16(ctx);
+            case APFloatBase::S_BFloat: return FloatType::getBF16(ctx);
+            case APFloatBase::S_IEEEsingle: return FloatType::getF32(ctx);
+            case APFloatBase::S_IEEEdouble: return FloatType::getF64(ctx);
+            case APFloatBase::S_IEEEquad: return FloatType::getF128(ctx);
+            case APFloatBase::S_Float8E5M2: return FloatType::getFloat8E5M2(ctx);
+            case APFloatBase::S_Float8E5M2FNUZ: return FloatType::getFloat8E5M2FNUZ(ctx);
+            case APFloatBase::S_Float8E4M3FN: return FloatType::getFloat8E4M3FN(ctx);
+            case APFloatBase::S_Float8E4M3FNUZ: return FloatType::getFloat8E4M3FNUZ(ctx);
+            case APFloatBase::S_Float8E4M3B11FNUZ: return FloatType::getFloat8E4M3B11FNUZ(ctx);
+            case APFloatBase::S_FloatTF32: return FloatType::getTF32(ctx);
+            case APFloatBase::S_x87DoubleExtended: return FloatType::getF80(ctx);
+            default: LOG(FATAL) << "Unsupported float type"; return nullptr;
+        }
+    }
+
+    mlir::Value ToLLVM(
+        const irene3::patchlang::FloatLitExpr& lit,
+        mlir::OpBuilder& mlir_builder,
+        const SymbolMap&) {
+        auto val  = lit.GetValue();
+        auto type = FloatSemaToMLIR(&mlir_context, val.getSemantics());
+        return mlir_builder.create< mlir::LLVM::ConstantOp >(ToLocAttr(lit), type, val);
     }
 
     mlir::Value ToLLVM(
@@ -277,18 +308,13 @@ class MLIRCodegen {
 
     mlir::Value ToLLVM(
         const irene3::patchlang::CallExpr& expr, mlir::OpBuilder& bldr, const SymbolMap& smap) {
-        // LOG(FATAL) << expr.GetFirstToken().GetPositionString() << ": Not implemented yet";
-        // return nullptr;
         auto callee = expr.GetCallee();
         std::vector< mlir::Value > args;
         for (const auto& arg : expr.GetArgs()) {
             mlir::Value expr = ToLLVM(*arg, bldr, smap);
             args.push_back(expr);
         }
-        //   static void build(::mlir::OpBuilder &odsBuilder,
-        //::mlir::OperationState &odsState,
-        // TypeRange results,
-        // StringRef callee, ValueRange args = {});
+
         auto function
             = this->mlir_module->lookupSymbol< mlir::LLVM::LLVMFuncOp >(callee.GetValue());
 
@@ -301,6 +327,38 @@ class MLIRCodegen {
 
         if (cop.getResult()) {
             return cop.getResult();
+        } else {
+            return mlir::Value();
+        }
+    }
+
+    mlir::Value ToLLVM(
+        const irene3::patchlang::CallIntrinsicExpr& expr,
+        mlir::OpBuilder& bldr,
+        const SymbolMap& smap) {
+        auto callee = expr.GetCallee();
+        std::vector< mlir::Value > args;
+        for (const auto& arg : expr.GetArgs()) {
+            mlir::Value expr = ToLLVM(*arg, bldr, smap);
+            args.push_back(expr);
+        }
+
+        auto function
+            = this->mlir_module->lookupSymbol< mlir::LLVM::LLVMFuncOp >(callee.GetValue());
+
+        if (!function) {
+            LOG(FATAL) << "Call to undefined symbol: " << callee.GetValue();
+        }
+
+        mlir::LLVM::CallIntrinsicOp cop = bldr.create< mlir::LLVM::CallIntrinsicOp >(
+            ToLocAttr(expr), function.getFunctionType().getReturnType(), callee.GetValue(), args,
+            mlir::LLVM::FastmathFlags::none);
+
+        auto results = cop->getResults();
+        CHECK(results.size() <= 1) << "Too many results for intrinsic";
+
+        if (results.size() == 1) {
+            return cop.getResult(0);
         } else {
             return mlir::Value();
         }
@@ -477,15 +535,49 @@ class MLIRCodegen {
         smap[name] = ToLLVM(stmt.GetExpr(), mlir_builder, smap);
     }
 
+    mlir::LLVM::ConstantOp BuildAddr(
+        mlir::OpBuilder& mlir_builder,
+        const irene3::patchlang::IntLitExpr& addr,
+        mlir::LLVM::LLVMFuncOp& func) {
+        auto iptr
+            = mlir::IntegerType::get(&this->mlir_context, this->layout.getPointerSizeInBits());
+        return mlir_builder.create< mlir::LLVM::ConstantOp >(
+            ToLocAttr(addr),
+            mlir::IntegerAttr::get(iptr, addr.GetValue().zextOrTrunc(iptr.getWidth())));
+    }
+
+    void ToLLVM(
+        const irene3::patchlang::ConditionalGotoStmt& stmt,
+        mlir::OpBuilder& mlir_builder,
+        SymbolMap& smap,
+        mlir::LLVM::LLVMFuncOp& func) {
+        auto loc = ToLocAttr(stmt);
+
+        auto cond = ToLLVM(stmt.GetCond(), mlir_builder, smap);
+
+        auto jump_block     = func.addBlock();
+        auto continue_block = func.addBlock();
+
+        mlir_builder.create< mlir::LLVM::CondBrOp >(loc, cond, jump_block, continue_block);
+
+        mlir::OpBuilder jmpbldr(jump_block, jump_block->begin());
+        std::vector< mlir::Value > args{ BuildAddr(jmpbldr, stmt.GetTarget(), func) };
+        jmpbldr.create< mlir::LLVM::CallOp >(
+            loc, std::nullopt, SymbolRefAttr("__anvill_goto"), args);
+        jmpbldr.create< mlir::LLVM::UnreachableOp >(loc);
+
+        mlir_builder.setInsertionPoint(continue_block, continue_block->begin());
+    }
+
     void ToLLVM(
         const irene3::patchlang::GotoStmt& stmt,
         mlir::OpBuilder& mlir_builder,
         SymbolMap& smap,
-        mlir::LLVM::LLVMFuncOp&) {
+        mlir::LLVM::LLVMFuncOp& func) {
         auto loc = ToLocAttr(stmt);
-        std::vector< mlir::Value > args{ ToLLVM(stmt.GetTarget(), mlir_builder, smap) };
-        auto i64 = mlir::IntegerType::get(&mlir_context, 64);
-        mlir_builder.create< mlir::LLVM::CallOp >(loc, i64, SymbolRefAttr("__anvill_goto"), args);
+        std::vector< mlir::Value > args{ BuildAddr(mlir_builder, stmt.GetTarget(), func) };
+        mlir_builder.create< mlir::LLVM::CallOp >(
+            loc, std::nullopt, SymbolRefAttr("__anvill_goto"), args);
         mlir_builder.create< mlir::LLVM::UnreachableOp >(loc);
     }
 
@@ -514,6 +606,12 @@ class MLIRCodegen {
         mlir::LLVM::LLVMFuncOp&) {}
 
     void ToLLVM(
+        const irene3::patchlang::CallIntrinsicStmt& stmt,
+        mlir::OpBuilder& mlir_builder,
+        SymbolMap& smap,
+        mlir::LLVM::LLVMFuncOp&) {}
+
+    void ToLLVM(
         const irene3::patchlang::ValueStmt& stmt,
         mlir::OpBuilder& mlir_builder,
         SymbolMap& smap,
@@ -534,7 +632,8 @@ class MLIRCodegen {
         const std::string& layout,
         uint64_t image_base)
         : mlir_context(mlir_context)
-        , ptr_type(mlir::LLVM::LLVMPointerType::get(&mlir_context)) {
+        , ptr_type(mlir::LLVM::LLVMPointerType::get(&mlir_context))
+        , layout(layout) {
         std::string name = FLAGS_input.empty() ? "<stdin>" : FLAGS_input;
         auto loc         = mlir::NameLoc::get(StringAttr(name));
         mlir_module      = mlir::ModuleOp::create(loc);
@@ -549,7 +648,6 @@ class MLIRCodegen {
         mlir::OpBuilder mlir_builder(&mlir_context);
         mlir_builder.setInsertionPointToEnd(mlir_module->getBody());
 
-        auto i64     = mlir::IntegerType::get(&mlir_context, 64);
         auto addr_ty = mlir::IntegerType::get(
             &mlir_context, llvm::DataLayout(layout).getPointerSizeInBits(),
             mlir::IntegerType::Unsigned);
@@ -558,7 +656,10 @@ class MLIRCodegen {
             irene3::patchir::PatchIRDialect::getImageBaseAttrName(),
             mlir::IntegerAttr::get(addr_ty, image_base));
 
-        auto goto_type   = mlir::LLVM::LLVMFunctionType::get(i64, { i64 });
+        auto goto_type = mlir::LLVM::LLVMFunctionType::get(
+            mlir::LLVM::LLVMVoidType::get(&this->mlir_context),
+            { mlir::IntegerType::get(
+                &mlir_context, llvm::DataLayout(layout).getPointerSizeInBits()) });
         auto anvill_goto = mlir_builder.create< mlir::LLVM::LLVMFuncOp >(
             mlir_builder.getUnknownLoc(), StringAttr("__anvill_goto"), goto_type);
         anvill_goto.setPassthroughAttr(mlir::ArrayAttr::get(&mlir_context, StringAttr("noreturn")));

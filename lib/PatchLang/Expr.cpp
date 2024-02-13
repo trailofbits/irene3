@@ -9,6 +9,11 @@ namespace irene3::patchlang
     Token IntLitExpr::GetFirstToken() const { return token; }
     Token IntLitExpr::GetLastToken() const { return token; }
 
+    llvm::APFloat FloatLitExpr::GetValue() const { return value; }
+    Token FloatLitExpr::GetToken() const { return token; }
+    Token FloatLitExpr::GetFirstToken() const { return token; }
+    Token FloatLitExpr::GetLastToken() const { return token; }
+
     Token BoolLitExpr::GetToken() const { return this->token; }
     bool BoolLitExpr::GetValue() const { return this->value; }
     Token BoolLitExpr::GetFirstToken() const { return token; }
@@ -53,6 +58,11 @@ namespace irene3::patchlang
     const std::vector< ExprPtr >& CallExpr::GetArgs() const { return args; }
     Token CallExpr::GetFirstToken() const { return first_tok; }
     Token CallExpr::GetLastToken() const { return last_tok; }
+
+    const StrLitExpr& CallIntrinsicExpr::GetCallee() const { return callee; }
+    const std::vector< ExprPtr >& CallIntrinsicExpr::GetArgs() const { return args; }
+    Token CallIntrinsicExpr::GetFirstToken() const { return first_tok; }
+    Token CallIntrinsicExpr::GetLastToken() const { return last_tok; }
 
     const Expr& AllocaExpr::GetArraySize() const { return *arraySize; }
     const IntLitExpr& AllocaExpr::GetAlignment() const { return alignment; }

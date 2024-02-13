@@ -1,6 +1,7 @@
 #include <irene3/LowLocCCBuilder.h>
 #include <llvm/IR/CallingConv.h>
 #include <llvm/MC/MCRegister.h>
+#include <mlir/Target/LLVMIR/TypeToLLVM.h>
 #include <optional>
 #include <variant>
 #include <vector>
@@ -20,12 +21,7 @@ namespace irene3
     void AssignFromLowLocs::dump() {
         std::cerr << "AssignFromLowLocs: " << std::endl;
         for (auto &v : this->locs) {
-            std::visit(
-                overload{
-                    [](const irene3::patchir::MemoryIndirectAttr &indirect) { indirect.dump(); },
-                    [](const irene3::patchir::RegisterAttr &indirect) { indirect.dump(); },
-                    [](const irene3::patchir::MemoryAttr &indirect) { indirect.dump(); } },
-                v);
+            std::visit([](const auto &attr) { attr.dump(); }, v);
         } // namespace irene3
         std::cerr << "/AssignFromLowLocs: " << std::endl;
     }
@@ -78,30 +74,26 @@ namespace irene3
     }
 
     std::function< llvm::CCAssignFn > CCBuilder::BuidCCAssign(bool isReturn) {
-        AssignFromLowLocs assigner(this->entry, this->entry_stack_offset);
         if (isReturn) {
-            assigner = AssignFromLowLocs(this->exit, this->exit_stack_offset);
+            return this->summary.at_exit;
         }
 
-        return std::bind(
-            &AssignFromLowLocs::CCAssignFn, std::move(assigner), _1, _2, _3, _4, _5, _6);
+        return this->summary.at_entry;
     }
 
     void CCBuilder::dump() const {
         std::cerr << "CCBuilder: " << std::endl;
-        for (auto v : this->entry) {
-            std::visit(
-                overload{
-                    [](const irene3::patchir::MemoryIndirectAttr &indirect) { indirect.dump(); },
-                    [](const irene3::patchir::RegisterAttr &indirect) { indirect.dump(); },
-                    [](const irene3::patchir::MemoryAttr &indirect) { indirect.dump(); } },
-                v);
-        }
+        this->summary.dump();
 
         std::cerr << "/CCBuilder: " << std::endl;
     }
 
-    ModuleCallingConventions::ModuleCallingConventions(mlir::ModuleOp mop) { this->Populate(mop); }
+    ModuleCallingConventions::ModuleCallingConventions(
+        mlir::ModuleOp mop, const IreneLoweringInterface &ILI, llvm::LLVMContext &context)
+        : ILI(ILI)
+        , type_decoder(context) {
+        this->Populate(mop);
+    }
 
     void ModuleCallingConventions::Populate(mlir::ModuleOp mop) {
         for (auto f : mop.getBodyRegion().getOps< irene3::patchir::FunctionOp >()) {
@@ -109,11 +101,8 @@ namespace irene3
                 auto call   = *r.getOps< irene3::patchir::CallOp >().begin();
                 auto callee = call.getCallee();
 
-                CallOpInfo info(call);
-                builders.emplace_back(
-                    callee, CCBuilder(
-                                std::move(info.at_entry), std::move(info.at_exit),
-                                info.entry_stack_offset, info.exit_stack_offset));
+                auto summ = this->LowerVariables(call);
+                builders.emplace_back(callee, CCBuilder(summ));
             }
         }
     }

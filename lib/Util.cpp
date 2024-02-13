@@ -7,6 +7,7 @@
 #include <irene3/PatchIR/PatchIROps.h>
 #include <irene3/TypeDecoder.h>
 #include <irene3/Util.h>
+#include <llvm/CodeGen/MachineValueType.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/InstrTypes.h>
@@ -230,6 +231,28 @@ namespace irene3
 
         mlir::registerBuiltinDialectTranslation(context);
         mlir::registerLLVMDialectTranslation(context);
+    }
+
+    llvm::Type* ConvertMVT(llvm::LLVMContext& context, llvm::MVT svt) {
+        if (svt.isInteger()) {
+            return llvm::IntegerType::get(context, svt.getFixedSizeInBits());
+        } else if (svt.isFloatingPoint()) {
+            switch (svt.getFixedSizeInBits()) {
+                case 16: return llvm::Type::getHalfTy(context);
+                case 32: return llvm::Type::getFloatTy(context);
+                case 64: return llvm::Type::getDoubleTy(context);
+                case 128: return llvm::Type::getFP128Ty(context);
+                default: {
+                    LOG(FATAL) << "Unknown float " << svt.getFixedSizeInBits();
+                    return nullptr;
+                };
+            }
+        }
+
+        std::string s;
+        llvm::raw_string_ostream os(s);
+        svt.print(os);
+        LOG(FATAL) << "unable to convert mvt: " << s;
     }
 
 } // namespace irene3

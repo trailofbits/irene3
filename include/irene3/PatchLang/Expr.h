@@ -10,11 +10,13 @@ namespace irene3::patchlang
     class IntLitExpr;
     class StrLitExpr;
     class BoolLitExpr;
+    class FloatLitExpr;
     class DeclRefExpr;
     class BinaryExpr;
     class UnaryExpr;
     class GetElementPtrExpr;
     class CallExpr;
+    class CallIntrinsicExpr;
     class AllocaExpr;
     class LoadExpr;
     class NullExpr;
@@ -26,11 +28,13 @@ namespace irene3::patchlang
         IntLitExpr,
         StrLitExpr,
         BoolLitExpr,
+        FloatLitExpr,
         DeclRefExpr,
         BinaryExpr,
         UnaryExpr,
         GetElementPtrExpr,
         CallExpr,
+        CallIntrinsicExpr,
         AllocaExpr,
         LoadExpr,
         NullExpr,

@@ -68,7 +68,7 @@ jobs:
         image:
           - { name: "ubuntu", tag: "22.04" }
         llvm: ["17"]
-        cxxcommon_version: ["0.6.4"]
+        cxxcommon_version: ["0.6.6"]
 
     runs-on:
       labels: gha-ubuntu-32
@@ -421,7 +421,7 @@ jobs:
 
           # Use the modified patchlang file since patchlang doesn't round trip and needs to be manually adjusted
           echo ::group::irene3-patchlang2patchir
-          docker run --rm -v $(pwd):/workspace -w /workspace build-test irene3-patchlang2patchir -input /workspace/tests/demo/chall3-onMessageLength.patchlang -output /workspace/chall3-onMessageLength.patch.mlir
+          docker run --rm -v $(pwd):/workspace -w /workspace build-test irene3-patchlang2patchir -input ./chall3-onMessageLength.patchlang -output /workspace/chall3-onMessageLength.patch.mlir
           echo ::endgroup
 
           echo ::group::irene3-patchir-compiler
@@ -430,10 +430,10 @@ jobs:
           echo ::group::irene3-patchir-compiler-output
           cat ./chall3-onMessageLength.S
           echo ::endgroup
-
-          echo ::group::irene3-patch-assembler
-          docker run --rm -v $(pwd):/workspace -w /workspace build-test patch-assembler --in_assembly /workspace/chall3-onMessageLength.S --metadata /workspace/chall3-onMessageLength.metadata.json /workspace/tests/demo/libroscpp.so --output /workspace/patched.so
-          echo ::endgroup
+      #disabled until patcherex2 merged
+      #echo ::group::irene3-patch-assembler
+      #docker run --rm -v $(pwd):/workspace -w /workspace build-test patch-assembler --in_assembly /workspace/chall3-onMessageLength.S --metadata /workspace/chall3-onMessageLength.metadata.json /workspace/tests/demo/libroscpp.so --output /workspace/patched.so
+      #echo ::endgroup
 
       # Push with proper tag once test ran
       - name: Build and push

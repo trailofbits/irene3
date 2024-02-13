@@ -19,6 +19,7 @@
 #include <irene3/TypeDecoder.h>
 #include <irene3/Util.h>
 #include <irene3/Version.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/IntrinsicInst.h>
@@ -27,11 +28,13 @@
 #include <llvm/IR/PassManager.h>
 #include <llvm/Passes/OptimizationLevel.h>
 #include <llvm/Passes/PassBuilder.h>
+#include <llvm/Support/Casting.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <memory>
 #include <mlir/Dialect/DLTI/DLTI.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
+#include <mlir/Dialect/LLVMIR/LLVMTypes.h>
 #include <mlir/IR/Attributes.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinAttributes.h>
@@ -41,6 +44,7 @@
 #include <mlir/IR/MLIRContext.h>
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/IR/Verifier.h>
+#include <mlir/Support/LLVM.h>
 #include <mlir/Target/LLVMIR/Import.h>
 #include <mlir/Target/LLVMIR/TypeFromLLVM.h>
 #include <optional>
@@ -229,11 +233,12 @@ class MLIRCodegen {
             if (uid) {
                 for (auto var : irene3::UsedGlobalValue< llvm::GlobalVariable >(
                          &f, spec.GetRequiredGlobals())) {
-                    auto pc_metadata = irene3::GetPCMetadata(var);
+                    auto pc_metadata = lifter.AddressOfEntity(var);
                     if (!pc_metadata) {
                         continue;
                     }
                     auto v = spec.VariableAt(*pc_metadata);
+
                     if (v) {
                         size_t sz = v->type->getScalarSizeInBits();
                         gvars.insert({
@@ -292,7 +297,7 @@ class MLIRCodegen {
         auto valueop = mlir_builder.create< irene3::patchir::ValueOp >(
             unk_loc,
             irene3::patchir::LowValuePointerType::get(
-                &this->mlir_context, this->llvm_to_mlir_type.translateType(bb_param.param.type)),
+                &this->mlir_context, this->translateType(bb_param.param.type)),
             StringAttr(bb_param.param.name), at_entry, at_exit);
 
         param_locs.push_back(valueop);
@@ -329,6 +334,33 @@ class MLIRCodegen {
         }
     }
 
+    void translateTypes(
+        llvm::ArrayRef< llvm::Type* > types, llvm::SmallVectorImpl< mlir::Type >& result) {
+        result.reserve(result.size() + types.size());
+        for (llvm::Type* type : types)
+            result.push_back(translateType(type));
+    }
+
+    mlir::Type translateType(llvm::Type* ty) {
+        if (auto sty = llvm::dyn_cast< llvm::StructType >(ty)) {
+            if (sty->hasName()) {
+                llvm::SmallVector< mlir::Type, 8 > subtypes;
+                auto id = mlir::LLVM::LLVMStructType::getIdentified(
+                    &this->mlir_context, sty->getName());
+                if (!id.isInitialized()) {
+                    translateTypes(sty->subtypes(), subtypes);
+                    auto res = id.setBody(subtypes, sty->isPacked());
+                    if (res.succeeded()) {
+                        return id;
+                    }
+                } else {
+                    return id;
+                }
+            }
+        }
+        return this->llvm_to_mlir_type.translateType(ty);
+    }
+
   public:
     MLIRCodegen(mlir::MLIRContext& mlir_context, std::istream& spec_stream)
         : mlir_context(mlir_context)
@@ -358,7 +390,7 @@ class MLIRCodegen {
             mlir_builder.create< irene3::patchir::Global >(
                 unk_loc, mlir::StringAttr::get(&mlir_context, nm), mlir::StringAttr(),
                 irene3::patchir::MemoryAttr::get(&mlir_context, gv.address, 0, false, gv.size),
-                this->llvm_to_mlir_type.translateType(gv.ty));
+                this->translateType(gv.ty));
         }
         auto addr_ty = mlir::IntegerType::get(
             &mlir_context, spec.Arch()->address_size, mlir::IntegerType::Unsigned);

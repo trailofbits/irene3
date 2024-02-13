@@ -9,10 +9,12 @@
 #include <irene3/PatchLang/Stmt.h>
 #include <irene3/PatchLang/Type.h>
 #include <irene3/PatchLang/Types.h>
+#include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/APSInt.h>
 #include <memory>
 #include <optional>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -69,43 +71,149 @@ namespace irene3::patchlang
         return tok;
     }
 
+    static std::pair< const llvm::fltSemantics*, unsigned > getFltSemantics(
+        const std::string_view str) {
+        if (str == "f16") {
+            return { &llvm::APFloatBase::IEEEhalf(), 16 };
+        } else if (str == "bf16") {
+            return { &llvm::APFloatBase::BFloat(), 16 };
+        } else if (str == "f32") {
+            return { &llvm::APFloatBase::IEEEsingle(), 32 };
+        } else if (str == "f64") {
+            return { &llvm::APFloatBase::IEEEdouble(), 64 };
+        } else if (str == "f80") {
+            return { &llvm::APFloatBase::x87DoubleExtended(), 80 };
+        } else if (str == "f128") {
+            return { &llvm::APFloatBase::IEEEquad(), 128 };
+        } else if (str == "f8e5m2") {
+            return { &llvm::APFloatBase::Float8E5M2(), 8 };
+        } else if (str == "f8e5m2fnuz") {
+            return { &llvm::APFloatBase::Float8E5M2FNUZ(), 8 };
+        } else if (str == "f8e4m3fn") {
+            return { &llvm::APFloatBase::Float8E4M3FN(), 8 };
+        } else if (str == "f8e4m3fnuz") {
+            return { &llvm::APFloatBase::Float8E4M3FNUZ(), 8 };
+        } else if (str == "f8e4m3b11fnuz") {
+            return { &llvm::APFloatBase::Float8E4M3B11FNUZ(), 8 };
+        } else if (str == "tf32") {
+            return { &llvm::APFloatBase::FloatTF32(), 32 };
+        } else {
+            throw std::logic_error("invalid floating point type");
+        }
+    }
+
+    ParseResult< FloatLitExpr > Parser::ParseFloatLit() {
+        auto tok = GetToken< Token::HexFloatLit >();
+        CHECK_PARSE(tok);
+
+        std::string_view view = tok->contents;
+
+        std::string_view bitwidth_view = view;
+        // Remove everything up before ':'
+        while (bitwidth_view[0] != ':') {
+            bitwidth_view.remove_prefix(1);
+        }
+        bitwidth_view.remove_prefix(1);
+        auto [sema, bitwidth] = getFltSemantics(bitwidth_view);
+
+        llvm::APInt value(bitwidth, 0);
+
+        // skip 0x
+        view.remove_prefix(2);
+        while (true) {
+            auto c = view[0];
+            if (c == ':') {
+                break;
+            }
+            uint64_t digit;
+            if (c >= '0' && c <= '9') {
+                digit = static_cast< uint64_t >(c - '0');
+            } else if (c >= 'A' && c <= 'F') {
+                digit = static_cast< uint64_t >(c - 'A') + 10;
+            } else {
+                assert(c >= 'a' && c <= 'f');
+                digit = static_cast< uint64_t >(c - 'a') + 10;
+            }
+            value = (value << 4) | digit;
+            view.remove_prefix(1);
+        }
+
+        return FloatLitExpr(llvm::APFloat(*sema, value), tok.TakeValue());
+    }
+
     ParseResult< IntLitExpr > Parser::ParseIntLit() {
         auto tok
             = GetToken< Token::BinIntLit, Token::OctIntLit, Token::DecIntLit, Token::HexIntLit >();
         CHECK_PARSE(tok);
 
         std::string_view view = tok->contents;
-        llvm::APSInt value(128);
+
+        unsigned bitwidth = 0;
+        {
+            std::string_view bitwidth_view = view;
+            // Remove everything up before ':'
+            while (bitwidth_view[0] != ':') {
+                bitwidth_view.remove_prefix(1);
+            }
+            bitwidth_view.remove_prefix(1);
+            for (auto c : bitwidth_view) {
+                bitwidth = (bitwidth * 10) + static_cast< unsigned >(c - '0');
+            }
+        }
+
+        llvm::APSInt value(bitwidth);
         bool is_negative = false;
         if (view[0] == '-' || view[0] == '+') {
             value.setIsSigned(true);
             is_negative = view[0] == '-';
-            view        = view.substr(1);
+            view.remove_prefix(1);
         }
 
         LitBase base;
         switch (tok->kind) {
             case Token::BinIntLit: {
                 base = LitBase::Binary;
-                for (char c : view.substr(2)) {
+                view.remove_prefix(2);
+                while (true) {
+                    auto c = view[0];
+                    if (c == ':') {
+                        break;
+                    }
                     value = (value << 1) | static_cast< uint64_t >(c - '0');
+                    view.remove_prefix(1);
                 }
             } break;
             case Token::OctIntLit: {
                 base = LitBase::Octal;
-                for (char c : view.substr(1)) {
+                view.remove_prefix(1);
+                while (true) {
+                    auto c = view[0];
+                    if (c == ':') {
+                        break;
+                    }
                     value = (value << 3) | static_cast< uint64_t >(c - '0');
+                    view.remove_prefix(1);
                 }
             } break;
             case Token::DecIntLit: {
                 base = LitBase::Decimal;
-                for (char c : view) {
+                while (true) {
+                    auto c = view[0];
+                    if (c == ':') {
+                        break;
+                    }
                     value = (value * 10) + static_cast< uint64_t >(c - '0');
+                    view.remove_prefix(1);
                 }
             } break;
             case Token::HexIntLit: {
                 base = LitBase::Hexadecimal;
-                for (char c : view.substr(2)) {
+                view.remove_prefix(2);
+                while (true) {
+                    auto c = view[0];
+                    if (c == ':') {
+                        break;
+                    }
                     uint64_t digit;
                     if (c >= '0' && c <= '9') {
                         digit = static_cast< uint64_t >(c - '0');
@@ -116,6 +224,7 @@ namespace irene3::patchlang
                         digit = static_cast< uint64_t >(c - 'a') + 10;
                     }
                     value = (value << 4) | digit;
+                    view.remove_prefix(1);
                 }
             } break;
             default:
@@ -220,10 +329,10 @@ namespace irene3::patchlang
     }
 
     ParseResult< Region > Parser::ParseRegion() {
-        auto tok = PeekToken< Token::EscapedLParen >();
+        auto tok = PeekToken< Token::LParen >();
         CHECK_PARSE(tok);
 
-        if (tok->kind == Token::EscapedLParen) {
+        if (tok->kind == Token::LParen) {
             return ParseRegionSExpr();
         }
 
@@ -242,7 +351,7 @@ namespace irene3::patchlang
     }; // namespace region_attrs
 
     ParseResult< Region > Parser::ParseRegionSExpr() {
-        auto lparen = GetToken< Token::EscapedLParen >();
+        auto lparen = GetToken< Token::LParen >();
         CHECK_PARSE(lparen);
 
         auto maybe_region = GetIdent({ "region" });
@@ -307,7 +416,7 @@ namespace irene3::patchlang
     ParseResult< Function > Parser::ParseFunctionSExpr() {
         using namespace func_attrs;
 
-        auto lparen = GetToken< Token::EscapedLParen >();
+        auto lparen = GetToken< Token::LParen >();
         CHECK_PARSE(lparen);
 
         auto region = GetIdent({ "function" });
@@ -334,10 +443,10 @@ namespace irene3::patchlang
     }
 
     ParseResult< Function > Parser::ParseFunction() {
-        auto tok = PeekToken< Token::EscapedLParen >();
+        auto tok = PeekToken< Token::LParen >();
         CHECK_PARSE(tok);
 
-        if (tok->kind == Token::EscapedLParen) {
+        if (tok->kind == Token::LParen) {
             return ParseFunctionSExpr();
         }
 
@@ -369,7 +478,7 @@ namespace irene3::patchlang
     ParseResult< LangDecl > Parser::ParseLDecl() {
         using namespace func_attrs;
 
-        auto lparen = GetToken< Token::EscapedLParen >();
+        auto lparen = GetToken< Token::LParen >();
         CHECK_PARSE(lparen);
 
         auto ident = GetIdent({ "function", "external", "external_global", "type_decl" });
@@ -494,7 +603,7 @@ namespace irene3::patchlang
     } // namespace module_attrs
     ParseResult< PModule > Parser::ParseModule() {
         using namespace module_attrs;
-        auto op = GetToken< TokenKind::EscapedLParen >();
+        auto op = GetToken< TokenKind::LParen >();
         CHECK_PARSE(op);
         auto mod = GetIdent({ "module" });
         CHECK_PARSE(mod);
@@ -514,10 +623,10 @@ namespace irene3::patchlang
     }
 
     ParseResult< Stmt > Parser::ParseStmt() {
-        auto tok = PeekToken< Token::EscapedLParen >();
+        auto tok = PeekToken< Token::LParen >();
         CHECK_PARSE(tok);
 
-        if (tok->kind == Token::EscapedLParen) {
+        if (tok->kind == Token::LParen) {
             return ParseStmtSExpr();
         }
 
@@ -540,7 +649,7 @@ namespace irene3::patchlang
     } // namespace stmt_attrs
 
     ParseResult< Stmt > Parser::ParseStmtSExpr() {
-        auto lparen = GetToken< Token::EscapedLParen >();
+        auto lparen = GetToken< Token::LParen >();
         CHECK_PARSE(lparen);
 
         auto stmt_kind = GetIdent({
@@ -548,8 +657,10 @@ namespace irene3::patchlang
             "store",
             "return",
             "call",
+            "intrinsic",
             "value",
             "goto",
+            "cond_goto",
             "nop",
         });
 
@@ -626,6 +737,30 @@ namespace irene3::patchlang
                 CHECK_PARSE(arg);
                 args.emplace_back(arg.TakeValue());
             }
+        } else if (stmt_kind->contents == "intrinsic") {
+            using namespace stmt_attrs;
+            auto attrs = ParseAttributes< CalleeAttr >();
+            CHECK_PARSE(attrs);
+
+            auto [callee] = attrs.TakeValue();
+
+            std::vector< ExprPtr > args;
+            while (true) {
+                auto rparen = PeekToken();
+                if (!rparen) {
+                    return { "Unexpected EOF while parsing ParseStmtSExpr" };
+                }
+
+                if (rparen->kind == Token::RParen) {
+                    GetToken();
+                    return { CallIntrinsicStmt(
+                        std::move(callee), std::move(args), lparen.TakeValue(), *rparen) };
+                }
+
+                auto arg = ParseExpr();
+                CHECK_PARSE(arg);
+                args.emplace_back(arg.TakeValue());
+            }
         } else if (stmt_kind->contents == "value") {
             using namespace stmt_attrs;
             auto name = GetToken< Token::Ident >();
@@ -648,13 +783,25 @@ namespace irene3::patchlang
                 std::string(name_tok.contents), std::move(at_entry), std::move(at_exit),
                 ty.TakeValue(), name_tok, lparen.TakeValue(), rparen.TakeValue()) };
         } else if (stmt_kind->contents == "goto") {
-            auto target = ParseExpr();
+            auto target = ParseIntLit();
             CHECK_PARSE(target);
 
             auto rparen = GetToken< Token::RParen >();
             CHECK_PARSE(rparen);
 
             return { GotoStmt(target.TakeValue(), lparen.TakeValue(), rparen.TakeValue()) };
+        } else if (stmt_kind->contents == "cond_goto") {
+            auto target = ParseIntLit();
+            CHECK_PARSE(target);
+
+            auto exp = ParseExpr();
+            CHECK_PARSE(exp);
+
+            auto rparen = GetToken< Token::RParen >();
+            CHECK_PARSE(rparen);
+
+            return { ConditionalGotoStmt(
+                target.TakeValue(), exp.TakeValue(), lparen.TakeValue(), rparen.TakeValue()) };
         } else if (stmt_kind->contents == "nop") {
             auto rparen = GetToken< Token::RParen >();
             CHECK_PARSE(rparen);
@@ -679,8 +826,8 @@ namespace irene3::patchlang
         }
 
         auto tok = PeekToken<
-            Token::LParen, Token::EscapedLParen, Token::BinIntLit, Token::OctIntLit,
-            Token::DecIntLit, Token::HexIntLit >();
+            Token::LParen, Token::BinIntLit, Token::OctIntLit, Token::DecIntLit, Token::HexIntLit,
+            Token::Ident >();
         CHECK_PARSE(tok);
         switch (tok->kind) {
             case Token::BinIntLit:
@@ -691,7 +838,18 @@ namespace irene3::patchlang
                 CHECK_PARSE(lit);
                 return { std::make_unique< Expr >(lit.TakeValue()) };
             }
-            case Token::EscapedLParen: return ParseExprSExpr();
+            case Token::HexFloatLit: {
+                auto lit = ParseFloatLit();
+                CHECK_PARSE(lit);
+                return { std::make_unique< Expr >(lit.TakeValue()) };
+            }
+            case Token::LParen: return ParseExprSExpr();
+            case Token::Ident: {
+                auto tok  = GetToken();
+                auto name = tok.value();
+
+                return MakeExpr< DeclRefExpr >(std::string(name.contents), name, name, name);
+            }
             default: UNREACHABLE;
         }
     }
@@ -741,49 +899,76 @@ namespace irene3::patchlang
 
     ParseResult< ExprPtr > Parser::ParseExprSExpr() {
         using namespace expr_attrs;
-        auto lparen = GetToken< Token::EscapedLParen >();
+        auto lparen = GetToken< Token::LParen >();
         CHECK_PARSE(lparen);
 
-        auto kind = GetIdent({ "ref",     "getelementptr",
-                               "call",    "alloca",
-                               "load",    "add",
-                               "fadd",    "sub",
-                               "fsub",    "mul",
-                               "fmul",    "udiv",
-                               "sdiv",    "fdiv",
-                               "urem",    "srem",
-                               "frem",    "shl",
-                               "lshr",    "ashr",
-                               "and",     "or",
-                               "xor",     "ptrtoint",
-                               "trunc",   "zext",
-                               "sext",    "fptrunc",
-                               "fpext",   "fptoui",
-                               "fptosi",  "uitofp",
-                               "sitofp",  "inttoptr",
-                               "bitcast", "select",
+        auto kind = GetIdent({ "getelementptr",
+                               "call",
+                               "intrinsic",
+                               "alloca",
+                               "load",
+                               "add",
+                               "fadd",
+                               "sub",
+                               "fsub",
+                               "mul",
+                               "fmul",
+                               "udiv",
+                               "sdiv",
+                               "fdiv",
+                               "urem",
+                               "srem",
+                               "frem",
+                               "shl",
+                               "lshr",
+                               "ashr",
+                               "and",
+                               "or",
+                               "xor",
+                               "ptrtoint",
+                               "trunc",
+                               "zext",
+                               "sext",
+                               "fptrunc",
+                               "fpext",
+                               "fptoui",
+                               "fptosi",
+                               "uitofp",
+                               "sitofp",
+                               "inttoptr",
+                               "bitcast",
+                               "select",
 
-                               "eq",      "ne",
-                               "ugt",     "uge",
-                               "ult",     "ule",
-                               "sgt",     "sge",
-                               "slt",     "sle",
+                               "eq",
+                               "ne",
+                               "ugt",
+                               "uge",
+                               "ult",
+                               "ule",
+                               "sgt",
+                               "sge",
+                               "slt",
+                               "sle",
+
+                               "foeq",
+                               "fogt",
+                               "foge",
+                               "folt",
+                               "fole",
+                               "fone",
+                               "ford",
+                               "fueq",
+                               "fugt",
+                               "fuge",
+                               "fult",
+                               "fule",
+                               "fune",
+                               "funo",
 
                                "addrof" });
         CHECK_PARSE(kind);
 
-        if (kind->contents == "ref") {
-            auto maybe_name = GetToken< Token::Ident >();
-            CHECK_PARSE(maybe_name);
-
-            auto name = maybe_name.TakeValue();
-
-            auto rparen = GetToken< Token::RParen >();
-            CHECK_PARSE(rparen);
-
-            return MakeExpr< DeclRefExpr >(
-                std::string(name.contents), name, lparen.TakeValue(), rparen.TakeValue());
-        } else if (kind->contents == "getelementptr") {
+        if (kind->contents == "getelementptr") {
             auto base = ParseExpr();
             CHECK_PARSE(base);
 
@@ -828,6 +1013,29 @@ namespace irene3::patchlang
                 if (rparen->kind == Token::RParen) {
                     GetToken();
                     return MakeExpr< CallExpr >(
+                        std::move(callee), std::move(args), lparen.TakeValue(), *rparen);
+                }
+
+                auto arg = ParseExpr();
+                CHECK_PARSE(arg);
+                args.emplace_back(arg.TakeValue());
+            }
+        } else if (kind->contents == "intrinsic") {
+            auto attrs = ParseAttributes< CalleeAttr >();
+            CHECK_PARSE(attrs);
+
+            auto [callee] = attrs.TakeValue();
+
+            std::vector< ExprPtr > args;
+            while (true) {
+                auto rparen = PeekToken();
+                if (!rparen) {
+                    return { "Unexpected EOF while parsing ParseExprSExpr" };
+                }
+
+                if (rparen->kind == Token::RParen) {
+                    GetToken();
+                    return MakeExpr< CallIntrinsicExpr >(
                         std::move(callee), std::move(args), lparen.TakeValue(), *rparen);
                 }
 
@@ -1030,6 +1238,34 @@ namespace irene3::patchlang
             return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Slt);
         } else if (kind->contents == "sle") {
             return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Sle);
+        } else if (kind->contents == "foeq") {
+            return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Foeq);
+        } else if (kind->contents == "fogt") {
+            return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Fogt);
+        } else if (kind->contents == "foge") {
+            return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Foge);
+        } else if (kind->contents == "folt") {
+            return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Folt);
+        } else if (kind->contents == "fole") {
+            return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Fole);
+        } else if (kind->contents == "fone") {
+            return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Fone);
+        } else if (kind->contents == "ford") {
+            return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Ford);
+        } else if (kind->contents == "fueq") {
+            return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Fueq);
+        } else if (kind->contents == "fugt") {
+            return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Fugt);
+        } else if (kind->contents == "fuge") {
+            return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Fuge);
+        } else if (kind->contents == "fult") {
+            return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Fult);
+        } else if (kind->contents == "fule") {
+            return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Fule);
+        } else if (kind->contents == "fune") {
+            return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Fune);
+        } else if (kind->contents == "funo") {
+            return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Funo);
         } else if (kind->contents == "addrof") {
             auto gv = ParseStrLit();
             CHECK_PARSE(gv);
@@ -1052,7 +1288,7 @@ namespace irene3::patchlang
             return MakeType< PrimitiveType >(std::string(name_tok.contents), name_tok);
         }
 
-        auto lparen = PeekToken< Token::EscapedLParen >();
+        auto lparen = PeekToken< Token::LParen >();
         if (lparen.Succeeded()) {
             return ParseTypeSExpr();
         }
@@ -1072,7 +1308,7 @@ namespace irene3::patchlang
     ParseResult< TypePtr > Parser::ParseTypeSExpr() {
         using namespace type_attrs;
 
-        auto lparen = GetToken< Token::EscapedLParen >();
+        auto lparen = GetToken< Token::LParen >();
         CHECK_PARSE(lparen);
 
         auto kind = GetIdent({
@@ -1168,7 +1404,7 @@ namespace irene3::patchlang
     }
 
     ParseResult< Location > Parser::ParseLocationSExpr() {
-        auto lparen = GetToken< Token::EscapedLParen >();
+        auto lparen = GetToken< Token::LParen >();
         CHECK_PARSE(lparen);
 
         auto kind = GetIdent({ "register", "memory", "memory_indirect" });
@@ -1184,10 +1420,10 @@ namespace irene3::patchlang
     }
 
     ParseResult< Location > Parser::ParseLocation() {
-        auto tok = PeekToken< Token::EscapedLParen >();
+        auto tok = PeekToken< Token::LParen >();
         CHECK_PARSE(tok);
 
-        if (tok->kind == Token::EscapedLParen) {
+        if (tok->kind == Token::LParen) {
             return ParseLocationSExpr();
         }
 

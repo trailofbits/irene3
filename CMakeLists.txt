@@ -89,6 +89,7 @@ set_source_files_properties(${PROTO_GENERATED_FILES} PROPERTIES SKIP_UNITY_BUILD
 
 # cmake-format: on
 add_subdirectory(include)
+add_subdirectory(utils)
 add_subdirectory(lib)
 add_subdirectory(bin)
 

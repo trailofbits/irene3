@@ -27,6 +27,7 @@
 #include <mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h>
 #include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
 #include <mlir/Target/LLVMIR/Import.h>
+#include <optional>
 #include <remill/BC/Error.h>
 
 DECLARE_bool(help);
@@ -36,6 +37,7 @@ DEFINE_uint64(region_uid, 0, "The target region");
 DEFINE_string(out, "", "Output .s file");
 DEFINE_string(features, "", "Target feature list (comma separated)");
 DEFINE_string(cpu, "", "LLVM CPU Profile");
+DEFINE_string(backend, "", "Which compilation backend to use defaults to generic");
 DEFINE_string(
     json_metadata, "", "Where to write additional patch data required for patch situation");
 
@@ -83,7 +85,9 @@ int main(int argc, char* argv[]) {
         }
     }
     CHECK(region);
-    irene3::PatchCompiler comp(mlir_context, FLAGS_features, FLAGS_cpu);
+    irene3::PatchCompiler comp(
+        mlir_context, FLAGS_features, FLAGS_cpu,
+        FLAGS_backend.empty() ? std::nullopt : std::optional< std::string >(FLAGS_backend));
 
     std::error_code ec;
     llvm::raw_fd_ostream os(FLAGS_out, ec);

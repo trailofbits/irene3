@@ -16,6 +16,7 @@ import ghidra.program.model.data.{
   Structure,
   TypeDef,
   Undefined,
+  Union,
   VoidDataType
 }
 import ghidra.program.model.listing.Function
@@ -126,12 +127,12 @@ import scala.collection.mutable.Map as MutableMap
 import scala.collection.mutable.Set as MutableSet
 import scala.collection.immutable.SortedMap
 import anvill.Util.{
-  getReachableCodeBlocks,
   getExtSymbolByName,
-  getLocalSymbolByName,
+  getExternalLocation,
   getGotAddr,
   getLinkedExternalProgram,
-  getExternalLocation,
+  getLocalSymbolByName,
+  getReachableCodeBlocks,
   getSymbolLibraryName
 }
 import ghidra.framework.model.{DomainFile, DomainObject}
@@ -221,6 +222,7 @@ object ProgramSpecifier {
     )
 
     for (comp <- components) {
+      Msg.info(this, s"Going for cmp $comp")
       comp.left.foreach(getTypeSpec(_, aliases))
     }
 
@@ -231,6 +233,7 @@ object ProgramSpecifier {
       maybe_t: DataType,
       aliases: MutableMap[Long, TypeSpec]
   ): Option[TypeSpec] = {
+    Msg.info(this, s"Looking at ty: $maybe_t")
     Option(maybe_t)
       .flatMap(t =>
         val t_id = Option(t.getUniversalID).map(id => id.getValue)
@@ -276,6 +279,7 @@ object ProgramSpecifier {
                 )
               }
               case struct: Structure => {
+                Msg.info(this, s"Looking at struct: $struct}")
                 // Creates padding of the given size in bytes that can be passed to the builder
                 val get_pad: Int => Either[DataType, TypeSpec] = num => {
                   val base = Some(TypeSpec(Type.Base(BT_U8)))
@@ -325,6 +329,23 @@ object ProgramSpecifier {
                     )
                   )
                 )
+              }
+              case union: Union => {
+                val base = Some(TypeSpec(Type.Base(BT_U8)))
+                val ty = TypeSpec(
+                  Type.Struct(
+                    TypeSpec.StructType(
+                      Seq(
+                        TypeSpec(
+                          Type.Array(TypeSpec.ArrayType(base, union.getLength))
+                        )
+                      )
+                    )
+                  )
+                )
+                val l = union.getUniversalID.getValue()
+                aliases.put(l, ty)
+                Some(TypeSpec(Type.Alias(l)))
               }
               case _ => Some(TypeSpec(Type.Unknown(t.getLength())))
           )
