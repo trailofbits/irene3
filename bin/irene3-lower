@@ -16,6 +16,7 @@ def _main():
     parser.add_argument("--uid", type=int, required=True)
     parser.add_argument("--feature_list", type=str, default="")
     parser.add_argument("--cpu", type=str, default="")
+    parser.add_argument("--backend", type=str, default="")
     args = parser.parse_args()
 
     patchname = args.patch.stem
@@ -33,6 +34,7 @@ def _main():
         ["irene3-patchlang2patchir", "--input", args.patch, "--output", mlir_file],
         env = env
     )
+
     subprocess.run(
         [
             "irene3-patchir-compiler",
@@ -46,6 +48,8 @@ def _main():
             f"{args.uid}",
             "--json-metadata",
             json_file,
+            "--backend",
+            f"{args.backend}",
             "--out",
             s_file,
         ],

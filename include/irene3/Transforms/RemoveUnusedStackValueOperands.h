@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glog/logging.h>
+#include <irene3/IreneLoweringInterface.h>
 #include <irene3/PatchIR/PatchIRAttrs.h>
 #include <irene3/PatchIR/PatchIRDialect.h>
 #include <irene3/PatchIR/PatchIROps.h>
@@ -21,11 +22,11 @@ namespace irene3
         : public mlir::
               PassWrapper< RemoveUnusedStackValueOperands, mlir::OperationPass< mlir::ModuleOp > > {
       public:
-        RemoveUnusedStackValueOperands(RegTable supported_regs)
-            : supported_regs(std::move(supported_regs)) {}
+        RemoveUnusedStackValueOperands(const irene3::IreneLoweringInterface& ILI)
+            : ILI(ILI) {}
 
       private:
-        RegTable supported_regs;
+        const IreneLoweringInterface& ILI;
 
         bool isUnsupportedRegister(std::optional< mlir::Attribute > attr) {
             if (!attr) {
@@ -33,7 +34,7 @@ namespace irene3
             }
 
             if (auto reg = mlir::dyn_cast< patchir::RegisterAttr >(*attr)) {
-                auto is_unsupported = !this->supported_regs.lookup(reg.getReg().str()).has_value();
+                auto is_unsupported = !this->ILI.IsSupportedValue(reg);
                 LOG_IF(ERROR, is_unsupported)
                     << "Encountered unsupported reg: " << reg.getReg().str();
                 return is_unsupported;
@@ -44,10 +45,6 @@ namespace irene3
         void rewriteCall(patchir::CallOp op, mlir::ModuleOp mod) {
             auto called_func
                 = mlir::cast< mlir::LLVM::LLVMFuncOp >(mod.lookupSymbol(op.getCallee()));
-
-            if (!called_func.getCallableRegion()) {
-                return;
-            }
 
             std::vector< bool > argmask;
             for (size_t ind = 0; ind < op.getArgs().size(); ind++) {
@@ -61,8 +58,13 @@ namespace irene3
                        || mlir::isa< patchir::MemoryIndirectAttr >(*vop.getAtEntry()))
                       && (!vop.getAtExit().has_value()
                           || mlir::isa< patchir::MemoryIndirectAttr >(*vop.getAtExit()));
-                auto x = called_func.getCallableRegion()->getArguments()[ind];
-                argmask.push_back(x.getUses().empty() && (has_unsupported_reg || is_stack_only));
+                auto has_uses
+                    = called_func.getCallableRegion()
+                          ? !called_func.getCallableRegion()->getArguments()[ind].getUses().empty()
+                          : false;
+                LOG_IF(ERROR, has_unsupported_reg && has_uses)
+                    << "Unsupported reg is used in block";
+                argmask.push_back(!has_uses && (has_unsupported_reg || is_stack_only));
             }
 
             // rewrite function
@@ -71,8 +73,14 @@ namespace irene3
             size_t erased = 0;
             for (size_t ind = 0; ind < argmask.size(); ind++) {
                 if (argmask[ind]) {
+                    std::string r;
+                    llvm::raw_string_ostream ss(r);
+                    op.getArgs()[ind - erased].getDefiningOp()->print(ss);
+                    LOG(ERROR) << "About to erase: " << r;
                     op.getArgsMutable().erase(ind - erased);
-                    called_func.getCallableRegion()->eraseArgument(ind - erased);
+                    if (called_func.getCallableRegion()) {
+                        called_func.getCallableRegion()->eraseArgument(ind - erased);
+                    }
                     erased += 1;
                 } else {
                     ptypes.push_back(fty.getParamType(ind));

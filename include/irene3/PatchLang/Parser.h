@@ -30,10 +30,10 @@ namespace irene3::patchlang
 
     template< typename T >
     concept Attribute = requires() {
-        { T::name } -> std::convertible_to< const char* >;
-        { T::optional } -> std::convertible_to< bool >;
-        { T::kind } -> std::convertible_to< AttrKind >;
-    };
+                            { T::name } -> std::convertible_to< const char* >;
+                            { T::optional } -> std::convertible_to< bool >;
+                            { T::kind } -> std::convertible_to< AttrKind >;
+                        };
 
     namespace detail
     {
@@ -183,7 +183,7 @@ namespace irene3::patchlang
         ParseResult< Token > GetToken() {
             auto tok = GetToken();
             if (!tok.has_value()) {
-                return { "Unexpetected EOF" };
+                return { "Unexpected EOF" };
             }
 
             if (((tok->kind != Kinds) && ...)) {
@@ -197,7 +197,7 @@ namespace irene3::patchlang
         ParseResult< Token > PeekToken() {
             auto tok = PeekToken();
             if (!tok.has_value()) {
-                return { "Unexpetected EOF" };
+                return { "Unexpected EOF" };
             }
 
             if (((tok->kind != Kinds) && ...)) {
@@ -291,6 +291,7 @@ namespace irene3::patchlang
         ParseResult< IntLitExpr > ParseIntLit();
         ParseResult< StrLitExpr > ParseStrLit();
         ParseResult< BoolLitExpr > ParseBexpr();
+        ParseResult< FloatLitExpr > ParseFloatLit();
 
         template< AttrKind Kind, typename Tup, size_t I >
         struct parse_into_tuple;

@@ -32,6 +32,7 @@ find_package(gap CONFIG REQUIRED)
 set(irene3_SOURCES
   "${POST_CONFIGURE_FILE}"
   DecompileSpec.cpp
+  IreneLoweringInterface.cpp
   Util.cpp
   SpecTypeProvider.cpp
   SpecLayoutOverride.cpp
@@ -47,10 +48,18 @@ set(irene3_SOURCES
   PatchLang/Parser.cpp
   PatchLang/Lifter.cpp
   "${CMAKE_CURRENT_BINARY_DIR}/Lexer.cpp"
+
+  Targets/Backends.cpp
   PatchLang/Stmt.cpp
   PatchLang/Type.cpp
+  Targets/GenericBackend.cpp
+  Targets/ExplicitMappingBackend.cpp
 )
 
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/Backend.inc"
+  COMMAND "irene3-generate-target" ARGS "${CMAKE_CURRENT_SOURCE_DIR}/Targets/Backend.td" -o "${CMAKE_CURRENT_BINARY_DIR}/Backend.inc" -I "${CMAKE_CURRENT_SOURCE_DIR}/Targets" -I "${LLVM_INCLUDE_DIRS}"
+  DEPENDS "irene3-generate-target" "${CMAKE_CURRENT_SOURCE_DIR}/Targets/Backend.td" "${CMAKE_CURRENT_SOURCE_DIR}/Targets/PPCBackend.td")
+add_custom_target(backend_tblgen DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/Backend.inc")
 add_custom_command(
   OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/Lexer.cpp"
   COMMAND "${RE2C}"
@@ -75,10 +84,10 @@ target_link_libraries("${PROJECT_NAME}" PUBLIC gap::gap glog::glog "${llvm_libs}
 target_include_directories(
   "${PROJECT_NAME}"
   PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>
-  PRIVATE "${CMAKE_CURRENT_LIST_DIR}"
+  PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
-add_dependencies(irene3 check_git_irene3)
+add_dependencies(irene3 check_git_irene3 backend_tblgen)
 
 if(IRENE3_ENABLE_INSTALL)
   include(GNUInstallDirs)

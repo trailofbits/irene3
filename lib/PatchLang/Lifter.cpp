@@ -1,6 +1,7 @@
 #include <anvill/ABI.h>
 #include <anvill/Result.h>
 #include <functional>
+#include <glog/logging.h>
 #include <irene3/PatchIR/PatchIRAttrs.h>
 #include <irene3/PatchIR/PatchIROps.h>
 #include <irene3/PatchLang/Expr.h>
@@ -27,6 +28,7 @@
 #include <mlir/IR/BuiltinTypes.h>
 #include <mlir/IR/Location.h>
 #include <mlir/IR/Operation.h>
+#include <mlir/IR/SymbolTable.h>
 #include <mlir/IR/Value.h>
 #include <mlir/Support/LLVM.h>
 #include <optional>
@@ -44,7 +46,10 @@ namespace irene3::patchlang
 
         IntLitExpr IntLitExp(llvm::APSInt i) { return IntLitExpr(i, LitBase::Decimal, Token()); }
         ExprPtr IntLit(llvm::APSInt i) { return std::make_unique< Expr >(IntLitExp(i)); }
-
+        ExprPtr FloatLit(llvm::APFloat f) {
+            return std::make_unique< Expr >(FloatLitExpr(f, Token{}));
+        };
+        ExprPtr BoolLit(bool val) { return std::make_unique< Expr >(BoolLitExpr(val, Token{})); }
         template< typename T >
         concept Printable = requires(T a, llvm::raw_ostream& os) { a.print(os); };
 
@@ -120,9 +125,12 @@ namespace irene3::patchlang
                 if (auto int_val = llvm::dyn_cast< mlir::IntegerAttr >(val)) {
                     auto signless = int_val.getValue();
                     return IntLit(llvm::APSInt(signless, false));
+                } else if (auto float_val = llvm::dyn_cast< mlir::FloatAttr >(val)) {
+                    return FloatLit(float_val.getValue());
                 } else {
                     // TODO(ian)
-                    throw UnhandledMLIRLift(op->getLoc(), "No support for non integer constants");
+                    throw UnhandledMLIRLift(
+                        op->getLoc(), "No support for non integer/float constants");
                 }
             })
             .Case< mlir::LLVM::LoadOp >([&](mlir::LLVM::LoadOp op) {
@@ -174,6 +182,26 @@ namespace irene3::patchlang
                     case mlir::LLVM::ICmpPredicate::sle: return LiftBinOp< BinaryOp::Sle >(op);
                 }
             })
+            .Case< mlir::LLVM::FCmpOp >([&](auto op) {
+                switch (op.getPredicate()) {
+                    case mlir::LLVM::FCmpPredicate::oeq: return LiftBinOp< BinaryOp::Foeq >(op);
+                    case mlir::LLVM::FCmpPredicate::ogt: return LiftBinOp< BinaryOp::Fogt >(op);
+                    case mlir::LLVM::FCmpPredicate::oge: return LiftBinOp< BinaryOp::Foge >(op);
+                    case mlir::LLVM::FCmpPredicate::olt: return LiftBinOp< BinaryOp::Folt >(op);
+                    case mlir::LLVM::FCmpPredicate::ole: return LiftBinOp< BinaryOp::Fole >(op);
+                    case mlir::LLVM::FCmpPredicate::one: return LiftBinOp< BinaryOp::Fone >(op);
+                    case mlir::LLVM::FCmpPredicate::ord: return LiftBinOp< BinaryOp::Ford >(op);
+                    case mlir::LLVM::FCmpPredicate::ueq: return LiftBinOp< BinaryOp::Fueq >(op);
+                    case mlir::LLVM::FCmpPredicate::ugt: return LiftBinOp< BinaryOp::Fugt >(op);
+                    case mlir::LLVM::FCmpPredicate::uge: return LiftBinOp< BinaryOp::Fuge >(op);
+                    case mlir::LLVM::FCmpPredicate::ult: return LiftBinOp< BinaryOp::Fult >(op);
+                    case mlir::LLVM::FCmpPredicate::ule: return LiftBinOp< BinaryOp::Fule >(op);
+                    case mlir::LLVM::FCmpPredicate::une: return LiftBinOp< BinaryOp::Fune >(op);
+                    case mlir::LLVM::FCmpPredicate::uno: return LiftBinOp< BinaryOp::Funo >(op);
+                    case mlir::LLVM::FCmpPredicate::_true: return BoolLit(true);
+                    case mlir::LLVM::FCmpPredicate::_false: return BoolLit(false);
+                }
+            })
             .Case< mlir::LLVM::CallOp >([&](mlir::LLVM::CallOp op) -> patchlang::ExprPtr {
                 std::string callee = op.getCallee()->str();
                 std::vector< ExprPtr > args;
@@ -184,6 +212,17 @@ namespace irene3::patchlang
                 return MakeExpr< CallExpr >(
                     StrLitExpr(callee, Token()), std::move(args), Token(), Token());
             })
+            .Case< mlir::LLVM::CallIntrinsicOp >(
+                [&](mlir::LLVM::CallIntrinsicOp op) -> patchlang::ExprPtr {
+                    std::string callee = op.getIntrin().str();
+                    std::vector< ExprPtr > args;
+                    for (auto arg : op.getArgs()) {
+                        args.push_back(this->GetRefExport(arg));
+                    }
+
+                    return MakeExpr< CallIntrinsicExpr >(
+                        StrLitExpr(callee, Token()), std::move(args), Token(), Token());
+                })
             .Case< mlir::LLVM::TruncOp >(
                 [&](auto op) -> patchlang::ExprPtr { return LiftCastOp< CastExpr::Trunc >(op); })
             .Case< mlir::LLVM::ZExtOp >(
@@ -208,6 +247,32 @@ namespace irene3::patchlang
                 [&](auto op) -> patchlang::ExprPtr { return LiftCastOp< CastExpr::IntToPtr >(op); })
             .Case< mlir::LLVM::BitcastOp >(
                 [&](auto op) -> patchlang::ExprPtr { return LiftCastOp< CastExpr::BitCast >(op); })
+            .Case< mlir::LLVM::GEPOp >([&](auto op) -> patchlang::ExprPtr {
+                auto base = GetRefExport(op.getBase());
+                // TODO(frabert): When is elemType nullopt?
+                auto elem_type = LiftType(*op.getElemType());
+                std::vector< ExprPtr > indices;
+                for (llvm::PointerUnion< mlir::IntegerAttr, mlir::Value > index : op.getIndices()) {
+                    if (index.is< mlir::IntegerAttr >()) {
+                        auto ct       = index.get< mlir::IntegerAttr >();
+                        auto signless = ct.getValue();
+                        indices.push_back(MakeExpr< IntLitExpr >(
+                            llvm::APSInt(signless, false), LitBase::Decimal, Token{}));
+                    } else {
+                        auto val = index.get< mlir::Value >();
+                        indices.push_back(GetRefExport(val));
+                    }
+                }
+                return MakeExpr< GetElementPtrExpr >(
+                    std::move(base), std::move(elem_type), std::move(indices), Token{}, Token{});
+            })
+            .Case< mlir::LLVM::SelectOp >([&](auto op) {
+                auto cond       = GetRefExport(op.getCondition());
+                auto true_expr  = GetRefExport(op.getTrueValue());
+                auto false_expr = GetRefExport(op.getFalseValue());
+                return MakeExpr< SelectExpr >(
+                    std::move(cond), std::move(true_expr), std::move(false_expr), Token{}, Token{});
+            })
             .Default([&](auto& v) -> patchlang::ExprPtr {
                 throw UnhandledMLIRLift(
                     op.getLoc(), "No expr match for " + op.getName().getStringRef().str());
@@ -215,6 +280,26 @@ namespace irene3::patchlang
     }
 
     Stmt LifterContext::LiftOp(mlir::Operation& op) {
+        if (op.getNumResults() == 0) {
+            if (auto call = mlir::dyn_cast< mlir::LLVM::CallOp >(op)) {
+                std::string callee = call.getCallee()->str();
+                std::vector< ExprPtr > args;
+                for (auto arg : call.getArgOperands()) {
+                    args.push_back(this->GetRefExport(arg));
+                }
+
+                return CallStmt(StrLitExpr(callee, Token()), std::move(args), Token(), Token());
+            } else if (auto call = mlir::dyn_cast< mlir::LLVM::CallIntrinsicOp >(op)) {
+                std::string callee = call.getIntrin().str();
+                std::vector< ExprPtr > args;
+                for (auto arg : call.getArgs()) {
+                    args.push_back(this->GetRefExport(arg));
+                }
+
+                return CallStmt(StrLitExpr(callee, Token()), std::move(args), Token(), Token());
+            }
+        }
+
         CHECK(op.getNumResults() == 1) << MLIRThingToString(op);
         if (op.hasOneUse()) {
             return NopStmt({}, {});
@@ -234,16 +319,17 @@ namespace irene3::patchlang
             .Default([&](auto& v) -> patchlang::Stmt { return LiftOp(op); });
     }
 
-    patchlang::ExprPtr LifterContext::LowerBBCall(mlir::LLVM::CallOp cop) {
+    patchlang::IntLitExpr LifterContext::LowerBBCall(mlir::LLVM::CallOp cop) {
         CHECK(*cop.getCallee() == anvill::kAnvillGoto);
         auto val  = cop.getArgOperands().front();
         auto addr = val.getDefiningOp< mlir::LLVM::ConstantOp >();
+
         auto attr = mlir::cast< mlir::IntegerAttr >(addr.getValue());
 
-        return IntLit(llvm::APSInt(attr.getValue(), true));
+        return IntLitExp(llvm::APSInt(attr.getValue(), true));
     }
 
-    patchlang::ExprPtr LifterContext::LowerOnlyControlFlowBlock(mlir::Block* block) {
+    patchlang::IntLitExpr LifterContext::LowerOnlyControlFlowBlock(mlir::Block* block) {
         auto cop = firstOp< mlir::Block&, mlir::LLVM::CallOp >(*block);
         CHECK(cop);
         return LowerBBCall(*cop);
@@ -276,12 +362,12 @@ namespace irene3::patchlang
                 return;
             }
         } else if (auto cbranch = mlir::dyn_cast< mlir::LLVM::CondBrOp >(term)) {
-            ExprPtr ref = this->GetRefExport(cbranch.getCondition());
-            ExprPtr lhs = this->LowerOnlyControlFlowBlock(cbranch.getTrueDest());
-            ExprPtr rhs = this->LowerOnlyControlFlowBlock(cbranch.getFalseDest());
-            auto sel    = MakeExpr< patchlang::SelectExpr >(
-                std::move(ref), std::move(lhs), std::move(rhs), Token(), Token());
-            body.push_back(patchlang::GotoStmt(std::move(sel), Token(), Token()));
+            ExprPtr ref    = this->GetRefExport(cbranch.getCondition());
+            IntLitExpr lhs = this->LowerOnlyControlFlowBlock(cbranch.getTrueDest());
+            IntLitExpr rhs = this->LowerOnlyControlFlowBlock(cbranch.getFalseDest());
+            body.push_back(
+                patchlang::ConditionalGotoStmt(std::move(lhs), std::move(ref), Token(), Token()));
+            body.push_back(patchlang::GotoStmt(std::move(rhs), Token(), Token()));
             return;
         }
         LOG(FATAL) << "Unhandled terminator " << MLIRThingToString(*term);
@@ -371,8 +457,9 @@ namespace irene3::patchlang
         auto lifted_ty = this->LiftType(vop.getType().getElement());
 
         return ValueStmt(
-            this->GetValueName(representing), this->LiftLoc(vop.getAtEntry()),
-            this->LiftLoc(vop.getAtExit()), std::move(lifted_ty), Token(), Token(), Token());
+            this->GetValueName(representing, vop.getNameAttr().str()),
+            this->LiftLoc(vop.getAtEntry()), this->LiftLoc(vop.getAtExit()), std::move(lifted_ty),
+            Token(), Token(), Token());
     }
 
     patchlang::ExternalGlobal LifterContext::LiftGlobal(patchir::Global gv) {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "irene3/IreneLoweringInterface.h"
+
 #include <anvill/Declarations.h>
 #include <irene3/LowLocCCBuilder.h>
 #include <irene3/PatchIR/PatchIRAttrs.h>
@@ -42,24 +44,20 @@ namespace irene3
         std::vector< irene3::patchir::RegisterAttr > free_reg_list;
         llvm::ValueMap< llvm::GlobalObject *, FlatAddr > addressing_table;
         uint64_t image_base;
-        std::unordered_map< std::string, const llvm::TargetRegisterClass * > name_to_register_class;
 
       public:
         ReplaceRelReferences(
             llvm::LLVMContext &llcontext,
             mlir::ModuleOp mlir_module,
             const llvm::TargetRegisterInfo *reg_info,
-            ModuleCallingConventions &ccmod)
-            : PostPass< ReplaceRelReferences >(llcontext, mlir_module, reg_info, ccmod)
+            ModuleCallingConventions &ccmod,
+            const IreneLoweringInterface &ILI)
+            : PostPass< ReplaceRelReferences >(llcontext, mlir_module, reg_info, ccmod, ILI)
             , reg_info(reg_info) {
             this->image_base
                 = mlir::cast< mlir::IntegerAttr >(
                       mlir_module->getAttr(patchir::PatchIRDialect::getImageBaseAttrName()))
                       .getUInt();
-
-            for (auto rc : this->reg_info->regclasses()) {
-                this->name_to_register_class.insert({ this->reg_info->getRegClassName(rc), rc });
-            }
         }
 
         static llvm::StringRef name();

@@ -3,6 +3,7 @@
 #include <irene3/PatchLang/Expr.h>
 #include <irene3/PatchLang/Lexer.h>
 #include <irene3/PatchLang/Type.h>
+#include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/APSInt.h>
 #include <string>
 
@@ -60,6 +61,29 @@ namespace irene3::patchlang
         inline explicit operator uint64_t() const { return value.getZExtValue(); }
 
         inline explicit operator int64_t() const { return value.getSExtValue(); }
+    };
+
+    class FloatLitExpr {
+        llvm::APFloat value;
+        Token token;
+
+      public:
+        using enum LitBase;
+
+        FloatLitExpr(llvm::APFloat value, Token tok)
+            : value(value)
+            , token(tok) {}
+
+        llvm::APFloat GetValue() const;
+        LitBase GetBase() const;
+        Token GetToken() const;
+
+        Token GetFirstToken() const;
+        Token GetLastToken() const;
+
+        inline explicit operator float() const { return value.convertToFloat(); }
+
+        inline explicit operator double() const { return value.convertToDouble(); }
     };
 
     class SelectExpr {
@@ -174,6 +198,21 @@ namespace irene3::patchlang
         Slt,
         Sle,
 
+        Foeq,
+        Fogt,
+        Foge,
+        Folt,
+        Fole,
+        Fone,
+        Ford,
+        Fueq,
+        Fugt,
+        Fuge,
+        Fult,
+        Fule,
+        Fune,
+        Funo,
+
         AddNuw    = Add | Nuw,
         AddNsw    = Add | Nsw,
         AddNuwNsw = Add | Nuw | Nsw,
@@ -275,6 +314,27 @@ namespace irene3::patchlang
 
       public:
         CallExpr(
+            StrLitExpr&& callee, std::vector< ExprPtr >&& args, Token first_tok, Token last_tok)
+            : callee(std::move(callee))
+            , args(std::move(args))
+            , first_tok(first_tok)
+            , last_tok(last_tok) {}
+
+        const StrLitExpr& GetCallee() const;
+        const std::vector< ExprPtr >& GetArgs() const;
+
+        Token GetFirstToken() const;
+        Token GetLastToken() const;
+    };
+
+    class CallIntrinsicExpr {
+        StrLitExpr callee;
+        std::vector< ExprPtr > args;
+        Token first_tok;
+        Token last_tok;
+
+      public:
+        CallIntrinsicExpr(
             StrLitExpr&& callee, std::vector< ExprPtr >&& args, Token first_tok, Token last_tok)
             : callee(std::move(callee))
             , args(std::move(args))

@@ -15,6 +15,8 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/GlobalValue.h>
+#include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/InstrTypes.h>
@@ -65,8 +67,10 @@ namespace irene3
             auto uid    = *anvill::GetBasicBlockUid(callee);
             auto addr   = info.fdecl.cfg.at(uid).addr;
             llvm::IRBuilder<> bldr(cb);
+
             auto tocall = GetOrCreateGotoInstrinsic(mod, addrty);
-            auto cc     = bldr.CreateCall(tocall, { llvm::ConstantInt::get(addrty, addr) });
+
+            auto cc = bldr.CreateCall(tocall, { llvm::ConstantInt::get(addrty, addr) });
             // so we replace with a noreturn intrinsic to avoid typing
             cc->setDoesNotReturn();
             cb->replaceAllUsesWith(llvm::UndefValue::get(f.getFunctionType()->getReturnType()));

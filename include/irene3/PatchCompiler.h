@@ -8,11 +8,14 @@
 
 #pragma once
 
+#include "irene3/IreneLoweringInterface.h"
+
 #include <irene3/LowLocCCBuilder.h>
 #include <irene3/PatchIR/PatchIRAttrs.h>
 #include <irene3/PatchIR/PatchIRDialect.h>
 #include <irene3/PatchIR/PatchIROps.h>
 #include <llvm/CodeGen/TargetRegisterInfo.h>
+#include <llvm/CodeGen/TargetSubtargetInfo.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/MC/MCRegisterInfo.h>
@@ -21,6 +24,7 @@
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/MLIRContext.h>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace irene3
@@ -38,12 +42,21 @@ namespace irene3
         mlir::MLIRContext &mlir_cont;
         std::string feature_string;
         std::string cpu;
+        std::optional< std::string > backend_name;
+
+        std::unique_ptr< IreneLoweringInterface > BuildILI(
+            const llvm::TargetSubtargetInfo &, const llvm::TargetRegisterInfo *);
 
       public:
-        PatchCompiler(mlir::MLIRContext &mlir_cont, std::string feature_string, std::string cpu)
+        PatchCompiler(
+            mlir::MLIRContext &mlir_cont,
+            std::string feature_string,
+            std::string cpu,
+            std::optional< std::string > backend_name)
             : mlir_cont(mlir_cont)
             , feature_string(std::move(feature_string))
-            , cpu(std::move(cpu)) {}
+            , cpu(std::move(cpu))
+            , backend_name(backend_name) {}
 
         void RewriteModuleToLLVM(mlir::Operation *op);
 
@@ -51,10 +64,11 @@ namespace irene3
             irene3::patchir::RegionOp &region, llvm::TargetMachine *tm);
 
         PatchMetada OptimizeIntoCompileableLLVM(
-            llvm::Module *,
-            ModuleCallingConventions &cconcv,
-            mlir::ModuleOp,
-            const llvm::TargetRegisterInfo *rinfo);
+            llvm::Module *mod,
+            ModuleCallingConventions &cconv,
+            mlir::ModuleOp mlirmod,
+            const llvm::TargetRegisterInfo *reg_info,
+            const IreneLoweringInterface &backend);
 
         std::pair< std::unique_ptr< llvm::Module >, llvm::Function * > CreateLLVMModForRegion(
             irene3::patchir::RegionOp &region);

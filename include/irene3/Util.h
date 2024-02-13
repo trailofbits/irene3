@@ -7,6 +7,7 @@
 #include <irene3/PatchIR/PatchIRDialect.h>
 #include <irene3/PatchIR/PatchIROps.h>
 #include <irene3/TypeDecoder.h>
+#include <llvm/CodeGen/MachineValueType.h>
 #include <llvm/IR/GlobalVariable.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/IR/BuiltinOps.h>
@@ -133,4 +134,6 @@ namespace irene3
         uint64_t address, std::int64_t disp, bool is_external);
 
     void PatchIRContext(mlir::MLIRContext& context);
+
+    llvm::Type* ConvertMVT(llvm::LLVMContext& context, llvm::MVT svt);
 } // namespace irene3

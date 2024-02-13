@@ -38,6 +38,7 @@ namespace irene3::patchlang
         OctIntLit,
         DecIntLit,
         HexIntLit,
+        HexFloatLit,
         StrLit,
         Ident,
         EscapedIdent,

@@ -49,7 +49,8 @@ namespace irene3::patchlang
         mlir::ModuleOp mod;
 
         uint64_t curr_value_indx;
-        std::unordered_map< void *, uint64_t > value_index;
+        std::unordered_map< const void *, uint64_t > value_index;
+        std::vector< std::string > value_names;
         llvm::DenseMap< mlir::Type, std::string > named_types;
 
         void LiftArgs(
@@ -77,10 +78,25 @@ namespace irene3::patchlang
         patchlang::TypePtr LiftType(mlir::Type ty);
 
         std::string GetValueName(mlir::Value val) {
-            this->value_index.insert({ val.getAsOpaquePointer(), this->curr_value_indx });
-            this->curr_value_indx += 1;
+            auto [it, inserted]
+                = this->value_index.insert({ val.getAsOpaquePointer(), this->curr_value_indx });
+            if (inserted) {
+                this->value_names.emplace_back(std::to_string(this->curr_value_indx));
+                return LifterContext::NameForIndex(this->curr_value_indx++);
+            } else {
+                return LifterContext::NameForIndex(it->second);
+            }
+        }
 
-            return LifterContext::NameForIndex(this->curr_value_indx - 1);
+        std::string GetValueName(mlir::Value val, const std::string &name) {
+            auto [it, inserted]
+                = this->value_index.insert({ val.getAsOpaquePointer(), this->curr_value_indx });
+            if (inserted) {
+                this->value_names.emplace_back(std::to_string(this->curr_value_indx) + "_" + name);
+                return LifterContext::NameForIndex(this->curr_value_indx++);
+            } else {
+                return LifterContext::NameForIndex(it->second);
+            }
         }
 
       public:
@@ -89,9 +105,9 @@ namespace irene3::patchlang
             , mod(mod)
             , curr_value_indx(0) {}
 
-        patchlang::ExprPtr LowerBBCall(mlir::LLVM::CallOp cop);
+        patchlang::IntLitExpr LowerBBCall(mlir::LLVM::CallOp cop);
 
-        patchlang::ExprPtr LowerOnlyControlFlowBlock(mlir::Block *block);
+        patchlang::IntLitExpr LowerOnlyControlFlowBlock(mlir::Block *block);
 
         patchlang::ExprPtr GetRefExport(mlir::Value op);
 
@@ -113,9 +129,7 @@ namespace irene3::patchlang
 
         patchlang::ExternalGlobal LiftGlobal(patchir::Global);
 
-        static inline std::string NameForIndex(uint64_t ind) {
-            return "named_val_" + std::to_string(ind);
-        }
+        inline std::string NameForIndex(uint64_t ind) { return "named_val_" + value_names[ind]; }
     };
 
 } // namespace irene3::patchlang

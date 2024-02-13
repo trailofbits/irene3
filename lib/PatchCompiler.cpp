@@ -1,3 +1,5 @@
+#include "irene3/IreneLoweringInterface.h"
+
 #include <algorithm>
 #include <anvill/ABI.h>
 #include <anvill/Declarations.h>
@@ -11,6 +13,9 @@
 #include <irene3/PatchIR/PatchIRAttrs.h>
 #include <irene3/PatchIR/PatchIROps.h>
 #include <irene3/PhysicalLocationDecoder.h>
+#include <irene3/Targets/Backend.h>
+#include <irene3/Targets/ExplicitMappingBackend.h>
+#include <irene3/Targets/GenericBackend.h>
 #include <irene3/Transforms/RemoveUnusedStackValueOperands.h>
 #include <irene3/Transforms/ReplaceRelReferences.h>
 #include <irene3/Transforms/WrapFunctionWithMachineWrapper.h>
@@ -130,7 +135,7 @@ namespace irene3
         auto tgt = llvm::TargetRegistry::lookupTarget(triple.str().c_str(), err);
         CHECK(tgt);
         auto target_machine = tgt->createTargetMachine(
-            triple.getTriple(), cpu, features, options, std::optional< llvm::Reloc::Model >());
+            triple.getTriple(), cpu, features, options, llvm::Reloc::PIC_);
 
         return std::unique_ptr< llvm::TargetMachine >(target_machine);
     }
@@ -208,7 +213,8 @@ namespace irene3
         llvm::Module *mod,
         ModuleCallingConventions &cconv,
         mlir::ModuleOp mlirmod,
-        const llvm::TargetRegisterInfo *reg_info) {
+        const llvm::TargetRegisterInfo *reg_info,
+        const IreneLoweringInterface &backend) {
         llvm::PassBuilder pb;
 
         // Remove Globals
@@ -231,9 +237,10 @@ namespace irene3
         pb.registerLoopAnalyses(lam);
         pb.registerModuleAnalyses(mam);
         pb.crossRegisterProxies(lam, fam, cam, mam);
-        WrapFunctionWithMachineWrapper wrapper(mod->getContext(), mlirmod, reg_info, cconv);
+        WrapFunctionWithMachineWrapper wrapper(
+            mod->getContext(), mlirmod, reg_info, cconv, backend);
         wrapper.run(*mod, mam);
-        ReplaceRelReferences refs(mod->getContext(), mlirmod, reg_info, cconv);
+        ReplaceRelReferences refs(mod->getContext(), mlirmod, reg_info, cconv, backend);
         refs.run(*mod, mam);
 
         auto regs_list = refs.getFreeRegsList();
@@ -279,6 +286,19 @@ namespace irene3
         CHECK(res.succeeded());
     }
 
+    std::unique_ptr< IreneLoweringInterface > PatchCompiler::BuildILI(
+        const llvm::TargetSubtargetInfo &subtarget, const llvm::TargetRegisterInfo *rinfo) {
+        if (!this->backend_name) {
+            return std::make_unique< GenericBackend >(subtarget);
+        }
+
+        auto populated = Populate(*this->backend_name, subtarget, rinfo, context);
+        if (!populated) {
+            LOG(FATAL) << "Unsupported backend " << *this->backend_name;
+        }
+        return std::make_unique< irene3::ExplicitMappingBackend >(*populated);
+    }
+
     const llvm::TargetSubtargetInfo &PatchCompiler::GetSubTargetForRegion(
         irene3::patchir::RegionOp &region, llvm::TargetMachine *tm) {
         auto tmp_mod = mlir::cast< mlir::ModuleOp >(region->getParentOp()->getParentOp()->clone());
@@ -306,30 +326,34 @@ namespace irene3
                 modop.getOperation()->getAttr(mlir::LLVM::LLVMDialect::getTargetTripleAttrName()))
                 .str());
 
-        auto tgt = BuildMachine(triple, this->feature_string, this->cpu);
+        auto tgt         = BuildMachine(triple, this->feature_string, this->cpu);
+        auto &sub_target = GetSubTargetForRegion(region, tgt.get());
 
-        auto reg_info = GetSubTargetForRegion(region, tgt.get()).getRegisterInfo();
-        RegTable rtable;
-        rtable.Populate(reg_info);
+        auto reg_info = sub_target.getRegisterInfo();
+
+        auto backend = this->BuildILI(sub_target, reg_info);
 
         auto mlirpm = mlir::PassManager::on< mlir::ModuleOp >(modop->getContext());
-        mlirpm.addPass(std::make_unique< RemoveUnusedStackValueOperands >(rtable));
+        mlirpm.addPass(std::make_unique< RemoveUnusedStackValueOperands >(*backend));
         auto res = mlirpm.run(modop.getOperation());
         CHECK(res.succeeded());
         modop->dump();
 
+        modop->setAttr(
+            mlir::LLVM::LLVMDialect::getDataLayoutAttrName(),
+            mlir::StringAttr::get(&mlir_cont, tgt->createDataLayout().getStringRepresentation()));
+
         auto cloned_module = mlir::cast< mlir::ModuleOp >(modop->clone());
-        ModuleCallingConventions cconv(cloned_module);
+        ModuleCallingConventions cconv(cloned_module, *backend, this->context);
         llvm::legacy::PassManager pm;
 
         auto [mod, tgt_func] = CreateLLVMModForRegion(region);
-        auto stor = this->OptimizeIntoCompileableLLVM(mod.get(), cconv, cloned_module, reg_info);
+        auto stor            = this->OptimizeIntoCompileableLLVM(
+            mod.get(), cconv, cloned_module, sub_target.getRegisterInfo(), *backend);
 
         // cloned_module->dump();
-
-        cconv.ApplyTo(mod.get());
-
         mod->dump();
+        cconv.ApplyTo(mod.get());
 
         auto obj = std::make_unique< CCObjSelector >(cconv.BuildCConvMap());
         // llvm::DebugFlag    = false;

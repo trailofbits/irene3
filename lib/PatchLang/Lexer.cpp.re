@@ -51,10 +51,25 @@ namespace irene3::patchlang
 
                 ws = [ \t\r]+;
 
-                bin_lit { EMIT_TOKEN(Token::BinIntLit) }
-                oct_lit { EMIT_TOKEN(Token::OctIntLit) }
-                dec_lit { EMIT_TOKEN(Token::DecIntLit) }
-                hex_lit { EMIT_TOKEN(Token::HexIntLit) }
+                int_size = [1-9] [0-9]*;
+                float_kind = "f16"
+                           | "bf16"
+                           | "f32"
+                           | "f64"
+                           | "f80"
+                           | "f128"
+                           | "f8e5m2"
+                           | "f8e5m2fnuz"
+                           | "f8e4m3fn"
+                           | "f8e4m3fnuz"
+                           | "f8e4m3b11fnuz"
+                           | "tf32";
+
+                bin_lit ":" int_size   { EMIT_TOKEN(Token::BinIntLit) }
+                oct_lit ":" int_size   { EMIT_TOKEN(Token::OctIntLit) }
+                dec_lit ":" int_size   { EMIT_TOKEN(Token::DecIntLit) }
+                hex_lit ":" int_size   { EMIT_TOKEN(Token::HexIntLit) }
+                hex_lit ":" float_kind { EMIT_TOKEN(Token::HexFloatLit) }
                 str_lit { EMIT_TOKEN(Token::StrLit) }
                 "("     { EMIT_TOKEN(Token::LParen) }
                 "'("    { EMIT_TOKEN(Token::EscapedLParen) }
