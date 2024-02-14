@@ -54,6 +54,7 @@ set(irene3_SOURCES
   PatchLang/Type.cpp
   Targets/GenericBackend.cpp
   Targets/ExplicitMappingBackend.cpp
+  PatchIRCodegen.cpp
 )
 
 add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/Backend.inc"

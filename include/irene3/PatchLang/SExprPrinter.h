@@ -79,6 +79,17 @@ namespace irene3::patchlang
         }
     }
 
+    template< detail::LLVMStream T >
+    void PrintSExpr(T&& os, const FloatLitExpr& expr, int ident = 0) {
+        auto value = expr.GetValue();
+        value.print(os);
+    }
+
+    template< detail::StdStream T >
+    void PrintSExpr(T&& os, const FloatLitExpr& expr, int indent = 0) {
+        PrintSExpr(llvm::raw_os_ostream(os), expr, indent);
+    }
+
     void PrintSExpr(auto&& os, const IntLitExpr& expr, int indent = 0) {
         auto value = expr.GetValue();
         if (value.isSigned()) {
@@ -423,6 +434,13 @@ namespace irene3::patchlang
         indent += 4;
         os << "(goto\n" << std::string(indent, ' ');
         PrintSExpr(os, stmt.GetTarget(), indent);
+        os << ')';
+    }
+
+    void PrintSExpr(auto&& os, const FailedToLiftStmt& stmt, int indent = 0) {
+        indent += 4;
+        os << "(failed_to_lift\n" << std::string(indent, ' ');
+        PrintSExpr(os, stmt.GetMessage(), indent);
         os << ')';
     }
 

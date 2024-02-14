@@ -14,6 +14,7 @@ add_subdirectory("PatchLang2PatchIR")
 add_subdirectory("PatchCompiler")
 add_subdirectory("PatchLangLifter")
 add_subdirectory("ExamineSpec")
+add_subdirectory("PatchLangServer")
 
 set(IRENE3_DECOMP
     "${IRENE3_DECOMP}"

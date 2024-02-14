@@ -29,8 +29,17 @@ public class DockerDecompilerServerManager implements DecompilerServerManager {
     this.port = port;
   }
 
-  /** Start the decompiler server. */
   public void startDecompilerServer() throws DecompilerServerException {
+    startDecompilerServer(EXECUTABLE, "--unsafe-stack-locations=1");
+  }
+
+  public void startPatchLangServer() throws DecompilerServerException {
+    startDecompilerServer("irene3-patchlang-server", "");
+  }
+
+  /** Start the decompiler server. */
+  public void startDecompilerServer(String executable, String cmd)
+      throws DecompilerServerException {
     setupDockerClient();
 
     // Check if it's already running/created
@@ -46,8 +55,8 @@ public class DockerDecompilerServerManager implements DecompilerServerManager {
         decompilerContainer =
             dockerClient
                 .createContainerCmd(IMAGE_NAME)
-                .withEntrypoint(EXECUTABLE)
-                .withCmd("--unsafe-stack-locations=1")
+                .withEntrypoint(executable)
+                .withCmd(cmd)
                 .withName(CONTAINER_NAME)
                 .withHostConfig(
                     new HostConfig().withPortBindings(PortBinding.parse(port + ":" + EXPOSED_PORT)))

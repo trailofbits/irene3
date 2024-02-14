@@ -27,6 +27,7 @@
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/BuiltinTypes.h>
 #include <mlir/IR/Location.h>
+#include <mlir/IR/MLIRContext.h>
 #include <mlir/IR/Operation.h>
 #include <mlir/IR/SymbolTable.h>
 #include <mlir/IR/Value.h>
@@ -119,6 +120,9 @@ namespace irene3::patchlang
                 return MakeExpr< AllocaExpr >(
                     std::move(ref), IntLitExp(APSIntFromUnsigned(aling)), nullptr, Token(),
                     Token());
+            })
+            .Case< mlir::LLVM::NullOp >([&](mlir::LLVM::NullOp op) -> ExprPtr {
+                return MakeExpr< NullExpr >(Token(), Token());
             })
             .Case< mlir::LLVM::ConstantOp >([&](mlir::LLVM::ConstantOp op) {
                 auto val = op.getValue();
@@ -370,7 +374,10 @@ namespace irene3::patchlang
             body.push_back(patchlang::GotoStmt(std::move(rhs), Token(), Token()));
             return;
         }
-        LOG(FATAL) << "Unhandled terminator " << MLIRThingToString(*term);
+        body.push_back(patchlang::FailedToLiftStmt(
+            patchlang::StrLitExpr(
+                "Unhandled terminator for region: " + MLIRThingToString(*term), Token()),
+            Token(), Token()));
     }
 
     void LifterContext::LiftArgs(
@@ -408,9 +415,14 @@ namespace irene3::patchlang
             }
         }
 
-        CHECK(!!term) << MLIRThingToString(entry_block.getParentOp()->getLoc())
-                      << ": Region lacks a proper terminator";
-        this->LowerTerminator(stmts, term);
+        if (term) {
+            this->LowerTerminator(stmts, term);
+        } else {
+            stmts.push_back(patchlang::FailedToLiftStmt(
+                patchlang::StrLitExpr(
+                    "no terminator for region: " + funcop.getSymName().str(), Token()),
+                Token(), Token()));
+        }
     }
 
     Stmt LifterContext::BindExprForMLIRValue(patchlang::ExprPtr expr, mlir::Value val) {
@@ -546,4 +558,77 @@ namespace irene3::patchlang
             std::move(body), std::move(addr), std::move(size), std::move(stack_offset_at_entry),
             std::move(stack_offset_at_exit), std::move(uid), Token(), Token());
     }
+
+    PModule LiftPatchLangModule(
+        mlir::MLIRContext& context, mlir::ModuleOp mod, std::optional< uint64_t > target_uid) {
+        irene3::patchlang::LifterContext lifter(context, mod);
+        std::vector< irene3::patchlang::LangDecl > decls;
+
+        // Note(Ian): So we need to only lift types that we name here so they need to be added to a
+        // mapping
+        for (auto glbl : mod.getOps< mlir::LLVM::GlobalOp >()) {
+            auto ty = glbl.getGlobalType();
+            if (auto sty = mlir::dyn_cast< mlir::LLVM::LLVMStructType >(ty)) {
+                if (!sty.getName().empty()) {
+                    decls.push_back(lifter.AddNamedType(sty.getName().str(), sty));
+                }
+            }
+        }
+
+        for (auto gv_op : mod.getOps< irene3::patchir::Global >()) {
+            decls.push_back(lifter.LiftGlobal(gv_op));
+        }
+
+        for (auto fop : mod.getOps< irene3::patchir::FunctionOp >()) {
+            // A function without a region is an external that we should create a reference for
+            // externs are placed before the target so they are in scope.
+            if (fop.getRegion().empty() || fop.getBody().getOps().empty()) {
+                decls.push_back(lifter.LiftExternal(fop));
+                continue;
+            }
+            irene3::patchlang::IntLitExpr func_addr(
+                llvm::APSInt::getUnsigned(fop.getAddress()),
+                irene3::patchlang::LitBase::Hexadecimal, {});
+            irene3::patchlang::IntLitExpr func_disp(
+                llvm::APSInt::get(fop.getDisp()), irene3::patchlang::LitBase::Decimal, {});
+            irene3::patchlang::BoolLitExpr func_ext(fop.getIsExternal(), {});
+
+            std::vector< irene3::patchlang::Region > regs;
+            for (auto rop : fop.getOps< irene3::patchir::RegionOp >()) {
+                // If we specify a UID, only lift that region as a definition.
+                // Otherwise, lift everything as a definition.
+                regs.emplace_back(
+                    lifter.LiftRegion(rop, !target_uid || *target_uid == rop.getUid()));
+            }
+            irene3::patchlang::Function func(
+                std::move(regs), std::move(func_addr), std::move(func_disp), std::move(func_ext),
+                fop.getName().str(), {}, {}, {});
+            decls.push_back(std::move(func));
+        }
+
+        auto target
+            = mlir::cast< mlir::StringAttr >(
+                  mod.getOperation()->getAttr(mlir::LLVM::LLVMDialect::getTargetTripleAttrName()))
+                  .str();
+
+        auto datalayout
+            = mlir::cast< mlir::StringAttr >(
+                  mod.getOperation()->getAttr(mlir::LLVM::LLVMDialect::getDataLayoutAttrName()))
+                  .str();
+
+        auto image_base = mlir::cast< mlir::IntegerAttr >(
+                              mod.getOperation()->getAttr(
+                                  irene3::patchir::PatchIRDialect::getImageBaseAttrName()))
+                              .getAPSInt();
+
+        irene3::patchlang::PModule pmod(
+            irene3::patchlang::StrLitExpr(datalayout, irene3::patchlang::Token()),
+            irene3::patchlang::StrLitExpr(target, irene3::patchlang::Token()),
+            irene3::patchlang::IntLitExpr(
+                image_base, irene3::patchlang::LitBase::Hexadecimal, irene3::patchlang::Token()),
+            std::move(decls), irene3::patchlang::Token(), irene3::patchlang::Token());
+
+        return pmod;
+    }
+
 } // namespace irene3::patchlang

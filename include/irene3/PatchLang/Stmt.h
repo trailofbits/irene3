@@ -25,6 +25,7 @@ namespace irene3::patchlang
     class GotoStmt;
     class NopStmt;
     class ConditionalGotoStmt;
+    class FailedToLiftStmt;
 
     using Stmt = std::variant<
         LetDeclStmt,
@@ -35,7 +36,8 @@ namespace irene3::patchlang
         ValueStmt,
         GotoStmt,
         ConditionalGotoStmt,
-        NopStmt >;
+        NopStmt,
+        FailedToLiftStmt >;
     using StmtPtr = std::unique_ptr< Stmt >;
     template< typename T >
     concept IsStmt = std::is_same_v< std::remove_cv_t< T >, Stmt >;
@@ -44,6 +46,22 @@ namespace irene3::patchlang
     StmtPtr MakeStmt(Ts&&... ts) {
         return std::make_unique< Stmt >(TStmt(std::forward< Ts >(ts)...));
     }
+
+    class FailedToLiftStmt {
+        StrLitExpr message;
+        Token first_tok;
+        Token last_tok;
+
+      public:
+        FailedToLiftStmt(StrLitExpr&& message, Token first_tok, Token last_tok)
+            : message(std::move(message))
+            , first_tok(first_tok)
+            , last_tok(last_tok) {}
+
+        const StrLitExpr& GetMessage() const { return message; }
+        Token GetFirstToken() const { return first_tok; }
+        Token GetLastToken() const { return last_tok; }
+    };
 
     class LetDeclStmt {
         std::string name;
@@ -288,6 +306,7 @@ namespace irene3::patchlang
         }
 
         const std::vector< Stmt >& GetBody() const { return body; }
+        std::vector< Stmt >& GetMutableBody() { return body; }
         const IntLitExpr& GetAddress() const { return addr; }
         const IntLitExpr& GetUID() const { return region_uid; }
         const IntLitExpr& GetSize() const { return size; }
@@ -344,6 +363,7 @@ namespace irene3::patchlang
         }
 
         const std::vector< Region >& GetRegions() const { return regions; }
+        std::vector< Region >& GetMutableRegions() { return regions; }
         const IntLitExpr& GetAddress() const { return address; }
         const IntLitExpr& GetDisp() const { return disp; }
         const BoolLitExpr& GetIsExternal() const { return is_external; }
@@ -506,6 +526,7 @@ namespace irene3::patchlang
         const StrLitExpr& GetTargetTriple() const { return target_triple; }
         const IntLitExpr& GetImageBase() const { return this->image_base; }
         const std::vector< LangDecl >& GetDecls() const { return decls; }
+        std::vector< LangDecl >& GetMutableDecls() { return decls; }
         Token GetFirstToken() const { return first_tok; }
         Token GetLastToken() const { return last_tok; }
     };
