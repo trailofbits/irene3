@@ -132,4 +132,7 @@ namespace irene3::patchlang
         inline std::string NameForIndex(uint64_t ind) { return "named_val_" + value_names[ind]; }
     };
 
+    PModule LiftPatchLangModule(
+        mlir::MLIRContext &, mlir::ModuleOp, std::optional< uint64_t > target_uid = {});
+
 } // namespace irene3::patchlang

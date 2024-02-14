@@ -363,13 +363,23 @@ namespace irene3::patchlang
         CHECK_PARSE(attrs);
         auto [address, size, stack_offset_at_entry, stack_offset_at_exit, uid] = attrs.TakeValue();
 
+        auto body = ParseRegionBody();
+        CHECK_PARSE(body);
+
+        auto rparen = GetToken< Token::RParen >();
+        CHECK_PARSE(rparen);
+
+        return Region(
+            body.TakeValue(), std::move(address), std::move(size), std::move(stack_offset_at_entry),
+            std::move(stack_offset_at_exit), std::move(uid), lparen.TakeValue(),
+            rparen.TakeValue());
+    }
+
+    ParseResult< std::vector< Stmt > > Parser::ParseRegionBody() {
         std::vector< Stmt > body;
         while (true) {
             auto peek = PeekToken();
-            if (!peek.has_value()) {
-                return { "Unexpected EOF while parsing BlockSExpr" };
-            }
-            if (peek->kind == Token::RParen) {
+            if (!peek.has_value() || peek->kind == Token::RParen) {
                 break;
             }
 
@@ -379,14 +389,7 @@ namespace irene3::patchlang
             }
             body.emplace_back(stmt.TakeValue());
         }
-
-        auto rparen = GetToken< Token::RParen >();
-        CHECK_PARSE(rparen);
-
-        return Region(
-            std::move(body), std::move(address), std::move(size), std::move(stack_offset_at_entry),
-            std::move(stack_offset_at_exit), std::move(uid), lparen.TakeValue(),
-            rparen.TakeValue());
+        return body;
     }
 
     ParseResult< std::vector< Region > > Parser::ParseRegions() {
@@ -652,17 +655,8 @@ namespace irene3::patchlang
         auto lparen = GetToken< Token::LParen >();
         CHECK_PARSE(lparen);
 
-        auto stmt_kind = GetIdent({
-            "let",
-            "store",
-            "return",
-            "call",
-            "intrinsic",
-            "value",
-            "goto",
-            "cond_goto",
-            "nop",
-        });
+        auto stmt_kind = GetIdent({ "let", "store", "return", "call", "intrinsic", "value", "goto",
+                                    "cond_goto", "nop", "failed_to_lift" });
 
         CHECK_PARSE(stmt_kind);
 
@@ -680,6 +674,13 @@ namespace irene3::patchlang
                 std::string(name->contents),
                 std::make_unique< Expr >(std::move(*value.TakeValue())), lparen.TakeValue(),
                 rparen.TakeValue()) };
+        } else if (stmt_kind->contents == "failed_to_lift") {
+            auto message = ParseStrLit();
+            CHECK_PARSE(message);
+            auto rparen = GetToken< TokenKind::RParen >();
+            CHECK_PARSE(rparen);
+            return { FailedToLiftStmt(
+                message.TakeValue(), lparen.TakeValue(), rparen.TakeValue()) };
         } else if (stmt_kind->contents == "store") {
             auto volatile_attr = ParseAttributes< mem_attrs::IsVolatileAttr >();
             CHECK_PARSE(volatile_attr);

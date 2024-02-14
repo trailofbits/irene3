@@ -60,7 +60,7 @@ set(PROTO_BINARY_DIR "${PROJECT_BINARY_DIR}/generated")
 add_subdirectory(vendor)
 
 # IRENE protobuf objects target
-add_library(irene3_proto-objects OBJECT bin/Codegen/service.proto)
+add_library(irene3_proto-objects OBJECT bin/Codegen/service.proto bin/PatchLangServer/patch_service.proto)
 
 target_link_libraries(irene3_proto-objects PUBLIC protobuf::libprotobuf gRPC::grpc++ irene3_ext-proto-objects)
 target_include_directories(irene3_proto-objects PUBLIC "$<BUILD_INTERFACE:${PROTO_BINARY_DIR}>")

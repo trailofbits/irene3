@@ -1,3 +1,5 @@
+#include "irene3/PatchLang/SExprPrinter.h"
+
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
@@ -39,6 +41,7 @@
 #include <mlir/Support/LLVM.h>
 #include <mlir/Target/LLVMIR/Import.h>
 #include <sstream>
+#include <stdexcept>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -544,6 +547,17 @@ class MLIRCodegen {
         return mlir_builder.create< mlir::LLVM::ConstantOp >(
             ToLocAttr(addr),
             mlir::IntegerAttr::get(iptr, addr.GetValue().zextOrTrunc(iptr.getWidth())));
+    }
+
+    void ToLLVM(
+        const irene3::patchlang::FailedToLiftStmt& stmt,
+        mlir::OpBuilder& mlir_builder,
+        SymbolMap& smap,
+        mlir::LLVM::LLVMFuncOp& func) {
+        std::stringstream ss;
+        ss << "Failed to lower statement: ";
+        irene3::patchlang::PrintSExpr(ss, stmt);
+        throw std::runtime_error(ss.str());
     }
 
     void ToLLVM(

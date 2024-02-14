@@ -577,5 +577,6 @@ namespace irene3::patchlang
         Parser(gap::generator< Token > tokens);
 
         ParseResult< PModule > ParseModule();
+        ParseResult< std::vector< Stmt > > ParseRegionBody();
     };
 } // namespace irene3::patchlang

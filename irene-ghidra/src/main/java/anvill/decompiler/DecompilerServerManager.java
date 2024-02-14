@@ -10,6 +10,8 @@ public interface DecompilerServerManager {
    */
   default void startDecompilerServer() throws DecompilerServerException {}
 
+  default void startPatchLangServer() throws DecompilerServerException {}
+
   /** Clean up server */
   void dispose();
 }

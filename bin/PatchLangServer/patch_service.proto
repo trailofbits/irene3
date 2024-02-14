@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package irene3.server;
+
+message SpecChunk {
+	bytes chunk = 1;
+}
+
+message PatchBlock {
+	uint64 address = 1;
+	repeated uint64 edges = 2;
+	uint64 uid = 3;
+	string code = 4;
+	uint64 size = 5;
+}
+
+message PatchGraph {
+	map<uint64, PatchBlock> blocks = 1;
+}
+
+message PatchRequest {
+	uint64 uid = 1;
+	string new_code = 2;
+}
+
+message PatchResponse {
+	uint64 uid = 1;
+	string new_code = 2;
+	string patched_module = 3;
+}
+
+service PatchLangServer {
+	rpc GeneratePatchGraph(stream SpecChunk)
+			returns (PatchGraph)
+	{}
+
+	rpc ApplyPatch(PatchRequest)
+			returns (PatchResponse)
+	{}
+}
