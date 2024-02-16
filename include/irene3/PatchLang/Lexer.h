@@ -63,5 +63,8 @@ namespace irene3::patchlang
         }
     };
 
-    gap::generator< Token > Lex(std::string_view source);
+    template< typename T >
+    using ParseResult = anvill::Result< T, std::string >;
+
+    gap::generator< ParseResult< Token > > Lex(std::string_view source);
 } // namespace irene3::patchlang

@@ -45,30 +45,41 @@
 
 namespace irene3::patchlang
 {
-    Parser::Parser(gap::generator< Token > tokens)
+    static Token GetLastToken(const auto& ptr) {
+        return std::visit([](const auto& n) { return n.GetLastToken(); }, *ptr);
+    }
+
+    Parser::Parser(gap::generator< ParseResult< Token > > tokens)
         : tokens(std::move(tokens)) {}
 
-    std::optional< Token > Parser::PeekToken() {
+    ParseResult< std::optional< Token > > Parser::PeekToken() {
         if (!lookahead.has_value()) {
-            lookahead = GetToken();
+            auto maybe_tok = GetToken();
+            CHECK_PARSE(maybe_tok);
+
+            lookahead = maybe_tok.TakeValue();
         }
 
         return lookahead;
     }
 
-    std::optional< Token > Parser::GetToken() {
+    ParseResult< std::optional< Token > > Parser::GetToken() {
         if (lookahead.has_value()) {
             auto val  = *lookahead;
             lookahead = std::nullopt;
-            return val;
+            return { val };
         }
 
         auto tok_it = tokens.begin();
         if (tok_it == tokens.end()) {
-            return std::nullopt;
+            return { std::nullopt };
         }
-        auto tok = *tok_it;
-        return tok;
+
+        if (!tok_it->Succeeded()) {
+            return tok_it->TakeError();
+        }
+
+        return { tok_it->TakeValue() };
     }
 
     static std::pair< const llvm::fltSemantics*, unsigned > getFltSemantics(
@@ -359,7 +370,8 @@ namespace irene3::patchlang
 
         using namespace region_attrs;
         auto attrs = ParseAttributes<
-            AddressAttr, SizeAttr, StackOffsetEntryAttr, StackOffsetExitAttr, UIDAttr >();
+            AddressAttr, SizeAttr, StackOffsetEntryAttr, StackOffsetExitAttr, UIDAttr >(
+            maybe_region.Value());
         CHECK_PARSE(attrs);
         auto [address, size, stack_offset_at_entry, stack_offset_at_exit, uid] = attrs.TakeValue();
 
@@ -378,7 +390,10 @@ namespace irene3::patchlang
     ParseResult< std::vector< Stmt > > Parser::ParseRegionBody() {
         std::vector< Stmt > body;
         while (true) {
-            auto peek = PeekToken();
+            auto maybe_peek = PeekToken();
+            CHECK_PARSE(maybe_peek);
+
+            auto peek = maybe_peek.TakeValue();
             if (!peek.has_value() || peek->kind == Token::RParen) {
                 break;
             }
@@ -399,7 +414,10 @@ namespace irene3::patchlang
             CHECK_PARSE(region);
             regions.push_back(region.TakeValue());
 
-            auto peek = PeekToken();
+            auto maybe_peek = PeekToken();
+            CHECK_PARSE(maybe_peek);
+
+            auto peek = maybe_peek.TakeValue();
             if (!peek.has_value() || peek->kind == Token::RParen || peek->kind == Token::RBrace) {
                 break;
             }
@@ -425,7 +443,8 @@ namespace irene3::patchlang
         auto region = GetIdent({ "function" });
         CHECK_PARSE(region);
 
-        auto attrs = ParseAttributes< NameAttr, AddressAttr, DispAttr, IsExternAttr >();
+        auto attrs
+            = ParseAttributes< NameAttr, AddressAttr, DispAttr, IsExternAttr >(region.Value());
         CHECK_PARSE(attrs);
 
         auto [func_name, func_addr, disp, is_ext] = attrs.TakeValue();
@@ -504,7 +523,8 @@ namespace irene3::patchlang
         std::optional< BoolLitExpr > is_ext;
         std::optional< IntLitExpr > bit_size;
         if (ident->contents != "external_global") {
-            auto attrs = ParseAttributes< NameAttr, AddressAttr, DispAttr, IsExternAttr >();
+            auto attrs
+                = ParseAttributes< NameAttr, AddressAttr, DispAttr, IsExternAttr >(ident.Value());
             CHECK_PARSE(attrs);
 
             auto [func_name_i, func_addr_i, disp_i, is_ext_i] = attrs.TakeValue();
@@ -514,7 +534,8 @@ namespace irene3::patchlang
             is_ext                                            = is_ext_i;
         } else {
             auto attrs
-                = ParseAttributes< NameAttr, AddressAttr, DispAttr, IsExternAttr, BitSizeAttr >();
+                = ParseAttributes< NameAttr, AddressAttr, DispAttr, IsExternAttr, BitSizeAttr >(
+                    ident.Value());
             CHECK_PARSE(attrs);
 
             auto [func_name_i, func_addr_i, disp_i, is_ext_i, bit_size_i] = attrs.TakeValue();
@@ -542,12 +563,15 @@ namespace irene3::patchlang
             CHECK_PARSE(retty);
 
             while (true) {
-                auto prs = PeekToken();
-                if (!prs) {
+                auto maybe_peek = PeekToken();
+                CHECK_PARSE(maybe_peek);
+
+                auto peek = maybe_peek.TakeValue();
+                if (!peek) {
                     return { "Unexpected EOF while parsing ParseStmtSExpr" };
                 }
 
-                if (prs->kind == TokenKind::RParen) {
+                if (peek->kind == TokenKind::RParen) {
                     break;
                 }
 
@@ -585,8 +609,11 @@ namespace irene3::patchlang
     ParseResult< std::vector< LangDecl > > Parser::ParseDecls() {
         std::vector< LangDecl > functions;
         while (true) {
-            auto tok = PeekToken();
-            if (!tok.has_value() || tok->kind == Token::RParen) {
+            auto maybe_peek = PeekToken();
+            CHECK_PARSE(maybe_peek);
+
+            auto peek = maybe_peek.TakeValue();
+            if (!peek.has_value() || peek->kind == Token::RParen) {
                 break;
             }
             auto func = ParseLDecl();
@@ -611,7 +638,7 @@ namespace irene3::patchlang
         auto mod = GetIdent({ "module" });
         CHECK_PARSE(mod);
 
-        auto attrs = ParseAttributes< TripletAttr, DataLayoutAttr, ImageBaseAttr >();
+        auto attrs = ParseAttributes< TripletAttr, DataLayoutAttr, ImageBaseAttr >(mod.Value());
         CHECK_PARSE(attrs);
         auto [triplet, datalayout, imgbase] = attrs.TakeValue();
 
@@ -682,7 +709,7 @@ namespace irene3::patchlang
             return { FailedToLiftStmt(
                 message.TakeValue(), lparen.TakeValue(), rparen.TakeValue()) };
         } else if (stmt_kind->contents == "store") {
-            auto volatile_attr = ParseAttributes< mem_attrs::IsVolatileAttr >();
+            auto volatile_attr = ParseAttributes< mem_attrs::IsVolatileAttr >(stmt_kind.Value());
             CHECK_PARSE(volatile_attr);
             std::optional< BoolLitExpr > is_vol = std::get< 0 >(volatile_attr.TakeValue());
 
@@ -701,9 +728,11 @@ namespace irene3::patchlang
                 is_vol ? is_vol->GetValue() : false, lparen.TakeValue(), rparen.TakeValue()) };
         } else if (stmt_kind->contents == "return") {
             auto maybe_rparen = PeekToken();
-            if (maybe_rparen && maybe_rparen->kind == Token::RParen) {
+            CHECK_PARSE(maybe_rparen);
+
+            if (maybe_rparen.Value() && maybe_rparen.Value()->kind == Token::RParen) {
                 GetToken();
-                return { ReturnStmt(lparen.TakeValue(), *maybe_rparen) };
+                return { ReturnStmt(lparen.TakeValue(), *maybe_rparen.Value()) };
             }
 
             auto value = ParseExpr();
@@ -716,14 +745,17 @@ namespace irene3::patchlang
                 std::move(*value.TakeValue()), lparen.TakeValue(), rparen.TakeValue()) };
         } else if (stmt_kind->contents == "call") {
             using namespace stmt_attrs;
-            auto attrs = ParseAttributes< CalleeAttr >();
+            auto attrs = ParseAttributes< CalleeAttr >(stmt_kind.Value());
             CHECK_PARSE(attrs);
 
             auto [callee] = attrs.TakeValue();
 
             std::vector< ExprPtr > args;
             while (true) {
-                auto rparen = PeekToken();
+                auto maybe_rparen = PeekToken();
+                CHECK_PARSE(maybe_rparen);
+
+                auto rparen = maybe_rparen.TakeValue();
                 if (!rparen) {
                     return { "Unexpected EOF while parsing ParseStmtSExpr" };
                 }
@@ -740,14 +772,17 @@ namespace irene3::patchlang
             }
         } else if (stmt_kind->contents == "intrinsic") {
             using namespace stmt_attrs;
-            auto attrs = ParseAttributes< CalleeAttr >();
+            auto attrs = ParseAttributes< CalleeAttr >(stmt_kind.Value());
             CHECK_PARSE(attrs);
 
             auto [callee] = attrs.TakeValue();
 
             std::vector< ExprPtr > args;
             while (true) {
-                auto rparen = PeekToken();
+                auto maybe_rparen = PeekToken();
+                CHECK_PARSE(maybe_rparen);
+
+                auto rparen = maybe_rparen.TakeValue();
                 if (!rparen) {
                     return { "Unexpected EOF while parsing ParseStmtSExpr" };
                 }
@@ -770,7 +805,7 @@ namespace irene3::patchlang
             auto ty = this->ParseType();
             CHECK_PARSE(ty);
 
-            auto maybe_attrs = ParseAttributes< AtEntryAttr, AtExitAttr >();
+            auto maybe_attrs = ParseAttributes< AtEntryAttr, AtExitAttr >(GetLastToken(ty.Value()));
             CHECK_PARSE(maybe_attrs);
 
             auto [at_entry, at_exit] = maybe_attrs.TakeValue();
@@ -846,8 +881,10 @@ namespace irene3::patchlang
             }
             case Token::LParen: return ParseExprSExpr();
             case Token::Ident: {
-                auto tok  = GetToken();
-                auto name = tok.value();
+                auto tok = GetToken();
+                CHECK_PARSE(tok);
+
+                auto name = tok.TakeValue().value();
 
                 return MakeExpr< DeclRefExpr >(std::string(name.contents), name, name, name);
             }
@@ -881,9 +918,9 @@ namespace irene3::patchlang
             op, kind, lhs.TakeValue(), rhs.TakeValue(), lparen, rparen.TakeValue());
     }
 
-    ParseResult< ExprPtr > Parser::ParseCastSExpr(Token lparen, CastExprKind kind) {
+    ParseResult< ExprPtr > Parser::ParseCastSExpr(Token lparen, Token kind_tok, CastExprKind kind) {
         using namespace expr_attrs;
-        auto attrs = ParseAttributes< TypeAttr >();
+        auto attrs = ParseAttributes< TypeAttr >(kind_tok);
         CHECK_PARSE(attrs);
 
         auto [type] = attrs.TakeValue();
@@ -982,7 +1019,10 @@ namespace irene3::patchlang
                 CHECK_PARSE(index);
                 indices.emplace_back(index.TakeValue());
 
-                auto rparen = PeekToken();
+                auto maybe_rparen = PeekToken();
+                CHECK_PARSE(maybe_rparen);
+
+                auto rparen = maybe_rparen.TakeValue();
                 if (!rparen) {
                     return { "Unexpected EOF while parsing ParseExprSExpr" };
                 }
@@ -999,14 +1039,17 @@ namespace irene3::patchlang
                 base.TakeValue(), elem_type.TakeValue(), std::move(indices), lparen.TakeValue(),
                 rparen.TakeValue());
         } else if (kind->contents == "call") {
-            auto attrs = ParseAttributes< CalleeAttr >();
+            auto attrs = ParseAttributes< CalleeAttr >(kind.Value());
             CHECK_PARSE(attrs);
 
             auto [callee] = attrs.TakeValue();
 
             std::vector< ExprPtr > args;
             while (true) {
-                auto rparen = PeekToken();
+                auto maybe_rparen = PeekToken();
+                CHECK_PARSE(maybe_rparen);
+
+                auto rparen = maybe_rparen.TakeValue();
                 if (!rparen) {
                     return { "Unexpected EOF while parsing ParseExprSExpr" };
                 }
@@ -1022,14 +1065,17 @@ namespace irene3::patchlang
                 args.emplace_back(arg.TakeValue());
             }
         } else if (kind->contents == "intrinsic") {
-            auto attrs = ParseAttributes< CalleeAttr >();
+            auto attrs = ParseAttributes< CalleeAttr >(kind.Value());
             CHECK_PARSE(attrs);
 
             auto [callee] = attrs.TakeValue();
 
             std::vector< ExprPtr > args;
             while (true) {
-                auto rparen = PeekToken();
+                auto maybe_rparen = PeekToken();
+                CHECK_PARSE(maybe_rparen);
+
+                auto rparen = maybe_rparen.TakeValue();
                 if (!rparen) {
                     return { "Unexpected EOF while parsing ParseExprSExpr" };
                 }
@@ -1045,7 +1091,7 @@ namespace irene3::patchlang
                 args.emplace_back(arg.TakeValue());
             }
         } else if (kind->contents == "alloca") {
-            auto attrs = ParseAttributes< AlignmentAttr, TypeAttr, ArraySize >();
+            auto attrs = ParseAttributes< AlignmentAttr, TypeAttr, ArraySize >(kind.Value());
             CHECK_PARSE(attrs);
 
             auto [alignment, type, arraySize] = attrs.TakeValue();
@@ -1056,7 +1102,7 @@ namespace irene3::patchlang
                 std::move(arraySize), std::move(alignment), std::move(type), lparen.TakeValue(),
                 rparen.TakeValue());
         } else if (kind->contents == "load") {
-            auto attrs = ParseAttributes< TypeAttr, mem_attrs::IsVolatileAttr >();
+            auto attrs = ParseAttributes< TypeAttr, mem_attrs::IsVolatileAttr >(kind.Value());
             CHECK_PARSE(attrs);
 
             auto [type, is_vol] = attrs.TakeValue();
@@ -1185,31 +1231,31 @@ namespace irene3::patchlang
         } else if (kind->contents == "xor") {
             return ParseBinSExpr(kind.TakeValue(), lparen.TakeValue(), BinaryOp::Xor);
         } else if (kind->contents == "ptrtoint") {
-            return ParseCastSExpr(lparen.TakeValue(), CastExpr::PtrToInt);
+            return ParseCastSExpr(lparen.TakeValue(), kind.Value(), CastExpr::PtrToInt);
         } else if (kind->contents == "trunc") {
-            return ParseCastSExpr(lparen.TakeValue(), CastExpr::Trunc);
+            return ParseCastSExpr(lparen.TakeValue(), kind.Value(), CastExpr::Trunc);
         } else if (kind->contents == "zext") {
-            return ParseCastSExpr(lparen.TakeValue(), CastExpr::ZExt);
+            return ParseCastSExpr(lparen.TakeValue(), kind.Value(), CastExpr::ZExt);
         } else if (kind->contents == "sext") {
-            return ParseCastSExpr(lparen.TakeValue(), CastExpr::SExt);
+            return ParseCastSExpr(lparen.TakeValue(), kind.Value(), CastExpr::SExt);
         } else if (kind->contents == "fptrunc") {
-            return ParseCastSExpr(lparen.TakeValue(), CastExpr::FPTrunc);
+            return ParseCastSExpr(lparen.TakeValue(), kind.Value(), CastExpr::FPTrunc);
         } else if (kind->contents == "fpext") {
-            return ParseCastSExpr(lparen.TakeValue(), CastExpr::FPExt);
+            return ParseCastSExpr(lparen.TakeValue(), kind.Value(), CastExpr::FPExt);
         } else if (kind->contents == "fptoui") {
-            return ParseCastSExpr(lparen.TakeValue(), CastExpr::FPToUI);
+            return ParseCastSExpr(lparen.TakeValue(), kind.Value(), CastExpr::FPToUI);
         } else if (kind->contents == "fptosi") {
-            return ParseCastSExpr(lparen.TakeValue(), CastExpr::FPToSI);
+            return ParseCastSExpr(lparen.TakeValue(), kind.Value(), CastExpr::FPToSI);
         } else if (kind->contents == "uitofp") {
-            return ParseCastSExpr(lparen.TakeValue(), CastExpr::UIToFP);
+            return ParseCastSExpr(lparen.TakeValue(), kind.Value(), CastExpr::UIToFP);
         } else if (kind->contents == "sitofp") {
-            return ParseCastSExpr(lparen.TakeValue(), CastExpr::SIToFP);
+            return ParseCastSExpr(lparen.TakeValue(), kind.Value(), CastExpr::SIToFP);
         } else if (kind->contents == "inttoptr") {
-            return ParseCastSExpr(lparen.TakeValue(), CastExpr::IntToPtr);
+            return ParseCastSExpr(lparen.TakeValue(), kind.Value(), CastExpr::IntToPtr);
         } else if (kind->contents == "bitcast") {
-            return ParseCastSExpr(lparen.TakeValue(), CastExpr::BitCast);
+            return ParseCastSExpr(lparen.TakeValue(), kind.Value(), CastExpr::BitCast);
         } else if (kind->contents == "select") {
-            auto attrs = ParseAttributes< CondAttr, IfTrueAttr, IfFalseAttr >();
+            auto attrs = ParseAttributes< CondAttr, IfTrueAttr, IfFalseAttr >(kind.Value());
             CHECK_PARSE(attrs);
 
             auto [cond, if_true, if_false] = attrs.TakeValue();
@@ -1322,7 +1368,10 @@ namespace irene3::patchlang
         if (kind->contents == "struct") {
             std::vector< TypePtr > elems;
             while (true) {
-                auto rparen = PeekToken();
+                auto maybe_rparen = PeekToken();
+                CHECK_PARSE(maybe_rparen);
+
+                auto rparen = maybe_rparen.TakeValue();
                 if (rparen->kind == Token::RParen) {
                     GetToken();
                     return MakeType< StructType >(std::move(elems), lparen.TakeValue(), *rparen);
@@ -1333,7 +1382,7 @@ namespace irene3::patchlang
                 elems.push_back(elem.TakeValue());
             }
         } else if (kind->contents == "array") {
-            auto attrs = ParseAttributes< SizeAttr, TypeAttr >();
+            auto attrs = ParseAttributes< SizeAttr, TypeAttr >(kind.Value());
             CHECK_PARSE(attrs);
             auto [size, type] = attrs.TakeValue();
             auto close        = GetToken< Token::RParen >();
@@ -1341,7 +1390,7 @@ namespace irene3::patchlang
             return MakeType< ArrayType >(
                 std::move(size), std::move(type), lparen.TakeValue(), close.TakeValue());
         } else if (kind->contents == "vector") {
-            auto attrs = ParseAttributes< SizeAttr, TypeAttr >();
+            auto attrs = ParseAttributes< SizeAttr, TypeAttr >(kind.Value());
             CHECK_PARSE(attrs);
             auto [size, type] = attrs.TakeValue();
             auto close        = GetToken< Token::RParen >();
@@ -1363,9 +1412,9 @@ namespace irene3::patchlang
         ATTR(IsExternalAttr, "is_external", BoolLit)
     }; // namespace loc_attrs
 
-    ParseResult< Location > Parser::ParseRegisterLocationSExpr(Token lparen) {
+    ParseResult< Location > Parser::ParseRegisterLocationSExpr(Token lparen, Token kind_tok) {
         using namespace loc_attrs;
-        auto attrs = ParseAttributes< NameAttr, SizeAttr >();
+        auto attrs = ParseAttributes< NameAttr, SizeAttr >(kind_tok);
         CHECK_PARSE(attrs);
         auto [reg, size] = attrs.TakeValue();
 
@@ -1376,9 +1425,9 @@ namespace irene3::patchlang
             std::string(reg.contents), std::move(size), reg, lparen, rparen.TakeValue()) } };
     }
 
-    ParseResult< Location > Parser::ParseMemoryLocationSExpr(Token lparen) {
+    ParseResult< Location > Parser::ParseMemoryLocationSExpr(Token lparen, Token kind_tok) {
         using namespace loc_attrs;
-        auto attrs = ParseAttributes< AddressAttr, SizeAttr, DispAttr, IsExternalAttr >();
+        auto attrs = ParseAttributes< AddressAttr, SizeAttr, DispAttr, IsExternalAttr >(kind_tok);
         CHECK_PARSE(attrs);
         auto [addr, size, disp, is_ext] = attrs.TakeValue();
 
@@ -1390,9 +1439,9 @@ namespace irene3::patchlang
             rparen.TakeValue()) } };
     }
 
-    ParseResult< Location > Parser::ParseIndirectMemoryLocationSExpr(Token lparen) {
+    ParseResult< Location > Parser::ParseIndirectMemoryLocationSExpr(Token lparen, Token kind_tok) {
         using namespace loc_attrs;
-        auto attrs = ParseAttributes< BaseAttr, OffsetAttr, SizeAttr >();
+        auto attrs = ParseAttributes< BaseAttr, OffsetAttr, SizeAttr >(kind_tok);
         CHECK_PARSE(attrs);
         auto [base, offset, size] = attrs.TakeValue();
 
@@ -1412,11 +1461,11 @@ namespace irene3::patchlang
         CHECK_PARSE(kind);
 
         if (kind->contents == "register") {
-            return ParseRegisterLocationSExpr(lparen.TakeValue());
+            return ParseRegisterLocationSExpr(lparen.TakeValue(), kind.Value());
         } else if (kind->contents == "memory") {
-            return ParseMemoryLocationSExpr(lparen.TakeValue());
+            return ParseMemoryLocationSExpr(lparen.TakeValue(), kind.Value());
         } else {
-            return ParseIndirectMemoryLocationSExpr(lparen.TakeValue());
+            return ParseIndirectMemoryLocationSExpr(lparen.TakeValue(), kind.Value());
         }
     }
 

@@ -13,9 +13,6 @@
 
 namespace irene3::patchlang
 {
-    template< typename T >
-    using ParseResult = anvill::Result< T, std::string >;
-
     enum class AttrKind
     {
         ExternalName,
@@ -174,14 +171,20 @@ namespace irene3::patchlang
     }      // namespace detail
 
     class Parser {
-        gap::generator< Token > tokens;
+        gap::generator< ParseResult< Token > > tokens;
         std::optional< Token > lookahead;
 
-        std::optional< Token > PeekToken();
-        std::optional< Token > GetToken();
+        ParseResult< std::optional< Token > > PeekToken();
+        ParseResult< std::optional< Token > > GetToken();
         template< TokenKind... Kinds >
         ParseResult< Token > GetToken() {
-            auto tok = GetToken();
+            auto maybe_tok = GetToken();
+            if (!maybe_tok.Succeeded()) {
+                return maybe_tok.TakeError();
+            }
+
+            auto tok = maybe_tok.TakeValue();
+
             if (!tok.has_value()) {
                 return { "Unexpected EOF" };
             }
@@ -195,7 +198,12 @@ namespace irene3::patchlang
 
         template< TokenKind... Kinds >
         ParseResult< Token > PeekToken() {
-            auto tok = PeekToken();
+            auto maybe_tok = PeekToken();
+            if (!maybe_tok.Succeeded()) {
+                return maybe_tok.TakeError();
+            }
+
+            auto tok = maybe_tok.TakeValue();
             if (!tok.has_value()) {
                 return { "Unexpected EOF" };
             }
@@ -208,7 +216,12 @@ namespace irene3::patchlang
         }
 
         ParseResult< Token > GetIdent(const std::vector< std::string_view >& values) {
-            auto tok = GetToken();
+            auto maybe_tok = GetToken();
+            if (!maybe_tok.Succeeded()) {
+                return maybe_tok.TakeError();
+            }
+
+            auto tok = maybe_tok.TakeValue();
             if (!tok.has_value()) {
                 return { "Unexpected EOF" };
             }
@@ -240,7 +253,12 @@ namespace irene3::patchlang
 
         ParseResult< std::optional< Token > > MaybeGetIdent(
             const std::vector< std::string_view >& values) {
-            auto tok = PeekToken();
+            auto maybe_tok = PeekToken();
+            if (!maybe_tok.Succeeded()) {
+                return maybe_tok.TakeError();
+            }
+
+            auto tok = maybe_tok.TakeValue();
             if (!tok.has_value()) {
                 return { "Unexpected EOF" };
             }
@@ -260,7 +278,12 @@ namespace irene3::patchlang
         }
 
         ParseResult< Token > PeekIdent(const std::vector< std::string_view >& values) {
-            auto tok = PeekToken();
+            auto maybe_tok = PeekToken();
+            if (!maybe_tok.Succeeded()) {
+                return maybe_tok.TakeError();
+            }
+
+            auto tok = maybe_tok.TakeValue();
             if (!tok.has_value()) {
                 return { "Unexpected EOF" };
             }
@@ -298,31 +321,36 @@ namespace irene3::patchlang
 
         template< typename Tup, size_t I >
         struct parse_into_tuple< AttrKind::ExternalName, Tup, I > {
-            static std::optional< std::string > Parse(Parser& parser, Tup& tuple) {
-                auto tok = parser.GetToken();
+            static ParseResult< Token > Parse(Parser& parser, Tup& tuple) {
+                auto maybe_tok = parser.GetToken();
+                if (!maybe_tok.Succeeded()) {
+                    return maybe_tok.TakeError();
+                }
+
+                auto tok = maybe_tok.TakeValue();
                 if (!tok) {
-                    return "Unexpected EOF while parsing an external name";
+                    return { "Unexpected EOF while parsing an external name" };
                 }
                 if (tok->kind != Token::Ident && tok->kind != Token::StrLit) {
-                    return tok->GetPositionString()
-                           + ": External name must be an identifier or string literal";
+                    return { tok->GetPositionString()
+                             + ": External name must be an identifier or string literal" };
                 }
 
                 auto& attr = std::get< I >(tuple);
                 if (attr) {
-                    return tok->GetPositionString()
-                           + ": Attribute has already been set (previous value at "
-                           + attr->GetPositionString() + ")";
+                    return { tok->GetPositionString()
+                             + ": Attribute has already been set (previous value at "
+                             + attr->GetPositionString() + ")" };
                 }
 
                 attr = *tok;
-                return std::nullopt;
+                return *tok;
             }
         };
 
         template< typename Tup, size_t I >
         struct parse_into_tuple< AttrKind::Identifier, Tup, I > {
-            static std::optional< std::string > Parse(Parser& parser, Tup& tuple) {
+            static ParseResult< Token > Parse(Parser& parser, Tup& tuple) {
                 auto tok = parser.GetToken< Token::Ident >();
                 if (!tok.Succeeded()) {
                     return tok.TakeError();
@@ -336,13 +364,13 @@ namespace irene3::patchlang
                 }
 
                 attr = tok.TakeValue();
-                return std::nullopt;
+                return *attr;
             }
         };
 
         template< typename Tup, size_t I >
         struct parse_into_tuple< AttrKind::IntLit, Tup, I > {
-            static std::optional< std::string > Parse(Parser& parser, Tup& tuple) {
+            static ParseResult< Token > Parse(Parser& parser, Tup& tuple) {
                 auto tok = parser.ParseIntLit();
                 if (!tok.Succeeded()) {
                     return tok.TakeError();
@@ -356,13 +384,13 @@ namespace irene3::patchlang
                 }
 
                 attr = tok.TakeValue();
-                return std::nullopt;
+                return attr->GetLastToken();
             }
         };
 
         template< typename Tup, size_t I >
         struct parse_into_tuple< AttrKind::BoolLit, Tup, I > {
-            static std::optional< std::string > Parse(Parser& parser, Tup& tuple) {
+            static ParseResult< Token > Parse(Parser& parser, Tup& tuple) {
                 auto tok = parser.ParseBexpr();
                 if (!tok.Succeeded()) {
                     return tok.TakeError();
@@ -376,13 +404,13 @@ namespace irene3::patchlang
                 }
 
                 attr = tok.TakeValue();
-                return std::nullopt;
+                return attr->GetLastToken();
             }
         };
 
         template< typename Tup, size_t I >
         struct parse_into_tuple< AttrKind::StrLit, Tup, I > {
-            static std::optional< std::string > Parse(Parser& parser, Tup& tuple) {
+            static ParseResult< Token > Parse(Parser& parser, Tup& tuple) {
                 auto tok = parser.ParseStrLit();
                 if (!tok.Succeeded()) {
                     return tok.TakeError();
@@ -396,13 +424,13 @@ namespace irene3::patchlang
                 }
 
                 attr = tok.TakeValue();
-                return std::nullopt;
+                return attr->GetLastToken();
             }
         };
 
         template< typename Tup, size_t I >
         struct parse_into_tuple< AttrKind::Expr, Tup, I > {
-            static std::optional< std::string > Parse(Parser& parser, Tup& tuple) {
+            static ParseResult< Token > Parse(Parser& parser, Tup& tuple) {
                 auto expr = parser.ParseExpr();
                 if (!expr.Succeeded()) {
                     return expr.TakeError();
@@ -419,14 +447,15 @@ namespace irene3::patchlang
                            + prev_first_tok.GetPositionString() + ")";
                 }
 
-                attr = std::move(expr.TakeValue());
-                return std::nullopt;
+                attr          = std::move(expr.TakeValue());
+                auto last_tok = std::visit([](const auto& n) { return n.GetLastToken(); }, **attr);
+                return last_tok;
             }
         };
 
         template< typename Tup, size_t I >
         struct parse_into_tuple< AttrKind::Type, Tup, I > {
-            static std::optional< std::string > Parse(Parser& parser, Tup& tuple) {
+            static ParseResult< Token > Parse(Parser& parser, Tup& tuple) {
                 auto type = parser.ParseType();
                 if (!type.Succeeded()) {
                     return type.TakeError();
@@ -443,14 +472,15 @@ namespace irene3::patchlang
                            + prev_first_tok.GetPositionString() + ")";
                 }
 
-                attr = std::move(type.TakeValue());
-                return std::nullopt;
+                attr          = std::move(type.TakeValue());
+                auto last_tok = std::visit([](const auto& n) { return n.GetLastToken(); }, **attr);
+                return last_tok;
             }
         };
 
         template< typename Tup, size_t I >
         struct parse_into_tuple< AttrKind::Location, Tup, I > {
-            static std::optional< std::string > Parse(Parser& parser, Tup& tuple) {
+            static ParseResult< Token > Parse(Parser& parser, Tup& tuple) {
                 auto loc = parser.ParseLocation();
                 if (!loc.Succeeded()) {
                     return loc.TakeError();
@@ -467,8 +497,9 @@ namespace irene3::patchlang
                            + prev_first_tok.GetPositionString() + ")";
                 }
 
-                attr = std::move(loc.TakeValue());
-                return std::nullopt;
+                attr          = std::move(loc.TakeValue());
+                auto last_tok = std::visit([](const auto& n) { return n.GetLastToken(); }, *attr);
+                return last_tok;
             }
         };
 
@@ -477,7 +508,7 @@ namespace irene3::patchlang
 
         template< typename Tup, size_t I, Attribute Attr, Attribute... Attrs >
         struct parse_attr< Tup, I, Attr, Attrs... > {
-            static std::optional< std::string > Parse(Parser& parser, Tup& tuple, Token attr_name) {
+            static ParseResult< Token > Parse(Parser& parser, Tup& tuple, Token attr_name) {
                 if (attr_name.contents != Attr::name) {
                     return parse_attr< Tup, I + 1, Attrs... >::Parse(parser, tuple, attr_name);
                 }
@@ -487,13 +518,13 @@ namespace irene3::patchlang
 
         template< typename Tup, size_t I, Attribute Attr >
         struct parse_attr< Tup, I, Attr > {
-            static std::optional< std::string > Parse(Parser& parser, Tup& tuple, Token attr_name) {
+            static ParseResult< Token > Parse(Parser& parser, Tup& tuple, Token attr_name) {
                 return parse_into_tuple< Attr::kind, Tup, I >::Parse(parser, tuple);
             }
         };
 
         template< Attribute... Attrs >
-        ParseResult< bool > ParseAttribute(auto& res) {
+        ParseResult< std::optional< Token > > ParseAttribute(auto& res) {
             auto maybe_name = MaybeGetIdent({
                 Attrs::name...,
             });
@@ -501,7 +532,7 @@ namespace irene3::patchlang
                 return maybe_name.TakeError();
             }
             if (!maybe_name.Value()) {
-                return false;
+                return { std::nullopt };
             }
             auto name = *maybe_name.TakeValue();
 
@@ -511,16 +542,16 @@ namespace irene3::patchlang
             }
 
             auto parse_res = parse_attr< decltype(res), 0, Attrs... >::Parse(*this, res, name);
-            if (parse_res.has_value()) {
-                return { *parse_res };
-            } else {
-                return true;
+            if (!parse_res.Succeeded()) {
+                return parse_res.TakeError();
             }
+
+            return { parse_res.TakeValue() };
         }
 
         template< Attribute... Attrs >
-        ParseResult< std::tuple< detail::attrs::attr_return_type_t< Attrs >... > >
-        ParseAttributes() {
+        ParseResult< std::tuple< detail::attrs::attr_return_type_t< Attrs >... > > ParseAttributes(
+            Token last_tok) {
             std::tuple< std::optional< detail::attrs::attr_type_t< Attrs > >... > temp_results;
 
             while (true) {
@@ -532,12 +563,13 @@ namespace irene3::patchlang
                 if (!maybe_attr.Value()) {
                     break;
                 }
+
+                last_tok = *maybe_attr.TakeValue();
             }
 
             auto missing_args = detail::attrs::check_missing_attrs< Attrs... >(temp_results);
             if (missing_args.has_value()) {
-                auto last_tok = PeekToken();
-                return last_tok->GetPositionString() + ": " + *missing_args;
+                return last_tok.GetPositionString() + ": " + *missing_args;
             }
 
             return detail::attrs::extract_results< Attrs... >(std::move(temp_results));
@@ -560,21 +592,21 @@ namespace irene3::patchlang
         ParseResult< ExprPtr > ParseExpr();
         ParseResult< ExprPtr > ParseExprSExpr();
         ParseResult< ExprPtr > ParseBinSExpr(Token kind, Token lparen, BinaryOp op);
-        ParseResult< ExprPtr > ParseCastSExpr(Token lparen, CastExprKind kind);
+        ParseResult< ExprPtr > ParseCastSExpr(Token lparen, Token kind_tok, CastExprKind kind);
 
         ParseResult< TypePtr > ParseType();
         ParseResult< TypePtr > ParseTypeSExpr();
 
-        ParseResult< Location > ParseRegisterLocationSExpr(Token lparen);
-        ParseResult< Location > ParseMemoryLocationSExpr(Token lparen);
-        ParseResult< Location > ParseIndirectMemoryLocationSExpr(Token lparen);
+        ParseResult< Location > ParseRegisterLocationSExpr(Token lparen, Token kind_tok);
+        ParseResult< Location > ParseMemoryLocationSExpr(Token lparen, Token kind_tok);
+        ParseResult< Location > ParseIndirectMemoryLocationSExpr(Token lparen, Token kind_tok);
         ParseResult< Location > ParseLocationSExpr();
         ParseResult< Location > ParseLocation();
 
         ParseResult< std::vector< LangDecl > > ParseDecls();
 
       public:
-        Parser(gap::generator< Token > tokens);
+        Parser(gap::generator< ParseResult< Token > > tokens);
 
         ParseResult< PModule > ParseModule();
         ParseResult< std::vector< Stmt > > ParseRegionBody();
