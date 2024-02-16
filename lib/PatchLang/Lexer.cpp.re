@@ -7,24 +7,26 @@ namespace irene3::patchlang
         , contents(contents)
         , line(line)
         , col(col) {}
-    Token::Token() : kind(TokenKind::None) {}
+    Token::Token()
+        : kind(TokenKind::None) {}
 
-    gap::generator< Token > Lex(std::string_view source) {
+    gap::generator< ParseResult< Token > > Lex(std::string_view source) {
         auto YYCURSOR = source.begin();
         auto YYLIMIT  = source.end();
         const char *YYMARKER;
-        int line = 0;
+        int line               = 0;
         const char *line_start = YYCURSOR;
 
         while (true) {
             const char *tok_start = YYCURSOR;
-#define EMIT_TOKEN(kind)                               \
-    co_yield Token{                                    \
-        kind, std::string_view{tok_start, YYCURSOR},   \
-        line, static_cast<int>(tok_start - line_start) \
-    };                                                 \
+            auto col              = static_cast< int >(tok_start - line_start);
+#define EMIT_TOKEN(kind)                                                  \
+    co_yield {                                                            \
+        Token{kind, std::string_view{ tok_start, YYCURSOR }, line, col} \
+    };                                                                    \
     continue;
 
+            // clang-format off
             /*!re2c
                 re2c:define:YYCTYPE = char;
                 re2c:yyfill:enable = 0;
@@ -99,11 +101,16 @@ namespace irene3::patchlang
                 escaped_ident { EMIT_TOKEN(Token::EscapedIdent) }
 
 
-                *       { co_return; }
-                $       { co_return; }
-                ws      { continue; }
-                "\n"    { ++line; line_start = YYCURSOR; continue; }
+                * {
+                    co_yield {
+                        std::to_string(line + 1) + ":" + std::to_string(col + 1) + ": Unrecognized token"
+                    };
+                }
+                $    { co_return; }
+                ws   { continue; }
+                "\n" { ++line; line_start = YYCURSOR; continue; }
             */
-        }
+            // clang-format on
+        } // namespace irene3::patchlang
     }
-} // namespace irene3
+} // namespace irene3::patchlang
