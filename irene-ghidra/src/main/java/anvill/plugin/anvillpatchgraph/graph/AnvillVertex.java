@@ -25,6 +25,8 @@ import docking.ActionContext;
 import docking.GenericHeader;
 import docking.action.DockingAction;
 import docking.action.ToolBarData;
+import docking.widgets.OptionDialog;
+import docking.widgets.filechooser.GhidraFileChooser;
 import generic.theme.GColor;
 import ghidra.graph.viewer.vertex.AbstractVisualVertex;
 import ghidra.program.model.address.Address;
@@ -41,6 +43,10 @@ import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.beans.PropertyChangeListener;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Objects;
 import java.util.Optional;
 import javax.swing.*;
@@ -244,14 +250,14 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
     String newPatchCode = getText();
     // User is trying to lock/submit modifications to the patch
     if (editable && !Objects.equals(oldPatchCode, newPatchCode)) {
-      Optional<PatchService.PatchResponse> resp =
+      Optional<PatchService.PatchResponse> maybeResp =
           applyPatch(
               patchGrpcClient,
               PatchService.PatchRequest.newBuilder()
                   .setUid(getPatch().getUid())
                   .setNewCode(newPatchCode)
                   .build());
-      if (!resp.isPresent()) {
+      if (!maybeResp.isPresent()) {
         Msg.showError(
             this,
             null,
@@ -262,11 +268,40 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
         setText(oldPatchCode);
         return;
       }
-      oldPatchCode = resp.get().getNewCode();
+      var resp = maybeResp.get();
+      oldPatchCode = resp.getNewCode();
       setText(oldPatchCode);
+
+      String module = resp.getPatchedModule();
+      saveModule(module);
     }
     editable = !editable;
     setEditable(editable);
+  }
+
+  private void saveModule(String module) {
+    GhidraFileChooser chooser = new GhidraFileChooser(mainPanel);
+    chooser.setTitle("Save Patch Module File");
+    File saveFile = chooser.getSelectedFile();
+    if (saveFile == null) {
+      return;
+    }
+    boolean exists = saveFile.exists();
+    if (exists
+        && OptionDialog.showYesNoDialog(
+                mainPanel,
+                "Save PatchLang Module",
+                "Do you want to OVERWRITE the following file:\n" + saveFile.getName())
+            != OptionDialog.OPTION_ONE) {
+      return;
+    }
+    try {
+      PrintWriter writer = new PrintWriter(new FileWriter(saveFile));
+      writer.println(module);
+      writer.close();
+    } catch (IOException e) {
+      Msg.showError(this, mainPanel, "Error Saving File As...", e.getMessage());
+    }
   }
 
   private void setupActions() {
