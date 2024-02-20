@@ -13,6 +13,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/IR/Attributes.h>
+#include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/Location.h>
 #include <mlir/IR/MLIRContext.h>
@@ -45,7 +46,7 @@ namespace irene3::patchlang
 
     class LifterContext {
       private:
-        mlir::MLIRContext &mlir_cont;
+        // mlir::MLIRContext &mlir_cont;
         mlir::ModuleOp mod;
 
         uint64_t curr_value_indx;
@@ -101,8 +102,7 @@ namespace irene3::patchlang
 
       public:
         LifterContext(mlir::MLIRContext &mlir_cont, mlir::ModuleOp mod)
-            : mlir_cont(mlir_cont)
-            , mod(mod)
+            : mod(mod)
             , curr_value_indx(0) {}
 
         patchlang::IntLitExpr LowerBBCall(mlir::LLVM::CallOp cop);
@@ -114,6 +114,8 @@ namespace irene3::patchlang
         void LowerTerminator(std::vector< patchlang::Stmt > &body, mlir::Operation *term);
 
         irene3::patchlang::Stmt LiftnonControlFlowOp(mlir::Operation &);
+
+        std::vector< irene3::patchlang::StackOffset > LiftStackOffsets(mlir::ArrayAttr arr);
 
         irene3::patchlang::Region LiftRegion(irene3::patchir::RegionOp, bool);
 

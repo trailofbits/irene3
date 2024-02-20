@@ -359,6 +359,8 @@ namespace irene3::patchlang
         ATTR(StackOffsetEntryAttr, "stack_offset_at_entry", IntLit)
         ATTR(StackOffsetExitAttr, "stack_offset_at_exit", IntLit)
         ATTR(UIDAttr, "region_uid", IntLit)
+        ATTR(StackOffsetsEntryAttr, "reg_stack_offsets_entry", ReprRegLocs)
+        ATTR(StackOffsetsExitAttr, "reg_stack_offsets_exit", ReprRegLocs)
     }; // namespace region_attrs
 
     ParseResult< Region > Parser::ParseRegionSExpr() {
@@ -370,10 +372,13 @@ namespace irene3::patchlang
 
         using namespace region_attrs;
         auto attrs = ParseAttributes<
-            AddressAttr, SizeAttr, StackOffsetEntryAttr, StackOffsetExitAttr, UIDAttr >(
-            maybe_region.Value());
+            AddressAttr, SizeAttr, StackOffsetEntryAttr, StackOffsetExitAttr, UIDAttr,
+            StackOffsetsEntryAttr, StackOffsetsExitAttr >(maybe_region.Value());
         CHECK_PARSE(attrs);
-        auto [address, size, stack_offset_at_entry, stack_offset_at_exit, uid] = attrs.TakeValue();
+        auto
+            [address, size, stack_offset_at_entry, stack_offset_at_exit, uid, stack_offsets_entry,
+             stack_offsets_exit]
+            = attrs.TakeValue();
 
         auto body = ParseRegionBody();
         CHECK_PARSE(body);
@@ -383,8 +388,8 @@ namespace irene3::patchlang
 
         return Region(
             body.TakeValue(), std::move(address), std::move(size), std::move(stack_offset_at_entry),
-            std::move(stack_offset_at_exit), std::move(uid), lparen.TakeValue(),
-            rparen.TakeValue());
+            std::move(stack_offset_at_exit), std::move(uid), std::move(stack_offsets_entry),
+            std::move(stack_offsets_exit), lparen.TakeValue(), rparen.TakeValue());
     }
 
     ParseResult< std::vector< Stmt > > Parser::ParseRegionBody() {
@@ -1480,5 +1485,29 @@ namespace irene3::patchlang
         return (ERR << tok->GetPositionString() << ": Unexpected token `" << tok->contents
                     << "` while parsing a location")
             .str();
+    }
+
+    ParseResult< StackOffset > Parser::ParseStackOffset() {
+        auto tokres = GetToken< Token::LParen >();
+        CHECK_PARSE(tokres);
+
+        auto offset = this->ParseIntLit();
+        CHECK_PARSE(offset);
+
+        auto tok = this->ParseLocation();
+        if (!tok.Succeeded()) {
+            return tok.TakeError();
+        }
+
+        auto var = tok.TakeValue();
+        // TODO(Ian): refactor location parsing
+        if (!std::holds_alternative< irene3::patchlang::RegisterLocation >(var)) {
+            return tokres->GetPositionString() + " expected register location";
+        }
+
+        auto loc = std::get< irene3::patchlang::RegisterLocation >(var);
+        auto end = GetToken< Token::RParen >();
+        CHECK_PARSE(end);
+        return StackOffset(loc, offset.TakeValue(), tokres.TakeValue(), end.TakeValue());
     }
 } // namespace irene3::patchlang

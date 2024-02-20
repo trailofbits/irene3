@@ -14,6 +14,11 @@
 
 namespace irene3
 {
+
+    std::optional< llvm::MCPhysReg > ExplicitMappingBackend::StackRegister() const {
+        return this->stack_reg;
+    }
+
     std::vector< llvm::MCPhysReg > ExplicitMappingBackend::PointerRegs() const {
         return this->pointer_regs;
     }
@@ -78,7 +83,6 @@ namespace irene3
         const llvm::TargetRegisterInfo* reg_info,
         llvm::LLVMContext& context) {
         std::vector< llvm::MCPhysReg > pointer_regs;
-
         RegTable tbl;
         tbl.Populate(reg_info);
 
@@ -101,13 +105,17 @@ namespace irene3
             register_info.insert({ tgt_reg, MappingRecord(tgt_reg, comps) });
         }
 
-        return ExplicitMappingBackend(std::move(register_info), std::move(pointer_regs));
+        auto sreg = mapping.stack_reg ? tbl.lookup(*mapping.stack_reg) : std::nullopt;
+
+        return ExplicitMappingBackend(std::move(register_info), std::move(pointer_regs), sreg);
     }
 
     ExplicitMappingBackend::ExplicitMappingBackend(
         std::multimap< std::string, MappingRecord > register_info,
-        std::vector< llvm::MCPhysReg > pointer_regs)
+        std::vector< llvm::MCPhysReg > pointer_regs,
+        std::optional< llvm::MCPhysReg > stack_reg)
         : register_info(std::move(register_info))
-        , pointer_regs(std::move(pointer_regs)) {}
+        , pointer_regs(std::move(pointer_regs))
+        , stack_reg(stack_reg) {}
 
 } // namespace irene3

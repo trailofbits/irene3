@@ -1,4 +1,5 @@
 #include "irene3/IreneLoweringInterface.h"
+#include "irene3/Transforms/RestoreStackRelations.h"
 
 #include <algorithm>
 #include <anvill/ABI.h>
@@ -251,6 +252,9 @@ namespace irene3
             [](const irene3::patchir::RegisterAttr &reg) { return reg.getReg().str(); });
 
         PatchMetada stor = { refs.GetImageBaseReg(), res, refs.GetBaseImage() };
+
+        RestoreStackRelations restorestack(mod->getContext(), mlirmod, reg_info, cconv, backend);
+        restorestack.run(*mod, mam);
 
         auto msg = remill::VerifyModuleMsg(mod);
         // mod->dump();

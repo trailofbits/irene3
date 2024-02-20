@@ -75,10 +75,15 @@ class MLIRCodegen {
 
     auto SymbolRefAttr(const auto& str) { return mlir::SymbolRefAttr::get(&mlir_context, str); }
 
-    mlir::Attribute ToValueLocAttr(const irene3::patchlang::RegisterLocation& loc) {
+    irene3::patchir::RegisterAttr ToRegValueLocAttr(
+        const irene3::patchlang::RegisterLocation& loc) {
         return irene3::patchir::RegisterAttr::get(
             &mlir_context, StringAttr(loc.GetRegisterName()),
             static_cast< uint64_t >(loc.GetSize()));
+    }
+
+    mlir::Attribute ToValueLocAttr(const irene3::patchlang::RegisterLocation& loc) {
+        return ToRegValueLocAttr(loc);
     }
 
     mlir::Attribute ToValueLocAttr(const irene3::patchlang::MemoryLocation& loc) {
@@ -430,17 +435,34 @@ class MLIRCodegen {
         return nullptr;
     }
 
+    std::vector< mlir::Attribute > convertSoffsets(
+        const std::vector< irene3::patchlang::StackOffset >& offsets) {
+        std::vector< mlir::Attribute > stackattrs;
+        for (auto offs : offsets) {
+            irene3::patchir::RegisterAttr rattr = ToRegValueLocAttr(offs.GetRegLoc());
+            stackattrs.push_back(irene3::patchir::StackOffsetAttr::get(
+                &this->mlir_context, rattr, static_cast< std::int64_t >(offs.GetOffset())));
+        }
+
+        return stackattrs;
+    }
+
     void convertRegion(
         uint64_t func_addr, const irene3::patchlang::Region& region, mlir::Block& block) {
         mlir::OpBuilder region_builder(&mlir_context);
         mlir::OpBuilder func_builder(&mlir_context);
 
         region_builder.setInsertionPointToEnd(&block);
+        auto entryattrs = convertSoffsets(region.GetEntryRegOffsets());
+        auto exitattrs  = convertSoffsets(region.GetExitRegOffsets());
+
         auto region_op = region_builder.create< irene3::patchir::RegionOp >(
             ToLocAttr(region.GetFirstToken()), static_cast< uint64_t >(region.GetAddress()),
             static_cast< uint64_t >(region.GetUID()), static_cast< uint64_t >(region.GetSize()),
             static_cast< int64_t >(region.GetStackOffsetAtEntry()),
-            static_cast< int64_t >(region.GetStackOffsetAtExit()));
+            static_cast< int64_t >(region.GetStackOffsetAtExit()),
+            mlir::ArrayAttr::get(&this->mlir_context, entryattrs),
+            mlir::ArrayAttr::get(&this->mlir_context, exitattrs));
         region_builder.setInsertionPointToEnd(&region_op.getBody().emplaceBlock());
 
         std::vector< mlir::Value > values;

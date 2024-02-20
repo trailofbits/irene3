@@ -1,3 +1,5 @@
+#include "irene3/PatchLang/Locations.h"
+
 #include <anvill/ABI.h>
 #include <anvill/Result.h>
 #include <functional>
@@ -521,6 +523,20 @@ namespace irene3::patchlang
         return decl;
     }
 
+    std::vector< irene3::patchlang::StackOffset > LifterContext::LiftStackOffsets(
+        mlir::ArrayAttr arr) {
+        std::vector< StackOffset > offs;
+        for (auto attr : arr) {
+            patchir::StackOffsetAttr off = mlir::cast< patchir::StackOffsetAttr >(attr);
+            auto loc = std::get< patchlang::RegisterLocation >(*LiftLoc(off.getReg()));
+            LOG(INFO) << "pushing stack offset";
+            offs.push_back(
+                StackOffset(loc, IntLitExp(APSIntFromSigned(off.getOffset())), Token(), Token()));
+        }
+
+        return offs;
+    }
+
     irene3::patchlang::Region LifterContext::LiftRegion(
         irene3::patchir::RegionOp reg_op, bool as_definition) {
         auto cop = irene3::firstOp< patchir::RegionOp, patchir::CallOp >(reg_op);
@@ -548,6 +564,9 @@ namespace irene3::patchlang
                 body.end());
         }
 
+        auto offs_ent  = this->LiftStackOffsets(reg_op.getEntryStackOffsetsAttr());
+        auto offs_exit = this->LiftStackOffsets(reg_op.getExitStackOffsetsAttr());
+
         auto addr                  = IntLitExp(APSIntFromUnsigned(reg_op.getAddress()));
         auto size                  = IntLitExp(APSIntFromUnsigned(reg_op.getSizeBytes()));
         auto stack_offset_at_entry = IntLitExp(reg_op.getStackOffsetEntryBytesAttr().getAPSInt());
@@ -556,7 +575,8 @@ namespace irene3::patchlang
 
         return Region(
             std::move(body), std::move(addr), std::move(size), std::move(stack_offset_at_entry),
-            std::move(stack_offset_at_exit), std::move(uid), Token(), Token());
+            std::move(stack_offset_at_exit), std::move(uid), std::move(offs_ent),
+            std::move(offs_exit), Token(), Token());
     }
 
     PModule LiftPatchLangModule(

@@ -3,12 +3,14 @@
 #include <cstdint>
 #include <filesystem>
 #include <irene3/DecompileSpec.h>
+#include <irene3/IreneLoweringInterface.h>
 #include <irene3/PatchIR/PatchIRAttrs.h>
 #include <irene3/PatchIR/PatchIRDialect.h>
 #include <irene3/PatchIR/PatchIROps.h>
 #include <irene3/TypeDecoder.h>
 #include <llvm/CodeGen/MachineValueType.h>
 #include <llvm/IR/GlobalVariable.h>
+#include <llvm/IR/LLVMContext.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/MLIRContext.h>
@@ -37,6 +39,11 @@ namespace irene3
     template< class... Ts >
     overload(Ts...) -> overload< Ts... >;
 
+    llvm::IntegerType* AddressType(const llvm::Module* mod);
+    llvm::FunctionType* CreateExitingFunctionTy(
+        llvm::LLVMContext& context, const RegionSummary& lv);
+    llvm::FunctionType* CreateRegionSigFuncTy(
+        llvm::LLVMContext& context, const RegionSignature& sig);
     extern const std::string kSSAedBlockFunctionMetadata;
     using LowLoc = std::variant<
         irene3::patchir::MemoryIndirectAttr,

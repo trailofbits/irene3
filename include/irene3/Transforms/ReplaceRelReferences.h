@@ -1,6 +1,7 @@
 #pragma once
 
 #include "irene3/IreneLoweringInterface.h"
+#include "irene3/Transforms/PostWrappingPass.h"
 
 #include <anvill/Declarations.h>
 #include <irene3/LowLocCCBuilder.h>
@@ -37,7 +38,7 @@
 
 namespace irene3
 {
-    class ReplaceRelReferences : public PostPass< ReplaceRelReferences > {
+    class ReplaceRelReferences : public PostWrappingPass< ReplaceRelReferences > {
       private:
         const llvm::TargetRegisterInfo *reg_info;
         std::optional< irene3::patchir::RegisterAttr > image_base_storage;
@@ -52,7 +53,7 @@ namespace irene3
             const llvm::TargetRegisterInfo *reg_info,
             ModuleCallingConventions &ccmod,
             const IreneLoweringInterface &ILI)
-            : PostPass< ReplaceRelReferences >(llcontext, mlir_module, reg_info, ccmod, ILI)
+            : PostWrappingPass< ReplaceRelReferences >(llcontext, mlir_module, reg_info, ccmod, ILI)
             , reg_info(reg_info) {
             this->image_base
                 = mlir::cast< mlir::IntegerAttr >(
@@ -63,7 +64,9 @@ namespace irene3
         static llvm::StringRef name();
 
         irene3::patchir::RegisterAttr CreateAddrTypedReg(
-            llvm::Module *, const std::vector< LowLoc > &live_entries);
+            llvm::Module *,
+            const std::vector< LowLoc > &live_entries,
+            std::vector< irene3::patchir::RegisterAttr > additional_regs);
 
         virtual llvm::FunctionType *GetSignature(anvill::Uid, const llvm::Function *) override;
 

@@ -22,9 +22,13 @@ namespace irene3
                     wrapper_type.getElement());
                 if (vop.getAtEntry()) {
                     entry.addComponent(this->LowerVariable(*vop.getAtEntry(), high_index, highty));
+                } else {
+                    entry.addComponent({});
                 }
                 if (vop.getAtExit()) {
                     exit.addComponent(this->LowerVariable(*vop.getAtExit(), high_index, highty));
+                } else {
+                    exit.addComponent({});
                 }
                 high_index += 1;
             }

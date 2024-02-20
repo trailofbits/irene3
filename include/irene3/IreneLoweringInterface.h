@@ -10,6 +10,7 @@
 #include <llvm/MC/MCRegister.h>
 #include <memory>
 #include <mlir/IR/Attributes.h>
+#include <optional>
 #include <vector>
 
 namespace irene3
@@ -49,7 +50,10 @@ namespace irene3
 
     class IreneLoweringInterface {
       public:
-        virtual std::vector< llvm::MCPhysReg > PointerRegs() const                      = 0;
+        virtual std::vector< llvm::MCPhysReg > PointerRegs() const = 0;
+
+        virtual std::optional< llvm::MCPhysReg > StackRegister() const = 0;
+
         virtual bool IsSupportedValue(mlir::Attribute vop) const                        = 0;
         virtual std::vector< RegionComponentPtr > LowerValue(mlir::Attribute vop) const = 0;
 

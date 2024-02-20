@@ -60,6 +60,8 @@ namespace irene3
 
         void dump() const;
 
+        const RegionSummary &GetRegionSummary() const;
+
       private:
         RegionSummary summary;
     };

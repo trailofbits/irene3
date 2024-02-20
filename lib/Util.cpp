@@ -1,3 +1,5 @@
+#include "irene3/IreneLoweringInterface.h"
+
 #include <algorithm>
 #include <anvill/ABI.h>
 #include <anvill/Declarations.h>
@@ -11,6 +13,7 @@
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/InstrTypes.h>
+#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/Support/JSON.h>
 #include <llvm/Support/MemoryBuffer.h>
@@ -61,6 +64,10 @@ namespace irene3
             type_decoder);
     }
 
+    llvm::IntegerType* AddressType(const llvm::Module* mod) {
+        return llvm::IntegerType::get(
+            mod->getContext(), mod->getDataLayout().getPointerSizeInBits());
+    }
     void SetPCMetadata(llvm::GlobalObject* value, uint64_t pc) {
         auto& context      = value->getContext();
         auto& dl           = value->getParent()->getDataLayout();
@@ -108,6 +115,25 @@ namespace irene3
             }
         }
         return std::nullopt;
+    }
+
+    llvm::FunctionType* CreateRegionSigFuncTy(
+        llvm::LLVMContext& context, const RegionSignature& sig) {
+        std::vector< llvm::Type* > args;
+
+        for (const auto& comp : sig.Components()) {
+            for (const auto& ptr : comp) {
+                auto ty = ConvertMVT(context, ptr->GetMVT());
+                args.push_back(ty);
+            }
+        }
+        return llvm::FunctionType::get(llvm::Type::getVoidTy(context), args, false);
+    }
+
+    llvm::FunctionType* CreateExitingFunctionTy(
+        llvm::LLVMContext& context, const RegionSummary& lv) {
+        std::vector< llvm::Type* > args;
+        return CreateRegionSigFuncTy(context, lv.at_exit);
     }
 
     std::optional< std::int64_t > GetDepthForBlockExit(
