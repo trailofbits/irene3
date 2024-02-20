@@ -36,10 +36,6 @@ namespace irene3
 
     namespace
     {
-        llvm::IntegerType *AddressType(const llvm::Module *mod) {
-            return llvm::IntegerType::get(
-                mod->getContext(), mod->getDataLayout().getPointerSizeInBits());
-        }
 
     } // namespace
 
@@ -190,7 +186,9 @@ namespace irene3
     }
 
     irene3::patchir::RegisterAttr ReplaceRelReferences::CreateAddrTypedReg(
-        llvm::Module *mod, const std::vector< LowLoc > &live_entries) {
+        llvm::Module *mod,
+        const std::vector< LowLoc > &live_entries,
+        std::vector< patchir::RegisterAttr > additionalregs) {
         auto addrty = AddressType(mod);
 
         std::vector< llvm::MCPhysReg > regs;
@@ -199,13 +197,16 @@ namespace irene3
 
         for (const auto &loc : live_entries) {
             if (std::holds_alternative< irene3::patchir::RegisterAttr >(loc)) {
-                auto curr_r = std::get< irene3::patchir::RegisterAttr >(loc);
-                auto nm     = curr_r.getReg().str();
-                std::transform(nm.begin(), nm.end(), nm.begin(), ::toupper);
-                auto maybe_reg = tt_translator.getRegTable().lookup(nm);
-                if (maybe_reg) {
-                    regs.push_back(*maybe_reg);
-                }
+                additionalregs.push_back(std::get< irene3::patchir::RegisterAttr >(loc));
+            }
+        }
+
+        for (auto curr_r : additionalregs) {
+            auto nm = curr_r.getReg().str();
+            std::transform(nm.begin(), nm.end(), nm.begin(), ::toupper);
+            auto maybe_reg = rtable.lookup(nm);
+            if (maybe_reg) {
+                regs.push_back(*maybe_reg);
             }
         }
 
@@ -241,7 +242,17 @@ namespace irene3
         CallOpInfo info(cop);
         auto summ = this->LowerVariables(cop);
 
-        this->image_base_storage = CreateAddrTypedReg(target.getParent(), info.at_entry);
+        std::vector< irene3::patchir::RegisterAttr > additionalregs;
+        for (auto reg : cop->getParentOfType< patchir::RegionOp >()
+                            .getEntryStackOffsets()
+                            .getAsRange< irene3::patchir::StackOffsetAttr >()) {
+            additionalregs.push_back(reg.getReg());
+        }
+
+        auto all_regs = info.at_entry;
+        all_regs.insert(all_regs.end(), info.at_exit.begin(), info.at_exit.end());
+
+        this->image_base_storage = CreateAddrTypedReg(target.getParent(), all_regs, additionalregs);
         summ.at_entry.addComponent(this->LowerVariable(
             *this->image_base_storage, summ.at_entry.Components().size(),
             AddressType(target.getParent())));

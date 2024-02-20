@@ -6,6 +6,8 @@
  * the LICENSE file found in the root directory of this source tree.
  */
 
+#include "anvill/Declarations.h"
+
 #include <anvill/Optimize.h>
 #include <anvill/Providers.h>
 #include <anvill/Specification.h>
@@ -26,11 +28,15 @@
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
+#include <mlir/IR/Attributes.h>
 #include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/MLIRContext.h>
 #include <mlir/IR/OwningOpRef.h>
+#include <mlir/Support/LLVM.h>
 #include <mlir/Target/LLVMIR/Import.h>
+#include <stdexcept>
+#include <vector>
 
 namespace
 {
@@ -310,22 +316,27 @@ namespace irene3
         return this->llvm_to_mlir_type.translateType(ty);
     }
 
+    mlir::Attribute PatchIRCodegen::CreatePatchIRValue(const anvill::ValueDecl &decl) {
+        if (decl.ordered_locs.size() != 1) {
+            throw std::runtime_error("Cannot currently handle compound valuedecls");
+        }
+
+        auto &loc = decl.ordered_locs[0];
+        return CreateLowLoc(loc);
+    }
+
     void PatchIRCodegen::CreateParam(
         const anvill::BasicBlockVariable &bb_param,
         std::vector< mlir::Value > &param_locs,
         mlir::Block &where) {
-        if (bb_param.param.ordered_locs.size() != 1) {
-            return;
-        }
+        auto loc_attr = this->CreatePatchIRValue(bb_param.param);
 
         mlir::OpBuilder mlir_builder(&mlir_context);
         auto unk_loc = mlir_builder.getUnknownLoc();
         mlir_builder.setInsertionPointToEnd(&where);
 
-        auto &loc = bb_param.param.ordered_locs[0];
-
-        mlir::Attribute at_entry = bb_param.live_at_entry ? CreateLowLoc(loc) : nullptr;
-        mlir::Attribute at_exit  = bb_param.live_at_exit ? CreateLowLoc(loc) : nullptr;
+        mlir::Attribute at_entry = bb_param.live_at_entry ? loc_attr : nullptr;
+        mlir::Attribute at_exit  = bb_param.live_at_exit ? loc_attr : nullptr;
 
         auto valueop = mlir_builder.create< irene3::patchir::ValueOp >(
             unk_loc,
@@ -334,6 +345,20 @@ namespace irene3
             StringAttr(bb_param.param.name), at_entry, at_exit);
 
         param_locs.push_back(valueop);
+    }
+
+    std::vector< mlir::Attribute > PatchIRCodegen::BuildSOffsetVector(
+        const std::vector< anvill::OffsetDomain > offsets) {
+        std::vector< mlir::Attribute > res;
+        for (auto &symval : offsets) {
+            auto value = this->CreatePatchIRValue(symval.target_value);
+            if (auto v = mlir::dyn_cast< patchir::RegisterAttr >(value)) {
+                res.push_back(
+                    patchir::StackOffsetAttr::get(&this->mlir_context, v, symval.stack_offset));
+            }
+        }
+
+        return res;
     }
 
     void PatchIRCodegen::CreateBlockFunc(
@@ -352,8 +377,16 @@ namespace irene3
                 = irene3::GetStackOffset(*spec.Arch(), block_ctx.GetStackOffsetsAtEntry());
             auto stack_exit
                 = irene3::GetStackOffset(*spec.Arch(), block_ctx.GetStackOffsetsAtExit());
+
+            std::vector< mlir::Attribute > soffset_entry
+                = this->BuildSOffsetVector(block_ctx.GetStackOffsetsAtEntry().affine_equalities);
+            std::vector< mlir::Attribute > soffset_exit
+                = this->BuildSOffsetVector(block_ctx.GetStackOffsetsAtExit().affine_equalities);
+
             auto regionop = mlir_builder.create< irene3::patchir::RegionOp >(
-                unk_loc, block.addr, buid.value, block.size, stack_entry, stack_exit);
+                unk_loc, block.addr, buid.value, block.size, stack_entry, stack_exit,
+                mlir::ArrayAttr::get(&this->mlir_context, soffset_entry),
+                mlir::ArrayAttr::get(&this->mlir_context, soffset_exit));
             auto &region_body = regionop.getBody().emplaceBlock();
 
             std::vector< mlir::Value > param_locs;

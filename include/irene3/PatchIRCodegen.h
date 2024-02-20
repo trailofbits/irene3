@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "irene3/Util.h"
+
 #include <anvill/Declarations.h>
 #include <anvill/Lifters.h>
 #include <anvill/Specification.h>
@@ -35,6 +37,8 @@ namespace irene3
         mlir::OwningOpRef< mlir::ModuleOp > GetMLIRModule();
 
       private:
+        std::vector< mlir::Attribute > BuildSOffsetVector(
+            const std::vector< anvill::OffsetDomain > offsets);
         void translateTypes(
             llvm::ArrayRef< llvm::Type* > types, llvm::SmallVectorImpl< mlir::Type >& result);
 
@@ -48,6 +52,9 @@ namespace irene3
         mlir::Attribute CreateLowLoc(const anvill::LowLoc&);
         void CreateParam(
             const anvill::BasicBlockVariable&, std::vector< mlir::Value >&, mlir::Block&);
+
+        mlir::Attribute CreatePatchIRValue(const anvill::ValueDecl&);
+
         void CreateBlockFunc(
             anvill::Uid,
             const anvill::CodeBlock&,

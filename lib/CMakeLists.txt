@@ -44,6 +44,7 @@ set(irene3_SOURCES
   Transforms/RemoveProgramCounterAndMemory.cpp
   Transforms/WrapFunctionWithMachineWrapper.cpp
   Transforms/ReplaceRelReferences.cpp
+  Transforms/RestoreStackRelations.cpp
   PatchLang/Expr.cpp
   PatchLang/Parser.cpp
   PatchLang/Lifter.cpp

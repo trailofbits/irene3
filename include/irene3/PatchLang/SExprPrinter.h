@@ -4,6 +4,7 @@
 #include "Locations.h"
 #include "Stmt.h"
 #include "Types.h"
+#include "irene3/PatchLang/Location.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -13,6 +14,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <type_traits>
 #include <variant>
+#include <vector>
 
 namespace irene3::patchlang
 {
@@ -455,6 +457,19 @@ namespace irene3::patchlang
 
     void PrintSExpr(auto&& os, const NopStmt& stmt, int indent = 0) { os << "(nop)"; }
 
+    void PrintSExpr(auto&& os, const std::vector< StackOffset >& soffsets, int indent = 0) {
+        os << "(";
+        indent += 4;
+        for (auto off : soffsets) {
+            os << "\n" << std::string(indent, ' ') << "(";
+            PrintSExpr(os, off.GetOffset(), indent);
+            const RegisterLocation& loc = off.GetRegLoc();
+            PrintSExpr(os, loc, indent);
+            os << ")";
+        }
+        os << ")";
+    }
+
     void PrintSExpr(auto&& os, const Region& reg, int indent = 0) {
         indent += 4;
         os << "(region\n" << std::string(indent, ' ') << "address: ";
@@ -467,6 +482,11 @@ namespace irene3::patchlang
         PrintSExpr(os, reg.GetStackOffsetAtExit(), indent);
         os << '\n' << std::string(indent, ' ') << "region_uid: ";
         PrintSExpr(os, reg.GetUID(), indent);
+        os << '\n' << std::string(indent, ' ') << "reg_stack_offsets_entry: ";
+        PrintSExpr(os, reg.GetEntryRegOffsets(), indent);
+        os << '\n' << std::string(indent, ' ') << "reg_stack_offsets_exit: ";
+        PrintSExpr(os, reg.GetExitRegOffsets(), indent);
+
         for (auto& stmt : reg.GetBody()) {
             os << '\n' << std::string(indent, ' ');
             PrintSExpr(os, stmt, indent);

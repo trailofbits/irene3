@@ -5,6 +5,7 @@
 #include "Locations.h"
 #include "Type.h"
 #include "Types.h"
+#include "irene3/Util.h"
 
 #include <anvill/Declarations.h>
 #include <anvill/Type.h>
@@ -257,6 +258,25 @@ namespace irene3::patchlang
         Token GetLastToken() const { return last_tok; }
     };
 
+    class StackOffset {
+        RegisterLocation loc;
+        IntLitExpr offset;
+        Token first_tok;
+        Token last_tok;
+
+      public:
+        StackOffset(RegisterLocation loc, IntLitExpr&& offset, Token first_tok, Token last_tok)
+            : loc(loc)
+            , offset(offset)
+            , first_tok(first_tok)
+            , last_tok(last_tok) {}
+
+        const IntLitExpr& GetOffset() const { return this->offset; }
+        const RegisterLocation& GetRegLoc() const { return this->loc; }
+        Token GetFirstToken() const { return first_tok; }
+        Token GetLastToken() const { return last_tok; }
+    };
+
     class Region {
         std::vector< Stmt > body;
         IntLitExpr addr;
@@ -264,6 +284,8 @@ namespace irene3::patchlang
         IntLitExpr stack_offset_entry;
         IntLitExpr stack_offset_exit;
         IntLitExpr region_uid;
+        std::vector< StackOffset > stack_offsets_entry;
+        std::vector< StackOffset > stack_offsets_exit;
         Token first_tok;
         Token last_tok;
 
@@ -275,6 +297,8 @@ namespace irene3::patchlang
             IntLitExpr&& stack_offset_entry,
             IntLitExpr&& stack_offset_exit,
             IntLitExpr&& region_uid,
+            std::vector< StackOffset >&& stack_offsets_entry,
+            std::vector< StackOffset >&& stack_offsets_exit,
             Token first_tok,
             Token last_tok)
             : body(std::move(body))
@@ -283,6 +307,8 @@ namespace irene3::patchlang
             , stack_offset_entry(std::move(stack_offset_entry))
             , stack_offset_exit(std::move(stack_offset_exit))
             , region_uid(region_uid)
+            , stack_offsets_entry(stack_offsets_entry)
+            , stack_offsets_exit(stack_offsets_exit)
             , first_tok(first_tok)
             , last_tok(last_tok) {}
 
@@ -293,6 +319,8 @@ namespace irene3::patchlang
             , stack_offset_entry(std::move(other.stack_offset_entry))
             , stack_offset_exit(std::move(other.stack_offset_exit))
             , region_uid(std::move(other.region_uid))
+            , stack_offsets_entry(std::move(other.stack_offsets_entry))
+            , stack_offsets_exit(std::move(other.stack_offsets_exit))
             , first_tok(other.first_tok)
             , last_tok(other.last_tok) {}
 
@@ -312,6 +340,8 @@ namespace irene3::patchlang
         const IntLitExpr& GetSize() const { return size; }
         const IntLitExpr& GetStackOffsetAtEntry() const { return stack_offset_entry; }
         const IntLitExpr& GetStackOffsetAtExit() const { return stack_offset_exit; }
+        const std::vector< StackOffset >& GetExitRegOffsets() const { return stack_offsets_exit; }
+        const std::vector< StackOffset >& GetEntryRegOffsets() const { return stack_offsets_entry; }
 
         Token GetFirstToken() const { return first_tok; }
         Token GetLastToken() const { return last_tok; }

@@ -81,6 +81,8 @@ namespace irene3
         return this->summary.at_entry;
     }
 
+    const RegionSummary &CCBuilder::GetRegionSummary() const { return this->summary; }
+
     void CCBuilder::dump() const {
         std::cerr << "CCBuilder: " << std::endl;
         this->summary.dump();

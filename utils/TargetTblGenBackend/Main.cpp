@@ -18,6 +18,7 @@
 #include <llvm/TableGen/Main.h>
 #include <llvm/TableGen/Record.h>
 #include <map>
+#include <optional>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -61,6 +62,7 @@ bool IRENEEmitter::run(raw_ostream &OS) {
 
     std::multimap< std::string, Record * > record_by_namespace;
     std::multimap< std::string, std::string > point_regs_by_namespace;
+    std::multimap< std::string, std::string > stck_reg;
     std::unordered_set< std::string > namespaces;
     for (auto r : this->Records.getAllDerivedDefinitions("MappingRecord")) {
         auto spc = r->getValueAsString("namespace");
@@ -72,6 +74,12 @@ bool IRENEEmitter::run(raw_ostream &OS) {
         auto spc = r->getValueAsString("namespace");
         namespaces.insert(spc.str());
         point_regs_by_namespace.insert({ spc.str(), r->getValueAsString("reg_name").str() });
+    }
+
+    for (auto r : this->Records.getAllDerivedDefinitions("StackRegister")) {
+        auto spc = r->getValueAsString("namespace");
+        namespaces.insert(spc.str());
+        stck_reg.insert({ spc.str(), r->getValueAsString("reg_name").str() });
     }
 
     OS << "static const std::map<std::string,BackendInfo> BackendByName = {\n";
@@ -112,7 +120,16 @@ bool IRENEEmitter::run(raw_ostream &OS) {
             OS << "},";
             it++;
         }
-        OS << "}}}\n";
+        OS << "},";
+
+        if (stck_reg.contains(k)) {
+            OS << "std::string(\"" << stck_reg.find(k)->second << "\")";
+        } else {
+            OS << "std::nullopt";
+        }
+
+        OS << "}}\n";
+
         OS << "};\n";
     }
 

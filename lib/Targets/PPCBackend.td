@@ -7,9 +7,18 @@ class BackendObject {
     string namespace = "";
 }
 
+class StackRegister<string rname> {
+    string reg_name = rname;
+}
+
+
 class PPCBackendObject: BackendObject {
     let namespace = "PPC";
 }
+
+def PPCStackReg: StackRegister<"R1">, PPCBackendObject {}
+
+
 
 // Mapping Records are the list of types that produce a mapping record
 class MappingRecord<string from_name, string to_name, list<ValueType> apptypes, ValueType output_type>: PPCBackendObject {

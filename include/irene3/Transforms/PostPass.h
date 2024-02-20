@@ -39,16 +39,14 @@ namespace irene3
         std::vector< LowVar > at_exit;
     };
 
-    template< typename T >
-    class PostPass
-        : public WrapBBFuncPass< T >
-        , protected ILIMixin< PostPass< T > > {
-        friend class ILIMixin< PostPass< T > >;
+    class PostPass : protected ILIMixin< PostPass > {
+        friend class ILIMixin< PostPass >;
 
       protected:
         mlir::ModuleOp mlir_module;
         std::unordered_map< anvill::Uid, patchir::CallOp > uid_to_caller;
-        PhysTypeTranslator tt_translator;
+        const llvm::TargetRegisterInfo *reg_info;
+        RegTable rtable;
         mlir::LLVM::TypeToLLVMIRTranslator type_decoder;
         ModuleCallingConventions &collected_ccs;
         const IreneLoweringInterface &ILI;
@@ -60,13 +58,13 @@ namespace irene3
             const llvm::TargetRegisterInfo *reg_info,
             ModuleCallingConventions &ccmod,
             const IreneLoweringInterface &ILI)
-            : WrapBBFuncPass< T >()
-            , mlir_module(mlir_module)
-            , tt_translator(reg_info)
+            : mlir_module(mlir_module)
+            , reg_info(reg_info)
             , type_decoder(llcontext)
             , collected_ccs(ccmod)
             , ILI(ILI) {
             this->PopulateUidToRegion();
+            this->rtable.Populate(reg_info);
         }
 
         void PopulateUidToRegion() {

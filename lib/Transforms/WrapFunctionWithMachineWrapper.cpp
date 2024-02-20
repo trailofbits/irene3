@@ -62,15 +62,6 @@ namespace irene3
         return llvm::FunctionType::get(rety, args, false);
     }
 
-    namespace
-    {
-        llvm::IntegerType *AddressType(const llvm::Module *mod) {
-            return llvm::IntegerType::get(
-                mod->getContext(), mod->getDataLayout().getPointerSizeInBits());
-        }
-
-    } // namespace
-
     llvm::Type *SuccessorStruct(const llvm::Module *mod) {
         auto addr_ty = AddressType(mod);
         return llvm::StructType::get(
@@ -138,18 +129,6 @@ namespace irene3
 
     namespace
     {
-        llvm::FunctionType *CreateExitingFunctionTy(
-            llvm::Function &target, const RegionSummary &lv) {
-            std::vector< llvm::Type * > args;
-
-            for (const auto &comp : lv.at_exit.Components()) {
-                for (const auto &ptr : comp) {
-                    auto ty = ConvertMVT(target.getContext(), ptr->GetMVT());
-                    args.push_back(ty);
-                }
-            }
-            return llvm::FunctionType::get(llvm::Type::getVoidTy(target.getContext()), args, false);
-        }
 
     } // namespace
 
@@ -183,8 +162,8 @@ namespace irene3
         // exiters have the semantics of entry at exit
         auto cc_id = this->collected_ccs.AddCC(CCBuilder({ lowered.at_exit, lowered.at_exit }));
 
-        auto call
-            = exit_bldr.CreateCall(CreateExitingFunctionTy(target, lowered), addr, exiter_args);
+        auto call = exit_bldr.CreateCall(
+            CreateExitingFunctionTy(target.getContext(), lowered), addr, exiter_args);
 
         SetRelativeCallMetada(call);
         call->setCallingConv(cc_id);

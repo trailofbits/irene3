@@ -12,6 +12,7 @@
 #include <llvm/MC/MCRegister.h>
 #include <memory>
 #include <mlir/Support/LLVM.h>
+#include <optional>
 #include <vector>
 
 namespace irene3
@@ -24,6 +25,22 @@ namespace irene3
                 { "thumb", { "tGPR" }},
                 {"x86_64", { "GR64" }}
         };
+
+        const std::unordered_map< std::string, std::string > stack_register_names = {
+            {    "arm",  "SP"},
+            {  "thumb",  "SP"},
+            { "x86_64", "RSP"},
+            {"powerpc",  "R1"}
+        };
+    } // namespace
+
+    std::optional< llvm::MCPhysReg > GenericBackend::StackRegister() const {
+        auto nm = this->subtarget.getTargetTriple().getArchName().str();
+        if (stack_register_names.contains(nm)) {
+            return this->supported_registers.lookup(stack_register_names.at(nm));
+        }
+
+        return std::nullopt;
     }
 
     std::vector< llvm::MCPhysReg > GenericBackend::PointerRegs() const {

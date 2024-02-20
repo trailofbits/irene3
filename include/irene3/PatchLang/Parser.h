@@ -4,12 +4,15 @@
 #include "Location.h"
 #include "Stmt.h"
 #include "Types.h"
+#include "irene3/PatchLang/Locations.h"
 
 #include <anvill/Result.h>
 #include <concepts>
 #include <optional>
 #include <sstream>
 #include <type_traits>
+#include <variant>
+#include <vector>
 
 namespace irene3::patchlang
 {
@@ -22,7 +25,8 @@ namespace irene3::patchlang
         Type,
         StrLit,
         Expr,
-        Location
+        Location,
+        ReprRegLocs
     };
 
     template< typename T >
@@ -77,6 +81,11 @@ namespace irene3::patchlang
             template<>
             struct attr_type< AttrKind::Location > {
                 using type = Location;
+            };
+
+            template<>
+            struct attr_type< AttrKind::ReprRegLocs > {
+                using type = std::vector< StackOffset >;
             };
 
             template< Attribute Attr >
@@ -348,6 +357,50 @@ namespace irene3::patchlang
             }
         };
 
+        // TODO(Ian), this could probably be generic over some repeated attr
+        template< typename Tup, size_t I >
+        struct parse_into_tuple< AttrKind::ReprRegLocs, Tup, I > {
+            static ParseResult< Token > Parse(Parser& parser, Tup& tuple) {
+                auto tokres = parser.GetToken< Token::LParen >();
+                if (!tokres.Succeeded()) {
+                    return tokres.TakeError();
+                }
+
+                std::vector< StackOffset > locs;
+                while (true) {
+                    auto peek = parser.PeekToken();
+                    if (!peek.Succeeded()) {
+                        return peek.TakeError();
+                    }
+
+                    if (!peek->has_value() || peek->value().kind == Token::RParen) {
+                        break;
+                    }
+
+                    auto soff = parser.ParseStackOffset();
+                    if (!soff.Succeeded()) {
+                        return soff.TakeError();
+                    }
+
+                    locs.push_back(soff.TakeValue());
+                }
+
+                auto end = parser.GetToken< Token::RParen >();
+                if (!end.Succeeded()) {
+                    return end.TakeError();
+                }
+
+                auto& attr = std::get< I >(tuple);
+                if (attr) {
+                    return "Attribute has already been set in repr loc "
+                           + tokres->GetPositionString();
+                }
+
+                attr = locs;
+                return end;
+            }
+        };
+
         template< typename Tup, size_t I >
         struct parse_into_tuple< AttrKind::Identifier, Tup, I > {
             static ParseResult< Token > Parse(Parser& parser, Tup& tuple) {
@@ -602,6 +655,7 @@ namespace irene3::patchlang
         ParseResult< Location > ParseIndirectMemoryLocationSExpr(Token lparen, Token kind_tok);
         ParseResult< Location > ParseLocationSExpr();
         ParseResult< Location > ParseLocation();
+        ParseResult< StackOffset > ParseStackOffset();
 
         ParseResult< std::vector< LangDecl > > ParseDecls();
 

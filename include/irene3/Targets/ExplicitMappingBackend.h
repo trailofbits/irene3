@@ -30,6 +30,7 @@ namespace irene3
     struct BackendInfo {
         std::vector< std::string > pointer_regs;
         std::vector< InputMapping > mapping;
+        std::optional< std::string > stack_reg;
     };
 
     class MappingRecord {
@@ -52,6 +53,7 @@ namespace irene3
       private:
         std::multimap< std::string, MappingRecord > register_info;
         std::vector< llvm::MCPhysReg > pointer_regs;
+        std::optional< llvm::MCPhysReg > stack_reg;
 
       private:
         std::optional< MappingRecord > GetRegisterRecord(patchir::RegisterAttr reg) const;
@@ -59,8 +61,10 @@ namespace irene3
       public:
         ExplicitMappingBackend(
             std::multimap< std::string, MappingRecord > register_info,
-            std::vector< llvm::MCPhysReg > pointer_regs);
+            std::vector< llvm::MCPhysReg > pointer_regs,
+            std::optional< llvm::MCPhysReg > stack_register);
 
+        virtual std::optional< llvm::MCPhysReg > StackRegister() const override;
         virtual std::vector< llvm::MCPhysReg > PointerRegs() const override;
         virtual bool IsSupportedValue(mlir::Attribute vop) const override;
         virtual std::vector< RegionComponentPtr > LowerValue(mlir::Attribute vop) const override;

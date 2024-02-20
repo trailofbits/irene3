@@ -45,6 +45,16 @@ def PatchIR_MemoryIndirectAttr : PatchIR_Attr<"MemoryIndirect", "memory.indirect
     let assemblyFormat = [{ `[` $base `+` $offset `]` `:` $size_bits }];
 }
 
+def PatchIR_StackOffsetAttr : PatchIR_Attr<"StackOffset", "stackoffset"> {
+    let summary = "A register that is related to a stack depth";
+
+    let parameters = (ins
+        PatchIR_RegisterAttr:$reg,
+        "int64_t":$offset);
+
+    let assemblyFormat = [{`[` $reg `]` `:` $offset}];
+}
+
 def PatchIR_LowLocAttr : AnyAttrOf<[
     PatchIR_RegisterAttr,
     PatchIR_MemoryAttr,

@@ -1,8 +1,11 @@
 #pragma once
 
+#include "irene3/PatchIR/PatchIRAttrs.h"
+#include "irene3/Transforms/ModuleBBPass.h"
 #include "irene3/Transforms/PostWrappingPass.h"
 
 #include <anvill/Declarations.h>
+#include <cstdint>
 #include <irene3/IreneLoweringInterface.h>
 #include <irene3/LowLocCCBuilder.h>
 #include <irene3/PatchIR/PatchIROps.h>
@@ -14,6 +17,7 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/MC/MCRegisterInfo.h>
@@ -22,40 +26,48 @@
 #include <mlir/Target/LLVMIR/TypeToLLVM.h>
 #include <optional>
 #include <unordered_map>
+#include <utility>
+#include <variant>
 #include <vector>
 
 namespace irene3
 {
 
-    class WrapFunctionWithMachineWrapper
-        : public PostWrappingPass< WrapFunctionWithMachineWrapper > {
+    struct OffAndIndex {
+        std::int64_t offset;
+        std::size_t arg_index;
+    };
+
+    class RestoreStackRelations : public PostWrappingPass< RestoreStackRelations > {
       private:
-        // todo fix this
-        std::optional< llvm::Value * > ret_storage;
-        std::optional< llvm::BasicBlock * > exit_block;
+        std::unordered_map< std::string, OffAndIndex > reg_to_stack_offset_and_index;
+        std::optional< RegionSummary > summ_sig;
 
-        std::optional< llvm::Value * > tmp_st;
-        std::optional< llvm::StructType * > tmp_sty;
-
-        llvm::Value *SuccessorStructValue(llvm::IRBuilder<> &, uint64_t value, bool should_return);
-
-        auto AccessHv(llvm::IRBuilder<> &target_bldr, size_t high_index) -> llvm::Value *;
+        OffAndIndex GetReprStackOffset(patchir::RegisterAttr rattr, int64_t target_off);
 
       public:
         static llvm::StringRef name();
 
-        WrapFunctionWithMachineWrapper(
+        llvm::PreservedAnalyses runOnBasicBlockFunction(
+            anvill::Uid basic_block_addr,
+            llvm::Function *F,
+            llvm::ModuleAnalysisManager &AM,
+            std::monostate tot);
+
+        virtual llvm::FunctionType *GetSignature(anvill::Uid, const llvm::Function *) override;
+
+        virtual void Transform(anvill::Uid, llvm::Function &) override;
+
+        void RewriteCall(llvm::CallInst &cb, patchir::CallOp cop);
+
+        RestoreStackRelations(
             llvm::LLVMContext &llcontext,
             mlir::ModuleOp mlir_module,
             const llvm::TargetRegisterInfo *reg_info,
             ModuleCallingConventions &ccmod,
             const IreneLoweringInterface &ILI)
-            : PostWrappingPass< WrapFunctionWithMachineWrapper >(
+            : PostWrappingPass< RestoreStackRelations >(
                 llcontext, mlir_module, reg_info, ccmod, ILI) {}
-
-        virtual llvm::FunctionType *GetSignature(anvill::Uid, const llvm::Function *) override;
-
-        virtual void Transform(anvill::Uid, llvm::Function &) override;
 
         virtual llvm::CallBase *PopulateEntryBlock(
             anvill::Uid,
@@ -63,11 +75,7 @@ namespace irene3
             llvm::Function &target,
             llvm::Function *oldfunc) override;
 
-        void CreateExitFunction(
-            llvm::Function &target,
-            const RegionSummary &lowered,
-            llvm::IRBuilder<> &exit_bldr,
-            llvm::Value *addr);
+        void finalize(std::monostate) {}
     };
 
 } // namespace irene3
