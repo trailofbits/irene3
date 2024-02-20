@@ -17,6 +17,9 @@
  */
 package anvill.plugin.anvillpatchgraph;
 
+import static anvill.plugin.anvillpatchgraph.graph.AnvillVertex.LOCK_IMAGE;
+import static anvill.plugin.anvillpatchgraph.graph.AnvillVertex.UNLOCK_IMAGE;
+
 import anvill.PatchLangGrpcClient;
 import anvill.ProgramSpecifier;
 import anvill.SplitsManager;
@@ -24,6 +27,7 @@ import anvill.decompiler.DecompilerServerException;
 import anvill.decompiler.DecompilerServerManager;
 import anvill.decompiler.DockerDecompilerServerManager;
 import anvill.plugin.anvillpatchgraph.AnvillPatchInfo.Patch;
+import anvill.plugin.anvillpatchgraph.action.*;
 import anvill.plugin.anvillpatchgraph.graph.*;
 import anvill.plugin.anvillpatchgraph.graph.jung.renderer.AnvillEdgePaintTransformer;
 import anvill.plugin.anvillpatchgraph.layout.AnvillGraphLayoutProvider;
@@ -48,6 +52,8 @@ import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.preferences.Preferences;
 import ghidra.graph.VisualGraphComponentProvider;
 import ghidra.graph.viewer.*;
+import ghidra.graph.viewer.actions.VisualGraphContextMarker;
+import ghidra.graph.viewer.event.mouse.VertexMouseInfo;
 import ghidra.graph.viewer.renderer.VisualGraphEdgeLabelRenderer;
 import ghidra.program.model.address.*;
 import ghidra.program.model.block.*;
@@ -59,6 +65,7 @@ import ghidra.program.util.ProgramLocation;
 import ghidra.util.Msg;
 import ghidra.util.Swing;
 import ghidra.util.SystemUtilities;
+import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.filechooser.ExtensionFileFilter;
 import ghidra.util.filechooser.GhidraFileFilter;
@@ -68,6 +75,7 @@ import io.grpc.Status.Code;
 import irene3.server.PatchService;
 import irene3.server.PatchService.PatchGraph;
 import java.awt.Color;
+import java.awt.event.MouseEvent;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
@@ -486,6 +494,105 @@ public class AnvillGraphProvider
     return view;
   }
 
+  @SuppressWarnings("unchecked")
+  @Override
+  public ActionContext getActionContext(MouseEvent event) {
+    if (currentProgram == null || currentLocation == null) {
+      return null;
+    }
+
+    if (currentProgram.getFunctionManager().getFunctionContaining(currentLocation.getAddress())
+        == null) {
+      return new AnvillGraphEmptyGraphActionContext(this);
+    }
+
+    if (event == null) { // keybinding/menu/toolbar (no popup)
+      return createKeybindingContext();
+    }
+
+    Object source = event.getSource();
+    if (source instanceof SatelliteGraphViewer) {
+      // we may want to change the actions over the satellite in the future
+      return new AnvillGraphSatelliteViewerActionContext(this);
+    } else if (source instanceof VisualGraphContextMarker) {
+      return new AnvillGraphValidGraphActionContext(this, new HashSet<BasicBlockVertex>());
+    }
+
+    if (source instanceof GraphViewer) {
+      GraphViewer<BasicBlockVertex, BasicBlockEdge> viewer =
+          (GraphViewer<BasicBlockVertex, BasicBlockEdge>) source;
+
+      Set<BasicBlockVertex> selectedVertices = getSelectedVertices();
+      VertexMouseInfo<BasicBlockVertex, BasicBlockEdge> vertexMouseInfo =
+          GraphViewerUtils.convertMouseEventToVertexMouseEvent(viewer, event);
+      if (vertexMouseInfo == null) {
+        return new AnvillGraphValidGraphActionContext(this, selectedVertices);
+      }
+
+      BasicBlockVertex vertexAtPoint = vertexMouseInfo.getVertex();
+      VertexActionContextInfo vertexInfo = createContextInfo(vertexAtPoint);
+      if (view.isScaledPastInteractionThreshold() || vertexMouseInfo.isGrabArea()) {
+        return new AnvillGraphUneditableVertexLocationActionContext(this, vertexInfo);
+      }
+
+      if (selectedVertices.size() > 1) {
+        return new AnvillGraphUneditableVertexLocationActionContext(this, vertexInfo);
+      }
+
+      return new AnvillGraphEditableVertexLocationActionContext(this, vertexInfo);
+    }
+
+    throw new AssertException(
+        "Received mouse event from unexpected source in getActionContext(): " + source);
+  }
+
+  private ActionContext createKeybindingContext() {
+    boolean isPastInteractionThreshold = view.isScaledPastInteractionThreshold();
+    BasicBlockVertex vertex = view.getFocusedVertex();
+    if (vertex == null || isPastInteractionThreshold) {
+      return new AnvillGraphValidGraphActionContext(this, getSelectedVertices());
+    }
+
+    VertexActionContextInfo vertexInfo = createContextInfo(vertex);
+    return new AnvillGraphEditableVertexLocationActionContext(this, vertexInfo);
+  }
+
+  private VertexActionContextInfo createContextInfo(BasicBlockVertex vertex) {
+    AddressSet hoveredVerticesAddresses = getAddressesFromHoveredVertices();
+    AddressSet selectedVerticesAddresses = getAddressesForSelectedVertices();
+    Set<BasicBlockVertex> selectedVertices = getSelectedVertices();
+    return new VertexActionContextInfo(
+        vertex, selectedVertices, hoveredVerticesAddresses, selectedVerticesAddresses);
+  }
+
+  AddressSet getAddressesFromHoveredVertices() {
+    AddressSet addresses = new AddressSet();
+    if (currentProgram == null || graph == null) {
+      return addresses;
+    }
+
+    Collection<BasicBlockVertex> hoveredVertices =
+        GraphViewerUtils.getVerticesOfHoveredEdges(graph);
+    for (BasicBlockVertex vertex : hoveredVertices) {
+      addresses.add(vertex.getAddresses());
+    }
+    return addresses;
+  }
+
+  private AddressSet getAddressesForSelectedVertices() {
+    AddressSet addresses = new AddressSet();
+    if (currentProgram == null || graph == null) {
+      return addresses;
+    }
+
+    Collection<BasicBlockVertex> selectedVertices =
+        GraphViewerUtils.getVerticesOfSelectedEdges(graph);
+    for (BasicBlockVertex vertex : selectedVertices) {
+      addresses.add(vertex.getAddresses());
+    }
+    return addresses;
+  }
+
   @Override
   public void componentShown() {
     super.componentShown();
@@ -771,6 +878,47 @@ public class AnvillGraphProvider
     addBlockBeforeActionCode.setEnabled(true);
     addBlockAfterActionDecomp.setEnabled(true);
     addBlockAfterActionCode.setEnabled(true);
+
+    DockingAction lockAction =
+        new DockingAction("Lock Menu", plugin.getName()) {
+          @Override
+          public void actionPerformed(ActionContext context) {
+            AnvillGraphValidGraphActionContextIf graphContext =
+                (AnvillGraphValidGraphActionContextIf) context;
+            // Guaranteed to be 1 and an AnvillVertex
+            var vertex = (AnvillVertex) graphContext.getSelectedVertices().iterator().next();
+            vertex.edit_toggle();
+          }
+
+          @Override
+          public boolean isEnabledForContext(ActionContext context) {
+            if (!(context instanceof AnvillGraphValidGraphActionContextIf)) {
+              return false;
+            }
+            Set<BasicBlockVertex> vertices =
+                ((AnvillGraphValidGraphActionContextIf) context).getSelectedVertices();
+            if (vertices.size() != 1) {
+              return false;
+            }
+            BasicBlockVertex vertex = vertices.iterator().next();
+            MenuData menu = getPopupMenuData();
+            menu.setIcon(vertex.isEditable() ? LOCK_IMAGE : UNLOCK_IMAGE);
+            menu.setMenuPath(
+                new String[] {vertex.isEditable() ? "Lock Editing" : "Unlock Editing"});
+            return true;
+          }
+
+          @Override
+          public boolean isAddToPopup(ActionContext context) {
+            if (!(context instanceof AnvillGraphValidGraphActionContextIf)) {
+              return false;
+            }
+            return true;
+          }
+        };
+    MenuData menuData = new MenuData(new String[] {"Toggle Editing Popup"});
+    lockAction.setPopupMenuData(menuData);
+    addLocalAction(lockAction);
 
     addLayoutAction();
   }

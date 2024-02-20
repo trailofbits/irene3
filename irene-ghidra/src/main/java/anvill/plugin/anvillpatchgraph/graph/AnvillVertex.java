@@ -37,19 +37,13 @@ import ghidra.util.MathUtilities;
 import ghidra.util.Msg;
 import io.grpc.StatusRuntimeException;
 import irene3.server.PatchService;
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.KeyboardFocusManager;
+import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.beans.PropertyChangeListener;
 import java.util.Objects;
 import java.util.Optional;
-import javax.swing.ImageIcon;
-import javax.swing.JComponent;
-import javax.swing.JPanel;
-import javax.swing.JTextArea;
+import javax.swing.*;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.SyntaxScheme;
@@ -74,6 +68,7 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
   private int maxWidth = 500;
   private String oldPatchCode;
   private PatchLangGrpcClient patchGrpcClient;
+  private DockingAction editLockAction;
 
   static {
     LOCK_IMAGE = ResourceManager.loadImage("images/lock.gif");
@@ -219,9 +214,20 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
 
   @Override
   public void setEditable(boolean editable) {
+    this.editable = editable;
+
     textArea.setEditable(editable);
     textArea.getCaret().setVisible(editable);
     textArea.getCaret().setSelectionVisible(editable);
+
+    editLockAction.setDescription(editable ? "Lock Editing" : "Unlock Editing");
+    editLockAction.getToolBarData().setIcon(editable ? UNLOCK_IMAGE : LOCK_IMAGE);
+    genericHeader.update();
+  }
+
+  @Override
+  public boolean isEditable() {
+    return editable;
   }
 
   Optional<PatchService.PatchResponse> applyPatch(
@@ -234,37 +240,41 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
     }
   }
 
+  public void edit_toggle() {
+    String newPatchCode = getText();
+    // User is trying to lock/submit modifications to the patch
+    if (editable && !Objects.equals(oldPatchCode, newPatchCode)) {
+      Optional<PatchService.PatchResponse> resp =
+          applyPatch(
+              patchGrpcClient,
+              PatchService.PatchRequest.newBuilder()
+                  .setUid(getPatch().getUid())
+                  .setNewCode(newPatchCode)
+                  .build());
+      if (!resp.isPresent()) {
+        Msg.showError(
+            this,
+            null,
+            "Could not apply patch",
+            "Reverting. Could not apply new patch code.",
+            // Wrap in exception to get better formatting in message box
+            new Exception(newPatchCode));
+        setText(oldPatchCode);
+        return;
+      }
+      oldPatchCode = resp.get().getNewCode();
+      setText(oldPatchCode);
+    }
+    editable = !editable;
+    setEditable(editable);
+  }
+
   private void setupActions() {
-    DockingAction editLockAction =
+    editLockAction =
         new DockingAction("Edit", genericHeader.getClass().getName()) {
           @Override
           public void actionPerformed(ActionContext context) {
-            String newPatchCode = getText();
-            // User is trying to lock/submit modifications to the patch
-            if (editable && !Objects.equals(oldPatchCode, newPatchCode)) {
-              Optional<PatchService.PatchResponse> resp =
-                  applyPatch(
-                      patchGrpcClient,
-                      PatchService.PatchRequest.newBuilder()
-                          .setUid(getPatch().getUid())
-                          .setNewCode(newPatchCode)
-                          .build());
-              if (!resp.isPresent()) {
-                Msg.showError(
-                    this,
-                    null,
-                    "Could not apply patch",
-                    "Reverting. Could not apply new patch code.",
-                    // Wrap in exception to get better formatting in message box
-                    new Exception(newPatchCode));
-                setText(oldPatchCode);
-                return;
-              }
-              oldPatchCode = resp.get().getNewCode();
-              setText(oldPatchCode);
-            }
-            editable = !editable;
-            setEditable(editable);
+            edit_toggle();
             setDescription(editable ? "Lock Editing" : "Unlock Editing");
             getToolBarData().setIcon(editable ? UNLOCK_IMAGE : LOCK_IMAGE);
           }
@@ -334,6 +344,11 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
   @Override
   public Address getVertexAddress() {
     return address;
+  }
+
+  @Override
+  public AddressSetView getAddresses() {
+    return addressSetView;
   }
 
   @Override

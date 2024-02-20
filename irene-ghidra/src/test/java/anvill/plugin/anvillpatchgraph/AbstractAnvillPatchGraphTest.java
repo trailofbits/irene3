@@ -259,6 +259,7 @@ public abstract class AbstractAnvillPatchGraphTest extends AbstractGhidraHeadedI
                 .addAllEdges(List.of(2L))
                 .setUid(1L)
                 .setCode("1\nThis\nis\na\ntest.")
+                .setSize(30)
                 .build()),
         new AbstractMap.SimpleEntry<>(
             2L,
@@ -267,6 +268,7 @@ public abstract class AbstractAnvillPatchGraphTest extends AbstractGhidraHeadedI
                 .addAllEdges(List.of(2L))
                 .setUid(2L)
                 .setCode("2\nThis\nis\na\ntest.")
+                .setSize(26)
                 .build()),
         new AbstractMap.SimpleEntry<>(
             3L,
@@ -275,6 +277,7 @@ public abstract class AbstractAnvillPatchGraphTest extends AbstractGhidraHeadedI
                 .addAllEdges(List.of(2L))
                 .setUid(3L)
                 .setCode("3\nThis\nis\na\ntest.")
+                .setSize(4)
                 .build()),
         new AbstractMap.SimpleEntry<>(
             4L,
@@ -283,6 +286,7 @@ public abstract class AbstractAnvillPatchGraphTest extends AbstractGhidraHeadedI
                 .addAllEdges(List.of(2L))
                 .setUid(4L)
                 .setCode("4\nThis\nis\na\ntest.")
+                .setSize(6)
                 .build()),
         new AbstractMap.SimpleEntry<>(
             5L,
@@ -291,6 +295,7 @@ public abstract class AbstractAnvillPatchGraphTest extends AbstractGhidraHeadedI
                 .addAllEdges(List.of(2L))
                 .setUid(5L)
                 .setCode("5\nThis\nis\na\ntest.")
+                .setSize(5)
                 .build()),
         new AbstractMap.SimpleEntry<>(
             6L,
@@ -299,6 +304,7 @@ public abstract class AbstractAnvillPatchGraphTest extends AbstractGhidraHeadedI
                 .addAllEdges(List.of(2L))
                 .setUid(6L)
                 .setCode("6\nThis\nis\na\ntest.")
+                .setSize(3)
                 .build()),
         new AbstractMap.SimpleEntry<>(
             7L,
@@ -307,6 +313,7 @@ public abstract class AbstractAnvillPatchGraphTest extends AbstractGhidraHeadedI
                 .addAllEdges(List.of(2L))
                 .setUid(7L)
                 .setCode("7\nThis\nis\na\ntest.")
+                .setSize(3)
                 .build()),
         new AbstractMap.SimpleEntry<>(
             8L,
@@ -315,6 +322,7 @@ public abstract class AbstractAnvillPatchGraphTest extends AbstractGhidraHeadedI
                 .addAllEdges(List.of(2L))
                 .setUid(8L)
                 .setCode("8\nIs not in\nfunction.")
+                .setSize(3)
                 .build()));
   }
 }

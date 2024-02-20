@@ -19,6 +19,7 @@ package anvill.plugin.anvillpatchgraph.graph;
 
 import ghidra.graph.viewer.VisualVertex;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.listing.Program;
 import javax.swing.JTextArea;
 
@@ -29,9 +30,13 @@ public interface BasicBlockVertex extends VisualVertex {
 
   public abstract Address getVertexAddress();
 
+  public abstract AddressSetView getAddresses();
+
   public abstract long getSize();
 
   public abstract boolean containsAddress(Address address);
+
+  public abstract boolean isEditable();
 
   public abstract void setEditable(boolean editable);
 
