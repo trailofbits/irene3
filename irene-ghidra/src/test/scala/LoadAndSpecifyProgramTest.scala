@@ -76,18 +76,27 @@ class StderrLogger extends ErrorLogger {
 
 class LoadAndSpecifyProgramTest extends AbstractGhidraHeadedIntegrationTest { // extends AbstractProgramBasedTest {
   var env: TestEnv = _
+  var collatz_f: File = File(
+    getClass.getResource("binaries/collatz-x86").getFile
+  )
   var collatz: Program = _
+  var stackArgsX86_f: File = File(
+    getClass.getResource("binaries/stack-args-x86.o").getFile
+  )
   var stackArgsX86: Program = _
+  var jmpX86_f: File = File(getClass.getResource("binaries/jmp-x86.o").getFile)
   var jmpX86: Program = _
+  var callX86_f: File = File(
+    getClass.getResource("binaries/call-x86.o").getFile
+  )
   var callX86: Program = _
+  var globalsX86_f: File = File(
+    getClass.getResource("binaries/globals-x86.o").getFile
+  )
   var globalsX86: Program = _
   var satck_args_tool: PluginTool = _
 
-  def loadProgram(proj: GhidraProject, resourcePath: String): Program = {
-    val file = File(
-      getClass.getResource(resourcePath).getFile()
-    )
-
+  def loadProgram(proj: GhidraProject, file: File): Program = {
     val prog = proj.importProgram(file)
 
     proj.analyze(prog, true)
@@ -111,11 +120,12 @@ class LoadAndSpecifyProgramTest extends AbstractGhidraHeadedIntegrationTest { //
     env = new TestEnv()
 
     val proj = this.env.getGhidraProject()
-    collatz = loadProgram(proj, "binaries/collatz-x86")
-    stackArgsX86 = loadProgram(proj, "binaries/stack-args-x86.o")
-    jmpX86 = loadProgram(proj, "binaries/jmp-x86.o")
-    callX86 = loadProgram(proj, "binaries/call-x86.o")
-    globalsX86 = loadProgram(proj, "binaries/globals-x86.o")
+    collatz = loadProgram(proj, collatz_f)
+    stackArgsX86 = loadProgram(proj, stackArgsX86_f)
+    jmpX86 = loadProgram(proj, jmpX86_f)
+    callX86 = loadProgram(proj, callX86_f)
+    globalsX86 = loadProgram(proj, globalsX86_f)
+
     satck_args_tool = env.launchDefaultTool(stackArgsX86)
   }
 
