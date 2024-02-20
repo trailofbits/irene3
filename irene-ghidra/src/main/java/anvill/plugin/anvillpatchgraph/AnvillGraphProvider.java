@@ -40,7 +40,6 @@ import docking.action.ToolBarData;
 import docking.menu.ActionState;
 import docking.menu.MultiStateDockingAction;
 import docking.widgets.EventTrigger;
-import docking.widgets.OptionDialog;
 import docking.widgets.filechooser.GhidraFileChooser;
 import docking.widgets.filechooser.GhidraFileChooserMode;
 import edu.uci.ics.jung.visualization.RenderContext;
@@ -91,7 +90,6 @@ public class AnvillGraphProvider
     extends VisualGraphComponentProvider<BasicBlockVertex, BasicBlockEdge, BasicBlockGraph> {
 
   public static final String LAST_IMPORTFILE_PREFERENCE_KEY = "AnvillGraphProvider.ImportFile";
-  public static final String LAST_SAVEFILE_PREFERENCE_KEY = "AnvillGraphProvider.SaveFile";
   public static final String RELAYOUT_GRAPH_ACTION_NAME = "Relayout Graph";
   public static final String LOAD_PATCHES_ACTION_NAME = "Load Patch File";
   public static final String SAVE_PATCHES_ACTION_NAME = "Save Patches";
@@ -786,21 +784,6 @@ public class AnvillGraphProvider
     loadPatches.markHelpUnnecessary();
     addLocalAction(loadPatches);
 
-    DockingAction savePatchesAction =
-        new anvill.plugin.anvillpatchgraph.AnvillGraphAction(
-            this.plugin, SAVE_PATCHES_ACTION_NAME) {
-          @Override
-          public void runInAction(TaskMonitor monitor, ActionContext actionContext) {
-            savePatches();
-          }
-        };
-    savePatchesAction.setToolBarData(
-        new ToolBarData(ResourceManager.loadImage("images/disk_save_as.png"), null));
-    // TODO: Only enable if something is loaded
-    savePatchesAction.setEnabled(true);
-    savePatchesAction.markHelpUnnecessary();
-    addLocalAction(savePatchesAction);
-
     DockingAction addGlobalReferenceAction =
         new anvill.plugin.anvillpatchgraph.AnvillGraphAction(this.plugin, ADD_REFERENCE_TO_GLOBAL) {
           @Override
@@ -1045,88 +1028,6 @@ public class AnvillGraphProvider
     if (grpcClient == null) {
       grpcClient = new PatchLangGrpcClient(grpcChannel);
     }
-  }
-
-  private void saveContent(String content, GhidraFileFilter file_filter) {
-    // Initialize file chooser
-    if (saveFileChooser == null) {
-      saveFileChooser = new GhidraFileChooser(tool.getActiveWindow());
-    }
-
-    saveFileChooser.addFileFilter(file_filter);
-    saveFileChooser.setSelectedFileFilter(file_filter);
-
-    String lastSaveFile = Preferences.getProperty(LAST_SAVEFILE_PREFERENCE_KEY);
-    if (lastSaveFile != null) {
-      saveFileChooser.setSelectedFile(new File(lastSaveFile));
-    }
-
-    // Do something with chosen file
-    File saveAsFile = saveFileChooser.getSelectedFile();
-    if (saveAsFile == null) {
-      return;
-    }
-    boolean exists = saveAsFile.exists();
-    if (exists) {
-      int result =
-          OptionDialog.showYesNoDialog(
-              view.getPrimaryGraphViewer(),
-              getName(),
-              "Do you want to OVERWRITE the following file:\n" + saveAsFile.getName());
-      if (result != OptionDialog.OPTION_ONE) {
-        return;
-      }
-    }
-    try {
-      PrintWriter writer = new PrintWriter(new FileWriter(saveAsFile));
-      writer.println(content);
-      writer.close();
-
-      Preferences.setProperty(LAST_SAVEFILE_PREFERENCE_KEY, saveAsFile.getAbsolutePath());
-      Preferences.store();
-
-      Msg.showInfo(this, view.getPrimaryGraphViewer(), "", "Saved!");
-    } catch (IOException e) {
-      Msg.showError(this, view.getPrimaryGraphViewer(), "Error Saving File As...", e.getMessage());
-    }
-  }
-
-  private void savePatches() {
-    if (anvillPatchInfo == null) {
-      Msg.showError(
-          this, view.getPrimaryGraphViewer(), "Nothing to Save", "There is no patch data to save.");
-      return;
-    }
-
-    updatePatchModel();
-
-    if (view.getSelectedVertices().isEmpty()) {
-      Msg.showInfo(
-          this, null, "Cannot export", "Please select at least one vertex to export a patch");
-      return;
-    }
-
-    view.getSelectedVertices()
-        .forEach(
-            basicBlockVertex -> {
-              // We know our graph is full of Anvill vertices
-              AnvillVertex av = (AnvillVertex) basicBlockVertex;
-              var patch_to_save = av.getPatch();
-              if (!patch_to_save.isModified()) {
-                Msg.showWarn(
-                    this,
-                    view.getPrimaryGraphViewer(),
-                    "Selected Location was not Modified",
-                    "No code modifications were made to the selected patch block.");
-                return;
-              }
-
-              String pinfo = patch_to_save.serializePatchInfo();
-              String code = patch_to_save.getCode();
-
-              this.saveContent(pinfo, JSON_FILE_FILTER);
-              this.saveContent(code, C_FILE_FILTER);
-            });
   }
 
   /** Update patch models with potentially user-changed text in the graph vertices. */
