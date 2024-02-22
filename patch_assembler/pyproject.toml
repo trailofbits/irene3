@@ -9,9 +9,10 @@ readme = "README.md"
 python = "^3.10,<3.12"
 povsim = { git = "https://github.com/mechaphish/povsim", rev = "78c192c" }
 compilerex = { git = "https://github.com/mechaphish/compilerex", rev = "6d49822" }
-patcherex = { path = "./patcherex", develop = true }
 shellphish_qemu = { path = "./shellphish_qemu" }
-keystone-engine = "^0.9.2"
+# if develop = true, the keystone import won't import anything from the native library
+keystone-engine = { path = "./keystone/bindings/python", develop = false }
+patcherex2 = { path = "./Patcherex2", develop = true }
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.17.2"

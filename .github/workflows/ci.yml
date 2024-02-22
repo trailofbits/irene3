@@ -430,10 +430,10 @@ jobs:
           echo ::group::irene3-patchir-compiler-output
           cat ./chall3-onMessageLength.S
           echo ::endgroup
-      #disabled until patcherex2 merged
-      #echo ::group::irene3-patch-assembler
-      #docker run --rm -v $(pwd):/workspace -w /workspace build-test patch-assembler --in_assembly /workspace/chall3-onMessageLength.S --metadata /workspace/chall3-onMessageLength.metadata.json /workspace/tests/demo/libroscpp.so --output /workspace/patched.so
-      #echo ::endgroup
+
+          echo ::group::irene3-patch-assembler
+          docker run --rm -v $(pwd):/workspace -w /workspace build-test patch-assembler --in_assembly /workspace/chall3-onMessageLength.S --metadata /workspace/chall3-onMessageLength.metadata.json /workspace/tests/demo/libroscpp.so --output /workspace/patched.so
+          echo ::endgroup
 
       # Push with proper tag once test ran
       - name: Build and push
