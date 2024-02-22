@@ -7,9 +7,12 @@
 [submodule "vendor/rellic"]
 	path = vendor/rellic
 	url = https://github.com/lifting-bits/rellic.git
-[submodule "patch_assembler/patcherex"]
-	path = patch_assembler/patcherex
-	url = git@github.com:trail-of-forks/patcherex.git
 [submodule "vendor/gap"]
 	path = vendor/gap
 	url = https://github.com/lifting-bits/gap.git
+[submodule "patch_assembler/Patcherex2"]
+	path = patch_assembler/Patcherex2
+	url = https://github.com/trail-of-forks/Patcherex2
+[submodule "patch_assembler/keystone"]
+	path = patch_assembler/keystone
+	url = https://github.com/trail-of-forks/keystone
