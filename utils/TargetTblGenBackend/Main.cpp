@@ -85,42 +85,35 @@ bool IRENEEmitter::run(raw_ostream &OS) {
     OS << "static const std::map<std::string,BackendInfo> BackendByName = {\n";
 
     for (auto k : namespaces) {
-        OS << "{"
-           << "\"" << k << "\","
-           << "BackendInfo{"
-           << "{\n";
+        OS << "\t{\"" << k << "\", BackendInfo {\n\t\t{\n";
 
-        auto rcit = point_regs_by_namespace.find(k);
-        while (rcit != point_regs_by_namespace.end()) {
-            OS << "\"" << rcit->second << "\""
-               << ",\n";
+        auto [rcit, rcend] = point_regs_by_namespace.equal_range(k);
+        while (rcit != rcend) {
+            OS << "\t\t\t\"" << rcit->second << "\",\n";
             rcit++;
         }
-        OS << "},\n";
+        OS << "\t\t},\n";
 
-        auto it = record_by_namespace.find(k);
-        OS << "{\n";
-        while (it != record_by_namespace.end()) {
+        auto [it, end] = record_by_namespace.equal_range(k);
+        OS << "\t\t{\n";
+        while (it != end) {
             auto r = it->second;
-            OS << "InputMapping {";
-            OS << "\"" << r->getValueAsString("from") << "\""
-               << ","
-               << "\n";
-            OS << "\"" << r->getValueAsString("to") << "\""
-               << ","
-               << "\n";
+            OS << "\t\t\tInputMapping {\n";
+            OS << "\t\t\t\t\"" << r->getValueAsString("from") << "\",\n";
+            OS << "\t\t\t\t\"" << r->getValueAsString("to") << "\",\n";
 
-            OS << "{";
+            OS << "\t\t\t\t{\n";
             for (auto ty : r->getValueAsListOfDefs("applicable_types")) {
+                OS << "\t\t\t\t\t";
                 emitType(OS, ty);
                 OS << ",\n";
             }
-            OS << "}, \n";
+            OS << "\t\t\t\t},\n\t\t\t\t";
             emitType(OS, r->getValueAsDef("output"));
-            OS << "},";
+            OS << "\n\t\t\t},\n";
             it++;
         }
-        OS << "},";
+        OS << "\t\t}, ";
 
         if (stck_reg.contains(k)) {
             OS << "std::string(\"" << stck_reg.find(k)->second << "\")";
@@ -128,10 +121,9 @@ bool IRENEEmitter::run(raw_ostream &OS) {
             OS << "std::nullopt";
         }
 
-        OS << "}}\n";
-
-        OS << "};\n";
+        OS << "}\n\t},\n";
     }
+    OS << "};\n";
 
     for (auto k : namespaces) {}
 
