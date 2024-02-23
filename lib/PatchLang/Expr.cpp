@@ -83,4 +83,10 @@ namespace irene3::patchlang
     CastExprKind CastExpr::GetKind() const { return kind; }
     Token CastExpr::GetFirstToken() const { return first_tok; }
     Token CastExpr::GetLastToken() const { return last_tok; }
+
+    const IntLitExpr& Splat::GetNumeElem() const { return this->num; }
+    const Literal& Splat::GetValues() const { return *this->values; }
+    const Type& Splat::GetElemType() const { return *this->elem_ptr; }
+
+    const Literal& ConstantOp::GetValue() const { return *this->value; }
 } // namespace irene3::patchlang

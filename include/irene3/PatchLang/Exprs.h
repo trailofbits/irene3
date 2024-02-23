@@ -127,6 +127,44 @@ namespace irene3::patchlang
         Token GetLastToken() const;
     };
 
+    class ConstantOp {
+        LiteralPtr value;
+        Token ftoken;
+        Token ltoken;
+
+      public:
+        ConstantOp(LiteralPtr&& value, Token ftoken, Token ltoken)
+            : value(std::move(value))
+            , ftoken(ftoken)
+            , ltoken(ltoken) {}
+
+        const Literal& GetValue() const;
+        Token GetFirstToken() const { return ftoken; }
+        Token GetLastToken() const { return ltoken; }
+    };
+
+    class Splat {
+        IntLitExpr num;
+        LiteralPtr values;
+        TypePtr elem_ptr;
+        Token ftoken;
+        Token ltoken;
+
+      public:
+        Splat(IntLitExpr&& num, LiteralPtr&& values, TypePtr&& elem_ptr, Token ftoken, Token ltoken)
+            : num(std::move(num))
+            , values(std::move(values))
+            , elem_ptr(std::move(elem_ptr))
+            , ftoken(ftoken)
+            , ltoken(ltoken) {}
+
+        const IntLitExpr& GetNumeElem() const;
+        const Literal& GetValues() const;
+        const Type& GetElemType() const;
+        Token GetFirstToken() const { return ftoken; }
+        Token GetLastToken() const { return ltoken; }
+    };
+
     class AddrOf {
         StrLitExpr global_val;
         Token ftoken;

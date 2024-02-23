@@ -24,6 +24,9 @@ namespace irene3::patchlang
 
         Token GetFirstToken() const { return token; }
         Token GetLastToken() const { return token; }
+
+        static TypePtr IntType(size_t width);
+        static TypePtr FloatType(size_t width);
     };
 
     class StructType {

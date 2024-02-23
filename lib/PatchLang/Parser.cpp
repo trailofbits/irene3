@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 
 #define ERR           std::stringstream()
@@ -47,6 +48,10 @@ namespace irene3::patchlang
 {
     static Token GetLastToken(const auto& ptr) {
         return std::visit([](const auto& n) { return n.GetLastToken(); }, *ptr);
+    }
+
+    static Token GetFirstToken(const auto& ptr) {
+        return std::visit([](const auto& n) { return n.GetFirstToken(); }, *ptr);
     }
 
     Parser::Parser(gap::generator< ParseResult< Token > > tokens)
@@ -853,37 +858,119 @@ namespace irene3::patchlang
         UNREACHABLE;
     }
 
-    ParseResult< ExprPtr > Parser::ParseExpr() {
-        auto maybe_lit = MaybeGetIdent({ "null", "true", "false" });
+    ParseResult< std::optional< LiteralPtr > > Parser::ParseLit() {
+        auto maybe_lit = MaybeGetIdent({ "true", "false" });
         CHECK_PARSE(maybe_lit);
-
         if (maybe_lit->has_value()) {
             auto lit = *maybe_lit.TakeValue();
-            if (lit.contents == "null") {
-                return MakeExpr< NullExpr >(lit, lit);
-            } else if (lit.contents == "true" || lit.contents == "false") {
-                return MakeExpr< BoolLitExpr >(lit.contents == "true", lit);
+
+            return { std::make_unique< Literal >(BoolLitExpr(lit.contents == "true", lit)) };
+        }
+
+        auto tok = PeekToken();
+        CHECK_PARSE(tok);
+        if (tok->has_value()) {
+            switch (tok->value().kind) {
+                case Token::BinIntLit:
+                case Token::OctIntLit:
+                case Token::DecIntLit:
+                case Token::HexIntLit: {
+                    auto lit = ParseIntLit();
+                    CHECK_PARSE(lit);
+                    return { std::make_unique< Literal >(lit.TakeValue()) };
+                }
+                case Token::HexFloatLit: {
+                    auto lit = ParseFloatLit();
+                    CHECK_PARSE(lit);
+                    return { std::make_unique< Literal >(lit.TakeValue()) };
+                }
+                default: return { std::nullopt };
             }
         }
 
-        auto tok = PeekToken<
-            Token::LParen, Token::BinIntLit, Token::OctIntLit, Token::DecIntLit, Token::HexIntLit,
-            Token::Ident >();
+        return { std::nullopt };
+    }
+
+    namespace splat_attrs
+    {
+        ATTR(TypeAttr, "type", Type)
+        ATTR(NumElemsAttr, "num_elems", IntLit)
+
+    } // namespace splat_attrs
+
+    ParseResult< std::optional< LiteralPtr > > Parser::ParseLitSExpr() {
+        auto maybe_tok = this->PeekToken();
+        CHECK_PARSE(maybe_tok);
+        if (!maybe_tok.Value()) {
+            return { std::nullopt };
+        }
+
+        auto maybe_splat = maybe_tok.TakeValue();
+        if (!maybe_splat || maybe_splat->kind != Token::Ident || maybe_splat->contents != "splat") {
+            return { std::nullopt };
+        }
+
+        auto splat = this->GetToken< Token::Ident >();
+        CHECK_PARSE(splat);
+        auto ltok  = splat.TakeValue();
+        auto maybe = ParseAttributes< splat_attrs::TypeAttr, splat_attrs::NumElemsAttr >(ltok);
+        CHECK_PARSE(maybe);
+        auto [ty, num_elems] = maybe.TakeValue();
+
+        auto tok = PeekToken();
+        CHECK_PARSE(tok);
+        std::optional< LiteralPtr > lit;
+        if (tok->value().kind == Token::LParen) {
+            auto nparse = this->ParseLitSExpr();
+            CHECK_PARSE(nparse);
+            lit = nparse.TakeValue();
+        } else {
+            auto maybe_lit = ParseLit();
+            CHECK_PARSE(maybe_lit);
+            lit = maybe_lit.TakeValue();
+        }
+
+        if (!lit.has_value()) {
+            return (ERR << splat->GetPositionString() << ": Expected constant expr after token `")
+                .str();
+        }
+
+        auto rparen = GetToken< Token::RParen >();
+        CHECK_PARSE(rparen);
+
+        return { std::make_unique< Literal >(Splat(
+            std::move(num_elems), std::move(*lit), std::move(ty), ltok, rparen.TakeValue())) };
+    }
+
+    namespace
+    {
+        ExprPtr BuildConstantOp(LiteralPtr ptr) {
+            auto [ftoken, ltoken] = std::visit(
+                [](auto& ptr) -> std::tuple< Token, Token > {
+                    return { ptr.GetFirstToken(), ptr.GetLastToken() };
+                },
+                *ptr);
+            return MakeExpr< ConstantOp >(std::move(ptr), ftoken, ltoken);
+        }
+    } // namespace
+
+    ParseResult< ExprPtr > Parser::ParseExpr() {
+        auto maybe_lit = MaybeGetIdent({ "null" });
+        CHECK_PARSE(maybe_lit);
+        if (maybe_lit->has_value()) {
+            auto lit = *maybe_lit.TakeValue();
+            return MakeExpr< NullExpr >(lit, lit);
+        }
+
+        auto maybe_literal_op = this->ParseLit();
+        CHECK_PARSE(maybe_literal_op);
+        if (maybe_literal_op->has_value()) {
+            return BuildConstantOp(*maybe_literal_op.TakeValue());
+        }
+
+        auto tok = PeekToken< Token::LParen, Token::Ident >();
         CHECK_PARSE(tok);
         switch (tok->kind) {
-            case Token::BinIntLit:
-            case Token::OctIntLit:
-            case Token::DecIntLit:
-            case Token::HexIntLit: {
-                auto lit = ParseIntLit();
-                CHECK_PARSE(lit);
-                return { std::make_unique< Expr >(lit.TakeValue()) };
-            }
-            case Token::HexFloatLit: {
-                auto lit = ParseFloatLit();
-                CHECK_PARSE(lit);
-                return { std::make_unique< Expr >(lit.TakeValue()) };
-            }
             case Token::LParen: return ParseExprSExpr();
             case Token::Ident: {
                 auto tok = GetToken();
@@ -944,6 +1031,13 @@ namespace irene3::patchlang
         using namespace expr_attrs;
         auto lparen = GetToken< Token::LParen >();
         CHECK_PARSE(lparen);
+
+        // we maybe have a constantop litexpr
+        auto litexp = this->ParseLitSExpr();
+        CHECK_PARSE(litexp);
+        if (litexp->has_value()) {
+            return BuildConstantOp(*litexp.TakeValue());
+        }
 
         auto kind = GetIdent({ "getelementptr",
                                "call",

@@ -121,7 +121,6 @@ install-clang:
              mkdir -p deps
              curl -sL https://apt.llvm.org/llvm.sh -o deps/llvm.sh
              pushd deps 2>/dev/null && chmod +x llvm.sh && sudo ./llvm.sh {{LLVM_VERSION}} && popd 2>/dev/null
-             sudo apt install -y lld-{{LLVM_VERSION}}
          else
              echo "clang-{{LLVM_VERSION}} must be installed manually on {{os()}}"
          fi

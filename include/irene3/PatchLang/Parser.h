@@ -4,6 +4,7 @@
 #include "Location.h"
 #include "Stmt.h"
 #include "Types.h"
+#include "irene3/PatchLang/Expr.h"
 #include "irene3/PatchLang/Locations.h"
 
 #include <anvill/Result.h>
@@ -31,10 +32,10 @@ namespace irene3::patchlang
 
     template< typename T >
     concept Attribute = requires() {
-                            { T::name } -> std::convertible_to< const char* >;
-                            { T::optional } -> std::convertible_to< bool >;
-                            { T::kind } -> std::convertible_to< AttrKind >;
-                        };
+        { T::name } -> std::convertible_to< const char* >;
+        { T::optional } -> std::convertible_to< bool >;
+        { T::kind } -> std::convertible_to< AttrKind >;
+    };
 
     namespace detail
     {
@@ -284,40 +285,6 @@ namespace irene3::patchlang
             }
 
             return { std::nullopt };
-        }
-
-        ParseResult< Token > PeekIdent(const std::vector< std::string_view >& values) {
-            auto maybe_tok = PeekToken();
-            if (!maybe_tok.Succeeded()) {
-                return maybe_tok.TakeError();
-            }
-
-            auto tok = maybe_tok.TakeValue();
-            if (!tok.has_value()) {
-                return { "Unexpected EOF" };
-            }
-
-            if (tok->kind != Token::Ident) {
-                std::stringstream msg;
-                msg << tok->GetPositionString() << ": Invalid token found, expected one of ";
-                for (auto value : values) {
-                    msg << '`' << value << "` ";
-                }
-                return { msg.str() };
-            }
-
-            for (const auto& str : values) {
-                if (tok->contents == str) {
-                    return *tok;
-                }
-            }
-
-            std::stringstream msg;
-            msg << tok->GetPositionString() << ": Invalid identifier found, expected one of ";
-            for (auto value : values) {
-                msg << '`' << value << "` ";
-            }
-            return { msg.str() };
         }
 
         ParseResult< IntLitExpr > ParseIntLit();
@@ -641,6 +608,14 @@ namespace irene3::patchlang
 
         ParseResult< Stmt > ParseStmt();
         ParseResult< Stmt > ParseStmtSExpr();
+
+        struct Loc {
+            Token ftoken;
+            Token ltoken;
+        };
+
+        ParseResult< std::optional< LiteralPtr > > ParseLit();
+        ParseResult< std::optional< LiteralPtr > > ParseLitSExpr();
 
         ParseResult< ExprPtr > ParseExpr();
         ParseResult< ExprPtr > ParseExprSExpr();

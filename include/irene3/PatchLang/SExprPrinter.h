@@ -4,6 +4,7 @@
 #include "Locations.h"
 #include "Stmt.h"
 #include "Types.h"
+#include "irene3/PatchLang/Expr.h"
 #include "irene3/PatchLang/Location.h"
 
 #include <algorithm>
@@ -90,6 +91,26 @@ namespace irene3::patchlang
     template< detail::StdStream T >
     void PrintSExpr(T&& os, const FloatLitExpr& expr, int indent = 0) {
         PrintSExpr(llvm::raw_os_ostream(os), expr, indent);
+    }
+
+    void PrintSExpr(auto&& os, const Literal& lit, int indent = 0) {
+        std::visit([&os, indent](const auto& lit) { PrintSExpr(os, lit, indent); }, lit);
+    }
+
+    void PrintSExpr(auto&& os, const Splat& expr, int indent = 0) {
+        os << "(splat ";
+        indent += 4;
+        os << "\n" << std::string(indent, ' ') << "type: ";
+        PrintSExpr(os, expr.GetElemType(), indent);
+        os << "\n" << std::string(indent, ' ') << "num_elems: ";
+        PrintSExpr(os, expr.GetNumeElem(), indent);
+        os << "\n" << std::string(indent, ' ');
+        PrintSExpr(os, expr.GetValues(), indent);
+        os << ")";
+    }
+
+    void PrintSExpr(auto&& os, const ConstantOp& expr, int indent = 0) {
+        PrintSExpr(os, expr.GetValue(), indent);
     }
 
     void PrintSExpr(auto&& os, const IntLitExpr& expr, int indent = 0) {

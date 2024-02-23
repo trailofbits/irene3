@@ -58,6 +58,8 @@ namespace irene3::patchlang
             std::vector< patchlang::Stmt > &, patchir::CallOp cop, mlir::LLVM::LLVMFuncOp funcop);
         void LiftBody(mlir::LLVM::LLVMFuncOp funcop, std::vector< patchlang::Stmt > &);
 
+        LiteralPtr LiftConstant(mlir::Location, mlir::Attribute val, mlir::Type ty);
+
         ExprPtr LiftValue(mlir::Value val);
 
         Stmt LiftOp(mlir::Operation &op);
