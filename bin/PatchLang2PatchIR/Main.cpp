@@ -20,6 +20,7 @@
 #include <iterator>
 #include <llvm/ADT/APFloat.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/Support/raw_ostream.h>
 #include <mlir/Dialect/DLTI/DLTI.h>
 #include <mlir/Dialect/LLVMIR/LLVMAttrs.h>
@@ -27,8 +28,10 @@
 #include <mlir/Dialect/LLVMIR/LLVMTypes.h>
 #include <mlir/IR/Attributes.h>
 #include <mlir/IR/Builders.h>
+#include <mlir/IR/BuiltinAttributeInterfaces.h>
 #include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/BuiltinOps.h>
+#include <mlir/IR/BuiltinTypeInterfaces.h>
 #include <mlir/IR/BuiltinTypes.h>
 #include <mlir/IR/DialectRegistry.h>
 #include <mlir/IR/Location.h>
@@ -37,6 +40,7 @@
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/IR/TypeRange.h>
 #include <mlir/IR/Types.h>
+#include <mlir/IR/ValueRange.h>
 #include <mlir/IR/Verifier.h>
 #include <mlir/Support/LLVM.h>
 #include <mlir/Target/LLVMIR/Import.h>
@@ -150,6 +154,82 @@ class MLIRCodegen {
         auto val  = lit.GetValue();
         auto type = mlir::IntegerType::get(&mlir_context, val.getBitWidth());
         return mlir_builder.create< mlir::LLVM::ConstantOp >(ToLocAttr(lit), type, val);
+    }
+
+    // Todo(Ian) unify with generic constantop handling for all constant exprs
+    // all constants should produce an TypedAttr -> constantop
+    // also we could probably use some template stuff to generate these lit translations
+    mlir::TypedAttr ToLLVM(const irene3::patchlang::Literal& lit) {
+        if (std::holds_alternative< irene3::patchlang::IntLitExpr >(lit)) {
+            auto l = std::get< irene3::patchlang::IntLitExpr >(lit);
+            return mlir::IntegerAttr::get(
+                mlir::IntegerType::get(&this->mlir_context, l.GetValue().getBitWidth()),
+                l.GetValue());
+        } else if (std::holds_alternative< irene3::patchlang::BoolLitExpr >(lit)) {
+            auto l = std::get< irene3::patchlang::BoolLitExpr >(lit);
+            return mlir::BoolAttr::get(&this->mlir_context, l.GetValue());
+        } else if (std::holds_alternative< irene3::patchlang::FloatLitExpr >(lit)) {
+            auto l    = std::get< irene3::patchlang::FloatLitExpr >(lit);
+            auto type = FloatSemaToMLIR(&mlir_context, l.GetValue().getSemantics());
+            return mlir::FloatAttr::get(type, l.GetValue());
+        } else if (std::holds_alternative< irene3::patchlang::Splat >(lit)) {
+            auto& splt = std::get< irene3::patchlang::Splat >(lit);
+            return ToLLVM(splt);
+        } else {
+            throw std::runtime_error("Unreachable");
+        }
+    }
+    mlir::Type translateAttrType(mlir::Type ty) {
+        if (mlir::LLVM::LLVMDialect::isCompatibleType(ty)) {
+            return ty;
+        }
+
+        // otherwise we translate the type, the only thing we handle right now is a tensor type:
+        // TODO(Ian): we use tensors to support empty, which vectors dont it would be nice to not
+        // have to do this and just guarentee 1 rank
+        if (auto sty = mlir::dyn_cast< mlir::RankedTensorType >(ty)) {
+            auto mem = translateAttrType(sty.getElementType());
+            CHECK(sty.hasRank());
+            if (sty.getRank() != 1) {
+                std::string s;
+                llvm::raw_string_ostream ss(s);
+                ss << "Has multidimensional tensor in type: ";
+                ty.print(ss);
+                ss.flush();
+
+                LOG(FATAL) << s;
+            }
+
+            return mlir::LLVM::LLVMArrayType::get(mem, sty.getNumElements());
+        }
+
+        std::string s;
+        llvm::raw_string_ostream ss(s);
+        ss << " Unsupported attr type: ";
+        ty.print(ss);
+        ss.flush();
+        LOG(FATAL) << s;
+    }
+
+    mlir::Value ToLLVM(
+        const irene3::patchlang::ConstantOp& lit, mlir::OpBuilder& mlir_builder, const SymbolMap&) {
+        auto& val = lit.GetValue();
+        auto attr = ToLLVM(val);
+
+        auto ty = translateAttrType(attr.getType());
+
+        return mlir_builder.create< mlir::LLVM::ConstantOp >(ToLocAttr(lit), ty, attr);
+    }
+
+    mlir::TypedAttr ToLLVM(const irene3::patchlang::Splat& lit) {
+        auto& val = lit.GetValues();
+
+        auto elem_ty   = ToLLVM(lit.GetElemType());
+        auto num_elems = static_cast< int64_t >(lit.GetNumeElem());
+        auto vty       = mlir::RankedTensorType::get({ num_elems }, elem_ty, {});
+        auto value     = ToLLVM(val);
+        auto splt      = mlir::SplatElementsAttr::get(vty, value);
+        return splt;
     }
 
     static mlir::Type FloatSemaToMLIR(mlir::MLIRContext* ctx, const llvm::fltSemantics& sema) {

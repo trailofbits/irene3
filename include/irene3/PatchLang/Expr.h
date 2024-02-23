@@ -23,12 +23,11 @@ namespace irene3::patchlang
     class CastExpr;
     class SelectExpr;
     class AddrOf;
+    class Splat;
+    class ConstantOp;
 
     using Expr = std::variant<
-        IntLitExpr,
         StrLitExpr,
-        BoolLitExpr,
-        FloatLitExpr,
         DeclRefExpr,
         BinaryExpr,
         UnaryExpr,
@@ -40,8 +39,12 @@ namespace irene3::patchlang
         NullExpr,
         CastExpr,
         SelectExpr,
-        AddrOf >;
-    using ExprPtr = std::unique_ptr< Expr >;
+        AddrOf,
+        ConstantOp >;
+
+    using Literal    = std::variant< IntLitExpr, FloatLitExpr, BoolLitExpr, Splat >;
+    using LiteralPtr = std::unique_ptr< Literal >;
+    using ExprPtr    = std::unique_ptr< Expr >;
     template< typename T >
     concept IsExpr = std::is_same_v< std::remove_cv_t< T >, Expr >;
 } // namespace irene3::patchlang

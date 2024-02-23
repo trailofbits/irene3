@@ -48,11 +48,13 @@ namespace irene3::patchlang
         llvm::APSInt APSIntFromSigned(int64_t i) { return llvm::APSInt::get(i); }
 
         IntLitExpr IntLitExp(llvm::APSInt i) { return IntLitExpr(i, LitBase::Decimal, Token()); }
-        ExprPtr IntLit(llvm::APSInt i) { return std::make_unique< Expr >(IntLitExp(i)); }
-        ExprPtr FloatLit(llvm::APFloat f) {
-            return std::make_unique< Expr >(FloatLitExpr(f, Token{}));
-        };
-        ExprPtr BoolLit(bool val) { return std::make_unique< Expr >(BoolLitExpr(val, Token{})); }
+        LiteralPtr IntLit(llvm::APSInt i) { return std::make_unique< Literal >(IntLitExp(i)); }
+        /**    LiteralPtr FloatLit(llvm::APFloat f) {
+                return std::make_unique< Literal >(FloatLitExpr(f, Token{}));
+            };*/
+        LiteralPtr BoolLit(bool val) {
+            return std::make_unique< Literal >(BoolLitExpr(val, Token{}));
+        }
         template< typename T >
         concept Printable = requires(T a, llvm::raw_ostream& os) { a.print(os); };
 
@@ -102,6 +104,28 @@ namespace irene3::patchlang
             });
     }
 
+    LiteralPtr LifterContext::LiftConstant(mlir::Location loc, mlir::Attribute val, mlir::Type ty) {
+        if (auto int_val = llvm::dyn_cast< mlir::IntegerAttr >(val)) {
+            auto signless = int_val.getValue();
+            return std::make_unique< Literal >(
+                IntLitExpr(llvm::APSInt(signless, false), LitBase::Decimal, Token()));
+        } else if (auto float_val = llvm::dyn_cast< mlir::FloatAttr >(val)) {
+            return std::make_unique< Literal >(FloatLitExpr(float_val.getValue(), Token()));
+        } else if (auto arr_attr = llvm::dyn_cast< mlir::SplatElementsAttr >(val)) {
+            auto elem   = arr_attr.getSplatValue< mlir::Attribute >();
+            auto ctype  = mlir::cast< mlir::LLVM::LLVMArrayType >(ty);
+            auto exp    = this->LiftConstant(loc, elem, ctype.getElementType());
+            auto intlit = IntLitExpr(
+                APSIntFromUnsigned(arr_attr.getNumElements()), LitBase::Decimal, Token());
+            return std::make_unique< Literal >(Splat(
+                std::move(intlit), std::move(exp), LiftType(ctype.getElementType()), Token(),
+                Token()));
+        } else {
+            // TODO(ian)
+            throw UnhandledMLIRLift(loc, "No support for non integer/float/splat constants");
+        }
+    }
+
     ExprPtr LifterContext::LiftValue(mlir::Value val) {
         auto op_ptr = val.getDefiningOp();
         if (!op_ptr) {
@@ -127,17 +151,8 @@ namespace irene3::patchlang
                 return MakeExpr< NullExpr >(Token(), Token());
             })
             .Case< mlir::LLVM::ConstantOp >([&](mlir::LLVM::ConstantOp op) {
-                auto val = op.getValue();
-                if (auto int_val = llvm::dyn_cast< mlir::IntegerAttr >(val)) {
-                    auto signless = int_val.getValue();
-                    return IntLit(llvm::APSInt(signless, false));
-                } else if (auto float_val = llvm::dyn_cast< mlir::FloatAttr >(val)) {
-                    return FloatLit(float_val.getValue());
-                } else {
-                    // TODO(ian)
-                    throw UnhandledMLIRLift(
-                        op->getLoc(), "No support for non integer/float constants");
-                }
+                return MakeExpr< ConstantOp >(
+                    this->LiftConstant(op.getLoc(), op.getValue(), op.getType()), Token(), Token());
             })
             .Case< mlir::LLVM::LoadOp >([&](mlir::LLVM::LoadOp op) {
                 auto ty = LiftType(op.getType());
@@ -204,8 +219,10 @@ namespace irene3::patchlang
                     case mlir::LLVM::FCmpPredicate::ule: return LiftBinOp< BinaryOp::Fule >(op);
                     case mlir::LLVM::FCmpPredicate::une: return LiftBinOp< BinaryOp::Fune >(op);
                     case mlir::LLVM::FCmpPredicate::uno: return LiftBinOp< BinaryOp::Funo >(op);
-                    case mlir::LLVM::FCmpPredicate::_true: return BoolLit(true);
-                    case mlir::LLVM::FCmpPredicate::_false: return BoolLit(false);
+                    case mlir::LLVM::FCmpPredicate::_true:
+                        return MakeExpr< ConstantOp >(BoolLit(true), Token(), Token());
+                    case mlir::LLVM::FCmpPredicate::_false:
+                        return MakeExpr< ConstantOp >(BoolLit(true), Token(), Token());
                 }
             })
             .Case< mlir::LLVM::CallOp >([&](mlir::LLVM::CallOp op) -> patchlang::ExprPtr {
@@ -262,8 +279,8 @@ namespace irene3::patchlang
                     if (index.is< mlir::IntegerAttr >()) {
                         auto ct       = index.get< mlir::IntegerAttr >();
                         auto signless = ct.getValue();
-                        indices.push_back(MakeExpr< IntLitExpr >(
-                            llvm::APSInt(signless, false), LitBase::Decimal, Token{}));
+                        indices.push_back(std::make_unique< Expr >(
+                            ConstantOp(IntLit(llvm::APSInt(signless, false)), Token(), Token())));
                     } else {
                         auto val = index.get< mlir::Value >();
                         indices.push_back(GetRefExport(val));
@@ -606,6 +623,13 @@ namespace irene3::patchlang
                 decls.push_back(lifter.LiftExternal(fop));
                 continue;
             }
+        }
+
+        for (auto fop : mod.getOps< irene3::patchir::FunctionOp >()) {
+            if (fop.getRegion().empty() || fop.getBody().getOps().empty()) {
+                continue;
+            }
+
             irene3::patchlang::IntLitExpr func_addr(
                 llvm::APSInt::getUnsigned(fop.getAddress()),
                 irene3::patchlang::LitBase::Hexadecimal, {});
