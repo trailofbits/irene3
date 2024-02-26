@@ -17,11 +17,11 @@
  */
 package anvill.plugin.anvillpatchgraph;
 
-import anvill.SplitsManager;
 import anvill.plugin.anvillpatchgraph.layout.AnvillGraphLayoutOptions;
 import anvill.plugin.anvillpatchgraph.layout.AnvillGraphLayoutProvider;
 import anvill.plugin.anvillpatchgraph.layout.jungrapht.JgtLayoutFactory;
 import anvill.plugin.anvillpatchgraph.layout.jungrapht.JgtNamedLayoutProvider;
+import anvill.plugin.anvillpatchgraph.textarea.IAnvillFunctionStateManagerProvider;
 import docking.tool.ToolConstants;
 import ghidra.app.decompiler.DecompilerHighlightService;
 import ghidra.app.plugin.PluginCategoryNames;
@@ -73,7 +73,8 @@ public class AnvillPatchGraphPlugin extends ProgramPlugin implements DomainObjec
   private List<AnvillGraphLayoutProvider> layoutProviders;
   private anvill.plugin.anvillpatchgraph.BBGraphOptions bbGraphOptions =
       new anvill.plugin.anvillpatchgraph.BBGraphOptions();
-  private AnvillSlicesProvider slicesProvider;
+
+  private List<IAnvillFunctionStateManagerProvider> stateProviders;
 
   private Optional<Thread> busy;
 
@@ -92,7 +93,9 @@ public class AnvillPatchGraphPlugin extends ProgramPlugin implements DomainObjec
     initializeOptions();
 
     GoToService goToService = tool.getService(GoToService.class);
-    this.slicesProvider = new AnvillSlicesProvider(tool, this, goToService);
+    this.stateProviders = new ArrayList<>();
+    this.stateProviders.add(new AnvillSlicesProvider(tool, this, goToService));
+    this.stateProviders.add(new AnvillSymbolsProvider(tool, this, goToService));
   }
 
   private void initializeOptions() {
@@ -144,7 +147,10 @@ public class AnvillPatchGraphPlugin extends ProgramPlugin implements DomainObjec
       return;
     }
     connectedProvider.setProgram(program);
-    slicesProvider.setProgram(program);
+    for (var prov : this.stateProviders) {
+      prov.setProgram(program);
+    }
+
     program.addListener(this);
   }
 
@@ -155,7 +161,9 @@ public class AnvillPatchGraphPlugin extends ProgramPlugin implements DomainObjec
     }
     program.removeListener(this);
     connectedProvider.setProgram(null);
-    slicesProvider.setProgram(null);
+    for (var prov : this.stateProviders) {
+      prov.setProgram(null);
+    }
   }
 
   @Override
@@ -165,8 +173,11 @@ public class AnvillPatchGraphPlugin extends ProgramPlugin implements DomainObjec
     }
     connectedProvider.setProgram(currentProgram);
     connectedProvider.setLocation(location);
-    slicesProvider.setProgram(currentProgram);
-    slicesProvider.setLocation(location);
+
+    for (var prov : this.stateProviders) {
+      prov.setProgram(currentProgram);
+      prov.setLocation(location);
+    }
   }
 
   @Override
@@ -224,7 +235,9 @@ public class AnvillPatchGraphPlugin extends ProgramPlugin implements DomainObjec
       removeProvider(provider);
     }
     disconnectedProviders.clear();
-    slicesProvider.dispose();
+    for (var prov : this.stateProviders) {
+      prov.dispose();
+    }
   }
 
   private void removeProvider(AnvillGraphProvider provider) {
@@ -265,10 +278,12 @@ public class AnvillPatchGraphPlugin extends ProgramPlugin implements DomainObjec
         var n = iter.next();
         if (n.getEventType() == ChangeManager.DOCR_CODE_UNIT_PROPERTY_CHANGED) {
           var prop = (CodeUnitPropertyChangeRecord) n;
-          if (prop.getPropertyName().equals(SplitsManager.SPLITS_MAP())
-              || prop.getPropertyName().equals(SplitsManager.ZERO_BYTE_BLOCKS())) {
-            for (var list : this.slicesProvider.listeners()) {
-              list.onSliceUpdate();
+          for (var prov : this.stateProviders) {
+            var listeners = prov.listeners();
+            if (listeners.containsKey(prop.getPropertyName())) {
+              for (var list : listeners.get(prop.getPropertyName())) {
+                list.onStateUpdate();
+              }
             }
           }
         }

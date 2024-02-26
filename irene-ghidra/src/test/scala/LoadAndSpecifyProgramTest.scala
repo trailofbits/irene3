@@ -1,4 +1,4 @@
-import anvill.plugin.anvillgraph.AnvillGraphProvider
+import anvill.plugin.anvillpatchgraph.AnvillGraphProvider
 import ghidra.test.AbstractGhidraHeadlessIntegrationTest
 import ghidra.test.AbstractGhidraHeadedIntegrationTest
 import ghidra.test.TestEnv
