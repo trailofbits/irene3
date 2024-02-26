@@ -81,18 +81,7 @@ namespace irene3::patchlang
             default: os << "<<unsupported>>"; break;
         }
     }
-
-    template< detail::LLVMStream T >
-    void PrintSExpr(T&& os, const FloatLitExpr& expr, int ident = 0) {
-        auto value = expr.GetValue();
-        value.print(os);
-    }
-
-    template< detail::StdStream T >
-    void PrintSExpr(T&& os, const FloatLitExpr& expr, int indent = 0) {
-        PrintSExpr(llvm::raw_os_ostream(os), expr, indent);
-    }
-
+    
     void PrintSExpr(auto&& os, const Literal& lit, int indent = 0) {
         std::visit([&os, indent](const auto& lit) { PrintSExpr(os, lit, indent); }, lit);
     }
