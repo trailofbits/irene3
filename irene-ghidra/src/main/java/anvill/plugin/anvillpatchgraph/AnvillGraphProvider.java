@@ -22,6 +22,7 @@ import static anvill.plugin.anvillpatchgraph.graph.AnvillVertex.UNLOCK_IMAGE;
 
 import anvill.PatchLangGrpcClient;
 import anvill.ProgramSpecifier;
+import anvill.RequiredSymbolsManager;
 import anvill.SplitsManager;
 import anvill.decompiler.DecompilerServerException;
 import anvill.decompiler.DecompilerServerManager;
@@ -784,38 +785,6 @@ public class AnvillGraphProvider
     loadPatches.markHelpUnnecessary();
     addLocalAction(loadPatches);
 
-    DockingAction addGlobalReferenceAction =
-        new anvill.plugin.anvillpatchgraph.AnvillGraphAction(this.plugin, ADD_REFERENCE_TO_GLOBAL) {
-          @Override
-          public void runInAction(TaskMonitor monitor, ActionContext context) {
-            var dlg = new GlobalNameInputDialogComponentProvider("Add reference to global");
-            if (dlg.isCanceled()) {
-              return;
-            }
-            var name = dlg.getGlobalName();
-            for (var sym : currentProgram.getSymbolTable().getAllSymbols(false)) {
-              if (sym.getName().equals(name)) {
-                anvillRequiredGlobals.add(sym);
-                decompileFunction();
-                return;
-              }
-            }
-            Msg.showError(
-                null, null, "Cannot find symbol", "No symbol with the specified name was found");
-          }
-
-          @Override
-          public void onTaskCompleted() {
-            installGraph(true);
-            displayLocation(currentLocation);
-            notifyContextChanged();
-          }
-        };
-    addGlobalReferenceAction.setToolBarData(new ToolBarData(REFERENCES_TO_ICON, null));
-    addGlobalReferenceAction.setEnabled(true);
-    addGlobalReferenceAction.markHelpUnnecessary();
-    addLocalAction(addGlobalReferenceAction);
-
     DockingAction decompileAction =
         new anvill.plugin.anvillpatchgraph.AnvillGraphAction(this.plugin, DECOMPILE_ACTION_NAME) {
           @Override
@@ -926,8 +895,12 @@ public class AnvillGraphProvider
       var sym_set = new scala.collection.immutable.HashSet<Symbol>();
       // TODO(frabert): This is pretty bad... but also I don't expect
       // tons of required globals
-      for (var sym : anvillRequiredGlobals) {
-        sym_set = (scala.collection.immutable.HashSet<Symbol>) sym_set.$plus(sym);
+      var sym_man = new RequiredSymbolsManager(this.currentProgram);
+      for (var sym : sym_man.getRequiredSymbols(func.getEntryPoint())) {
+        var reqsym = this.currentProgram.getSymbolTable().getSymbols(sym);
+        while (reqsym.hasNext()) {
+          sym_set = (scala.collection.immutable.HashSet<Symbol>) sym_set.$plus(reqsym.next());
+        }
       }
       spec =
           ProgramSpecifier.specifySingleFunctionWithSplits(

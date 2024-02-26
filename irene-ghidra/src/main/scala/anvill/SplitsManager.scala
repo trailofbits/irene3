@@ -2,7 +2,8 @@ package anvill
 
 import ghidra.program.model.address.Address
 import ghidra.program.model.listing.Program
-import upickle.default._
+import upickle.default.*
+
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 import scala.jdk.CollectionConverters.SetHasAsJava
 
@@ -12,50 +13,24 @@ object SplitsManager:
 end SplitsManager
 
 class AddressToAddressSet(val program: Program, val prop_name: String):
-  private val prop_man = program.getUsrPropertyManager
-
-  def inTransaction[T](f: => T): T =
-    val txid = program.startTransaction("splits")
-    val r = f
-    program.endTransaction(txid, true)
-    r
-
-  private val map = Option(prop_man.getStringPropertyMap(prop_name)).getOrElse({
-    inTransaction(prop_man.createStringPropertyMap(prop_name))
-  })
+  private val deleg = AddressToSet[(Int, Long)](program, "splits", prop_name)
+  def tup_to_addr(id_off: (Int, Long)): Address =
+    program.getAddressFactory.getAddressSpace(id_off._1).getAddress(id_off._2)
+  def addr_to_tup(addr: Address): (Int, Long) =
+    (addr.getAddressSpace.getSpaceID, addr.getOffset)
 
   def getSet(addr: Address): Set[Address] =
-    Option(map.getString(addr))
-      .map(s => read[Set[(Int, Long)]](s))
-      .getOrElse(Set())
-      .map((id, off) =>
-        program.getAddressFactory.getAddressSpace(id).getAddress(off)
-      )
-
+    deleg.getSet(addr).map(tup_to_addr)
   def addToSet(addr: Address, split: Address) =
-    inTransaction({
-      val curr_splits = getSet(addr)
-      val converted: Set[(Int, Long)] = (curr_splits + split).map(addr =>
-        (addr.getAddressSpace.getSpaceID, addr.getOffset)
-      )
-      map.add(addr, write(converted))
-    })
+    deleg.addToSet(addr, addr_to_tup(split))
 
   def removeFromSet(addr: Address, split: Address) =
-    inTransaction({
-      val curr_splits = getSet(addr)
-      val converted: Set[(Int, Long)] = (curr_splits - split).map(addr =>
-        (addr.getAddressSpace.getSpaceID, addr.getOffset)
-      )
-      map.add(addr, write(converted))
-    })
+    deleg.removeFromSet(addr, addr_to_tup(split))
 
   def flatSet(): java.util.Set[(Address, Address)] =
-    map.getPropertyIterator
-      .iterator()
-      .asScala
-      .flatMap(a => getSet(a).map((a, _)))
-      .toSet
+    deleg
+      .flatSet()
+      .map((addr, set_value) => (addr, tup_to_addr(set_value)))
       .asJava
 
 end AddressToAddressSet
