@@ -1,4 +1,5 @@
 .DS_Store
+.z3-trace
 CMakeUserPresets.json
 .bloop
 .metals
