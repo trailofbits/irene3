@@ -11,9 +11,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-START_TOKS = [".Lfunc_begin", ".fnstart"]
-END_TOK = ".Lfunc_end"
-
 
 class InsertPIEInstructionPatch(Patch):
     def __init__(self, addr, instrs, base_reg) -> None:
@@ -150,6 +147,40 @@ class InsertPIEInstructionPatch(Patch):
         logger.debug(f"Replace addresses: {instrs}")
         return instrs
 
+# this works by searching for the function size calculation
+# to grab the labels that the assembler emits for the start
+# and end of the function and using those to identify where
+# the core of the function instructions are
+# also we collect all directives with labels outside of the
+# function instructions and stick them at the bottom
+def trim_asm(asm: str):
+    size_directive_re = re.compile(r"^\s*\.size\s+[^,]+,\s*(?P<end_label>[^-]+)-(?P<start_label>\S+)$", re.MULTILINE)
+    label_directive_re = re.compile(r"^\s*([^:]+):")
+    ignore_directive_re = re.compile(r"\s*\.(set)\s")
+    data_directive_re = re.compile(r"^\s*\.(\S+)\s")
+    buf = ""
+    data_defs = []
+    if size_match := size_directive_re.search(asm):
+        start_label = size_match.group("start_label") + ":"
+        end_label = size_match.group("end_label") + ":"
+        in_func = False
+        asm_lines = asm.splitlines()
+        for i, line in enumerate(asm_lines):
+            if start_label in line:
+                in_func = True
+            if end_label in line:
+                in_func = False
+                break
+            if in_func:
+                buf += line + os.linesep
+            elif data_directive_re.search(line) and not ignore_directive_re.search(line):
+                if i > 0 and label_directive_re.search(asm_lines[i-1]):
+                    data_defs.append(asm_lines[i-1] + os.linesep + line)
+        asm = buf
+        asm += "\n".join(data_defs)
+    else:
+        logger.error("Missing size directive! Assembly output not filtered.")
+    return asm
 
 def main():
     prsr = argparse.ArgumentParser("patch assembly compiler")
@@ -176,18 +207,8 @@ def main():
     asm: str = args.in_assembly.read()
 
     if args.trim_heuristics:
-        buf = ""
-        for line in asm.split(os.linesep):
-            for start_tok in START_TOKS:
-                if start_tok in line:
-                    st = asm.find(start_tok)
-                    asm = asm[st + len(start_tok) :]
-                    buf = ""
-                    break
-            if END_TOK in line:
-                break
-            buf += line + os.linesep
-        asm = buf
+        asm = trim_asm(asm)
+        print(f"Trimmed asm: {asm}")
 
     logging.getLogger("patcherex2").setLevel("DEBUG")
 

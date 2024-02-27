@@ -129,12 +129,20 @@ namespace irene3
         std::string err;
         llvm::TargetOptions options;
 
+        const char* args[] {
+            "",
+            "-x86-asm-syntax=intel",
+            nullptr,
+        };
+        llvm::cl::ParseCommandLineOptions(2, args);
+
         llvm::InitializeAllTargets();
         llvm::InitializeAllAsmPrinters();
         llvm::InitializeAllTargetMCs();
 
         auto tgt = llvm::TargetRegistry::lookupTarget(triple.str().c_str(), err);
         CHECK(tgt);
+
         auto target_machine = tgt->createTargetMachine(
             triple.getTriple(), cpu, features, options, llvm::Reloc::PIC_);
 
