@@ -6,6 +6,7 @@
 #include "irene3/IreneLoweringInterface.h"
 #include "irene3/PatchIR/PatchIRAttrs.h"
 
+#include <cstdint>
 #include <irene3/Targets/Components.h>
 #include <llvm/CodeGen/TargetRegisterInfo.h>
 #include <llvm/CodeGen/TargetSubtargetInfo.h>
@@ -54,6 +55,7 @@ namespace irene3
         std::multimap< std::string, MappingRecord > register_info;
         std::vector< llvm::MCPhysReg > pointer_regs;
         std::optional< llvm::MCPhysReg > stack_reg;
+        std::int64_t lao_offset;
 
       private:
         std::optional< MappingRecord > GetRegisterRecord(patchir::RegisterAttr reg) const;
@@ -62,7 +64,8 @@ namespace irene3
         ExplicitMappingBackend(
             std::multimap< std::string, MappingRecord > register_info,
             std::vector< llvm::MCPhysReg > pointer_regs,
-            std::optional< llvm::MCPhysReg > stack_register);
+            std::optional< llvm::MCPhysReg > stack_register,
+            std::int64_t lao_offset);
 
         virtual std::optional< llvm::MCPhysReg > StackRegister() const override;
         virtual std::vector< llvm::MCPhysReg > PointerRegs() const override;

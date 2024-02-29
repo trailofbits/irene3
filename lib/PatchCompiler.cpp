@@ -129,7 +129,7 @@ namespace irene3
         std::string err;
         llvm::TargetOptions options;
 
-        const char* args[] {
+        const char *args[]{
             "",
             "-x86-asm-syntax=intel",
             nullptr,
@@ -367,9 +367,9 @@ namespace irene3
         mod->dump();
         cconv.ApplyTo(mod.get());
 
-        auto obj = std::make_unique< CCObjSelector >(cconv.BuildCConvMap());
-        // llvm::DebugFlag    = false;
-        // llvm::PrintChanged = llvm::ChangePrinter::Verbose;
+        auto obj           = std::make_unique< CCObjSelector >(cconv.BuildCConvMap());
+        llvm::DebugFlag    = false;
+        llvm::PrintChanged = llvm::ChangePrinter::Verbose;
         tgt->addPassesToEmitFile(pm, os, &llvm::errs(), llvm::CodeGenFileType::CGFT_AssemblyFile);
         // obj->dump();
         llvm::CCRegistry::registerCCOverrride(tgt->getTarget().getName(), std::move(obj));
