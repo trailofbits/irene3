@@ -13,10 +13,14 @@ logger = logging.getLogger(__name__)
 
 
 class InsertPIEInstructionPatch(Patch):
-    def __init__(self, addr, instrs, base_reg) -> None:
+    def __init__(
+        self, addr, instrs, base_reg, detour_pos=-1, no_rewrite_thumb=False
+    ) -> None:
         self.addr = addr
         self.instrs = instrs
         self.base_reg = base_reg
+        self.detour_pos = detour_pos
+        self.no_rewrite_thumb = no_rewrite_thumb
 
     def apply(self, p):
         is_thumb = p.binary_analyzer.is_thumb(self.addr)
@@ -54,7 +58,7 @@ class InsertPIEInstructionPatch(Patch):
                     + "\n"
                     + moved_instrs
                     + "\n"
-                    + p.target.JMP_ASM.format(dst=hex(self.addr + moved_instrs_len)),
+                    + p.archinfo.jmp_asm.format(dst=hex(self.addr + moved_instrs_len)),
                     self.addr,  # TODO: we don't really need this addr, but better than 0x0 because 0x0 is too far away from the code
                     is_thumb=is_thumb,
                 )
@@ -72,11 +76,14 @@ class InsertPIEInstructionPatch(Patch):
         )
         trampoline_size += thunk_instrs_len
 
-        trampoline_block = p.allocation_manager.allocate(
-            trampoline_size, align=0x4, flag=MemoryFlag.RX
-        )  # TODO: get alignment from arch info
-        logger.debug(f"Allocated trampoline block: {trampoline_block}")
-        detour_pos = trampoline_block.mem_addr
+        if self.detour_pos == -1:
+            trampoline_block = p.allocation_manager.allocate(
+                trampoline_size, align=0x4, flag=MemoryFlag.RX
+            )  # TODO: get alignment from arch info
+            logger.debug(f"Allocated trampoline block: {trampoline_block}")
+            detour_pos = trampoline_block.mem_addr
+        else:
+            detour_pos = self.detour_pos
 
         base_addr = detour_pos
         if not p.binary_analyzer.p.loader.main_object.pic:
@@ -86,7 +93,12 @@ class InsertPIEInstructionPatch(Patch):
             + self.instrs
         )
         instrs = self.rewrite_addresses(
-            p, instrs, self.addr, detour_pos, is_thumb=is_thumb
+            p,
+            instrs,
+            self.addr,
+            detour_pos,
+            is_thumb=is_thumb,
+            no_rewrite_thumb=self.no_rewrite_thumb,
         )
 
         p.utils.insert_trampoline_code(
@@ -95,7 +107,10 @@ class InsertPIEInstructionPatch(Patch):
             detour_pos=detour_pos,
         )
 
-    def rewrite_addresses(self, p, instrs, addr, mem_addr, is_thumb=False):
+    @staticmethod
+    def rewrite_addresses(
+        p, instrs, addr, mem_addr, is_thumb=False, no_rewrite_thumb=False
+    ):
         pointer_pat = re.compile(
             r"POINTER_HANDLER (?P<register>[^, ]+), [^0-9]?(?P<imm>[0-9]+)(, [^0-9]?(?P<repair_if_moved>[0-1]))?"
         )
@@ -128,17 +143,17 @@ class InsertPIEInstructionPatch(Patch):
             if match_result := pointer_pat.search(line):
                 reg_name = match_result.group("register")
                 goto_addr = int(match_result.group("imm"))
-                repair_if_moved = bool(match_result.group("repair_if_moved"))
+                repair_if_moved = bool(int(match_result.group("repair_if_moved")))
                 # only rewrite goto addresses in between the start of the moved instructions
                 # to the end of the moved instructions
                 if (
                     repair_if_moved
                     and goto_addr - addr >= 0
-                    and goto_addr - addr <= p.target.JMP_SIZE
+                    and goto_addr - addr <= p.archinfo.jmp_size
                 ):
                     # TODO: setting the thumb bit using is_thumb isn't always necessarily true
                     goto_addr = mem_addr + instrs_size + (goto_addr - addr)
-                if is_thumb:
+                if is_thumb and not no_rewrite_thumb:
                     goto_addr = goto_addr | int(is_thumb)
                 new_line = p.target.emit_load_addr(goto_addr, reg_name=reg_name)
                 logger.debug(f"POINTER_HANDLER -> {new_line}")
@@ -147,6 +162,7 @@ class InsertPIEInstructionPatch(Patch):
         logger.debug(f"Replace addresses: {instrs}")
         return instrs
 
+
 # this works by searching for the function size calculation
 # to grab the labels that the assembler emits for the start
 # and end of the function and using those to identify where
@@ -154,7 +170,10 @@ class InsertPIEInstructionPatch(Patch):
 # also we collect all directives with labels outside of the
 # function instructions and stick them at the bottom
 def trim_asm(asm: str):
-    size_directive_re = re.compile(r"^\s*\.size\s+[^,]+,\s*(?P<end_label>[^-]+)-(?P<start_label>\S+)$", re.MULTILINE)
+    size_directive_re = re.compile(
+        r"^\s*\.size\s+[^,]+,\s*(?P<end_label>[^-]+)-(?P<start_label>\S+)$",
+        re.MULTILINE,
+    )
     label_directive_re = re.compile(r"^\s*([^:]+):")
     ignore_directive_re = re.compile(r"\s*\.(set)\s")
     data_directive_re = re.compile(r"^\s*\.(\S+)\s")
@@ -173,14 +192,17 @@ def trim_asm(asm: str):
                 break
             if in_func:
                 buf += line + os.linesep
-            elif data_directive_re.search(line) and not ignore_directive_re.search(line):
-                if i > 0 and label_directive_re.search(asm_lines[i-1]):
-                    data_defs.append(asm_lines[i-1] + os.linesep + line)
+            elif data_directive_re.search(line) and not ignore_directive_re.search(
+                line
+            ):
+                if i > 0 and label_directive_re.search(asm_lines[i - 1]):
+                    data_defs.append(asm_lines[i - 1] + os.linesep + line)
         asm = buf
         asm += "\n".join(data_defs)
     else:
         logger.error("Missing size directive! Assembly output not filtered.")
     return asm
+
 
 def main():
     prsr = argparse.ArgumentParser("patch assembly compiler")
@@ -188,6 +210,10 @@ def main():
     prsr.add_argument("--metadata", type=argparse.FileType("r"))
     prsr.add_argument("--output", required=True, type=str)
     prsr.add_argument("--trim_heuristics", action="store_true", default=True)
+    prsr.add_argument(
+        "--detour_pos", type=int, default=-1, help="Address to free space (if known)"
+    )
+    prsr.add_argument("--no_rewrite_thumb", action="store_true", default=False)
     prsr.add_argument("target_binary")
     args = prsr.parse_args()
 
@@ -214,7 +240,13 @@ def main():
 
     print(f"Inserting patch to {target_addr:x}")
     patcher.patches.append(
-        InsertPIEInstructionPatch(target_addr, asm, base_reg=base_reg)
+        InsertPIEInstructionPatch(
+            target_addr,
+            asm,
+            base_reg=base_reg,
+            detour_pos=args.detour_pos,
+            no_rewrite_thumb=args.no_rewrite_thumb,
+        )
     )
 
     # so we want to setup the target reg with this thunk and then execute our code

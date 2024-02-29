@@ -7,7 +7,7 @@ class ElfArmRelocLinux(RelocTarget, ElfArmLinux):
     # the current pc and stores it in the given register
     @staticmethod
     def emit_thunk(base_reg, insert_addr, is_thumb=False):
-        scratch_reg = "r4" if base_reg == "r3" else "r3"
+        scratch_reg = "r4" if base_reg.lower() == "r3" else "r3"
         # need to add 4/8 here since pc
         # points to the next instruction
         thunk_loc = insert_addr + (4 if is_thumb else 8)
