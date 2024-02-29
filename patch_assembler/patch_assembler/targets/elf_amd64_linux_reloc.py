@@ -1,10 +1,10 @@
-from patcherex2.targets.elf_x86_64_linux import ElfX8664Linux
+from patcherex2.targets.elf_amd64_linux import ElfAmd64Linux
 from .reloc_target import RelocTarget
 
-class ElfX8664RelocLinux(RelocTarget, ElfX8664Linux):
+class ElfAmd64RelocLinux(RelocTarget, ElfAmd64Linux):
     @staticmethod
     def emit_thunk(base_reg, insert_addr, is_thumb=False):
-        scratch_reg = "r13" if base_reg == "r12" else "r12"
+        scratch_reg = "r13" if base_reg.lower() == "r12" else "r12"
         thunk_loc = insert_addr + 14
         # move past the red zone so we
         # don't clobber any locals

@@ -7,8 +7,8 @@ class ElfPpcRelocLinux(RelocTarget, ElfPpcLinux):
     # the current pc and stores it in the given register
     @staticmethod
     def emit_thunk(base_reg, insert_addr, is_thumb=False):
-        scratch_reg1 = "%r4" if base_reg == "%r3" else "%r3"
-        scratch_reg2 = "%r12" if base_reg == "%r11" else "%r11"
+        scratch_reg1 = "4" if "3" in base_reg.lower() else "3"
+        scratch_reg2 = "12" if "11" in base_reg.lower() else "11"
 
         # add 20 since base_reg will contain
         # the addr + 20
