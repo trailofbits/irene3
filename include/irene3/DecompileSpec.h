@@ -214,6 +214,7 @@ namespace irene3
         std::unique_ptr< llvm::Module > DecompileToLLVM() const;
 
         // Attempts to decompile the anvill spec to C and LLVM.
-        rellic::Result< DecompilationResult, std::string > Decompile() const;
+        rellic::Result< DecompilationResult, std::string > Decompile(
+            std::unique_ptr< llvm::Module > module) const;
     };
 } // namespace irene3
