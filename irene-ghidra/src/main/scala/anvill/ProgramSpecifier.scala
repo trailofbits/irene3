@@ -206,7 +206,11 @@ object ProgramSpecifier {
       components.map {
         case Left(d) =>
           Option(d.getUniversalID())
-            .map(id => TypeSpec(TypeSpec.Type.Alias(id.getValue())))
+            .flatMap(id =>
+              Option.when(aliases.contains(id.getValue()))(
+                TypeSpec(TypeSpec.Type.Alias(id.getValue()))
+              )
+            )
             .getOrElse(
               // otherwise we have to make the recursive call in a thunk
               default = {

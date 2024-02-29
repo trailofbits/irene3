@@ -102,18 +102,19 @@ namespace irene3
             LOG(INFO) << "replacing " << remill::LLVMThingToString(to_repr->get());
             auto gb = globals[ind];
             llvm::IRBuilder<> builder(llvm::cast< llvm::Instruction >(to_repr->getUser()));
-            auto image_base  = (f.arg_end() - 1);
-            auto addr_ty     = AddressType(f.getParent());
-            auto orig_ty     = gb.is_external ? llvm::PointerType::get(f.getContext(), 0)
-                                              : to_repr->get()->getType();
-            auto marked_addr = builder.CreateCall(
-                repr_intrinsic,
-                { llvm::ConstantExpr::getIntToPtr(
-                      llvm::ConstantInt::get(addr_ty, gb.addr - this->image_base), orig_ty),
-                  llvm::ConstantInt::get(llvm::IntegerType::get(f.getContext(), 32), 0) });
+            auto image_base   = (f.arg_end() - 1);
+            auto addr_ty      = AddressType(f.getParent());
+            auto orig_ty      = gb.is_external ? llvm::PointerType::get(f.getContext(), 0)
+                                               : to_repr->get()->getType();
+            llvm::Value *addr = llvm::ConstantExpr::getIntToPtr(
+                llvm::ConstantInt::get(addr_ty, gb.addr - this->image_base), orig_ty);
+            if (!llvm::isa< llvm::GlobalVariable >(to_repr->get())) {
+                addr = builder.CreateCall(
+                    repr_intrinsic, { addr, llvm::ConstantInt::get(
+                                                llvm::IntegerType::get(f.getContext(), 32), 0) });
+            }
 
-            auto naddr
-                = builder.CreateAdd(image_base, builder.CreatePtrToInt(marked_addr, addr_ty));
+            auto naddr = builder.CreateAdd(image_base, builder.CreatePtrToInt(addr, addr_ty));
 
             auto orig_ptr = builder.CreateIntToPtr(naddr, orig_ty);
 
