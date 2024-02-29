@@ -131,34 +131,35 @@ int main(int argc, char *argv[]) {
             = anvill::StackFrameStructureInitializationProcedure::kUndef;
     }
 
-    auto decomp_res = job.Decompile();
-    if (!decomp_res.Succeeded()) {
-        std::cerr << decomp_res.TakeError() << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    irene3::DecompilationResult decomp = decomp_res.TakeValue();
+    auto module = job.DecompileToLLVM();
 
     if (!FLAGS_ir_out.empty()) {
-        if (!remill::StoreModuleIRToFile(&*decomp.mod, FLAGS_ir_out, true)) {
+        if (!remill::StoreModuleIRToFile(&*module, FLAGS_ir_out, true)) {
             std::cerr << "Could not save LLVM IR to " << FLAGS_ir_out << '\n';
             return EXIT_FAILURE;
         }
     }
     if (!FLAGS_bc_out.empty()) {
-        if (!remill::StoreModuleToFile(&*decomp.mod, FLAGS_bc_out, true)) {
+        if (!remill::StoreModuleToFile(&*module, FLAGS_bc_out, true)) {
             std::cerr << "Could not save LLVM bitcode to " << FLAGS_bc_out << '\n';
             return EXIT_FAILURE;
         }
     }
 
     if (!FLAGS_c_out.empty()) {
+        auto decomp_res = job.Decompile(std::move(module));
+        if (!decomp_res.Succeeded()) {
+            std::cerr << decomp_res.TakeError() << std::endl;
+            return EXIT_FAILURE;
+        }
         std::error_code ec;
         llvm::raw_fd_ostream output(FLAGS_c_out, ec);
         if (ec) {
             std::cerr << "Could not open output file " << FLAGS_c_out << std::endl;
             return EXIT_FAILURE;
         }
+
+        irene3::DecompilationResult decomp = decomp_res.TakeValue();
 
         decomp.ast->getASTContext().getTranslationUnitDecl()->print(output);
     }

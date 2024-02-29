@@ -204,7 +204,8 @@ int main(int argc, char* argv[]) {
     }
     job.should_remove_anvill_pc = !FLAGS_should_not_remove_anvill_pc;
 
-    auto decomp_res = job.Decompile();
+    auto module     = job.DecompileToLLVM();
+    auto decomp_res = job.Decompile(std::move(module));
     if (!decomp_res.Succeeded()) {
         std::cerr << decomp_res.TakeError() << std::endl;
         return EXIT_FAILURE;

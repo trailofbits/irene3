@@ -282,9 +282,8 @@ namespace irene3
         return module;
     }
 
-    rellic::Result< DecompilationResult, std::string > SpecDecompilationJob::Decompile() const {
-        auto module = this->DecompileToLLVM();
-
+    rellic::Result< DecompilationResult, std::string > SpecDecompilationJob::Decompile(
+        std::unique_ptr< llvm::Module > module) const {
         auto res = rellic::Decompile(std::move(module), std::move(*this->options));
 
         if (!res.Succeeded()) {
