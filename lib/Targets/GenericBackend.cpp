@@ -8,6 +8,7 @@
 #include <irene3/Targets/GenericBackend.h>
 #include <iterator>
 #include <llvm/CodeGen/MachineValueType.h>
+#include <llvm/CodeGen/TargetFrameLowering.h>
 #include <llvm/CodeGen/TargetRegisterInfo.h>
 #include <llvm/MC/MCRegister.h>
 #include <memory>
@@ -75,6 +76,8 @@ namespace irene3
     // TODO(Ian): we arent doing any splitting of high variables just store and load
     // everything one go, we should handle this in other backends
     std::vector< RegionComponentPtr > GenericBackend::LowerValue(mlir::Attribute vop) const {
+        auto frame_lowering = this->subtarget.getFrameLowering();
+
         if (auto reg = mlir::dyn_cast< patchir::RegisterAttr >(vop)) {
             auto maybe_reg = this->supported_registers.lookup(reg.getReg().str());
 
@@ -100,7 +103,8 @@ namespace irene3
                        << reg.getReg().str() << ":" << reg.getSizeBits();
         } else if (auto stk = mlir::dyn_cast< patchir::MemoryIndirectAttr >(vop)) {
             return { std::make_unique< StackComponent >(
-                llvm::MVT::getIntegerVT(stk.getSizeBits()), stk.getOffset()) };
+                llvm::MVT::getIntegerVT(stk.getSizeBits()), stk.getOffset(),
+                frame_lowering->getOffsetOfLocalArea()) };
         }
 
         LOG(FATAL) << "Lowering unsupported value";

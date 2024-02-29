@@ -2,7 +2,9 @@
 #include "irene3/PhysicalLocationDecoder.h"
 #include "irene3/Util.h"
 
+#include <cstdint>
 #include <irene3/Targets/ExplicitMappingBackend.h>
+#include <llvm/CodeGen/TargetFrameLowering.h>
 #include <llvm/CodeGen/TargetRegisterInfo.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/MC/MCRegister.h>
@@ -60,7 +62,7 @@ namespace irene3
             return { reg_record->GetRegComp(reg.getSizeBits()) };
         } else if (auto stk = mlir::dyn_cast< patchir::MemoryIndirectAttr >(vop)) {
             return { std::make_unique< StackComponent >(
-                llvm::MVT::getIntegerVT(stk.getSizeBits()), stk.getOffset()) };
+                llvm::MVT::getIntegerVT(stk.getSizeBits()), stk.getOffset(), this->lao_offset) };
         }
         LOG(FATAL) << "Unsupported value attribute";
     }
@@ -107,15 +109,19 @@ namespace irene3
 
         auto sreg = mapping.stack_reg ? tbl.lookup(*mapping.stack_reg) : std::nullopt;
 
-        return ExplicitMappingBackend(std::move(register_info), std::move(pointer_regs), sreg);
+        return ExplicitMappingBackend(
+            std::move(register_info), std::move(pointer_regs), sreg,
+            subtarget.getFrameLowering()->getOffsetOfLocalArea());
     }
 
     ExplicitMappingBackend::ExplicitMappingBackend(
         std::multimap< std::string, MappingRecord > register_info,
         std::vector< llvm::MCPhysReg > pointer_regs,
-        std::optional< llvm::MCPhysReg > stack_reg)
+        std::optional< llvm::MCPhysReg > stack_reg,
+        std::int64_t lao_offset)
         : register_info(std::move(register_info))
         , pointer_regs(std::move(pointer_regs))
-        , stack_reg(stack_reg) {}
+        , stack_reg(stack_reg)
+        , lao_offset(lao_offset) {}
 
 } // namespace irene3

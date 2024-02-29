@@ -8,11 +8,13 @@ namespace irene3
     class StackComponent : public RegionComponent {
       private:
         std::int64_t flat_offset;
+        std::int64_t lao_offset;
 
       public:
-        StackComponent(llvm::MVT machine_type, std::int64_t flat_offset)
+        StackComponent(llvm::MVT machine_type, std::int64_t flat_offset, std::int64_t lao_offset)
             : RegionComponent(machine_type)
-            , flat_offset(flat_offset) {}
+            , flat_offset(flat_offset)
+            , lao_offset(lao_offset) {}
 
         virtual llvm::Value* Load(llvm::IRBuilder<>& bldr, llvm::Value* high_value) const override {
             // TODO(Ian): no conversions we just expect to load the whole thing
@@ -38,10 +40,12 @@ namespace irene3
             llvm::CCValAssign::LocInfo LocInfo,
             llvm::ISD::ArgFlagsTy ArgFlags,
             llvm::CCState& State) const override {
-            LOG(INFO) << "mem indirect";
+            LOG(INFO) << "mem indirect off: " << flat_offset
+                      << " current_offset: " << current_stack_offset;
             // TODO(Ian): https://github.com/trailofbits/irene3/issues/337
             State.addLoc(llvm::CCValAssign::getMem(
-                ValNo, ValVT, flat_offset - current_stack_offset, LocVT, LocInfo));
+                ValNo, ValVT, (flat_offset - current_stack_offset) + this->lao_offset, LocVT,
+                LocInfo));
             return false;
         }
 
