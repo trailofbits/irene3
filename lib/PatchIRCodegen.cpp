@@ -187,10 +187,12 @@ namespace irene3
         });
 
         spec.ForEachFunction([this, &lifter](auto decl) {
-            llvm::Function *func;
+            llvm::Function *func = nullptr;
             if (target_funcs.empty() || target_funcs.find(decl->address) != target_funcs.end()) {
                 func = lifter.LiftEntity(*decl);
-            } else {
+            }
+            // fallback to declaration if we could not lift the entity
+            if (!func) {
                 func = lifter.DeclareEntity(*decl);
             }
 
