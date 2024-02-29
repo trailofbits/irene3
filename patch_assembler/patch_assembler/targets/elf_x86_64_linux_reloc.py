@@ -5,13 +5,13 @@ class ElfX8664RelocLinux(RelocTarget, ElfX8664Linux):
     @staticmethod
     def emit_thunk(base_reg, insert_addr, is_thumb=False):
         scratch_reg = "r13" if base_reg == "r12" else "r12"
-        thunk_loc = insert_addr + 5
+        thunk_loc = insert_addr + 14
         # move past the red zone so we
         # don't clobber any locals
         thunk_instrs = f"""
         sub rsp, 128
         push {scratch_reg}
-        call lb:
+        call lb
         lb:
         pop {base_reg}
         mov {scratch_reg}, {thunk_loc}
