@@ -22,3 +22,4 @@ class BackendObject {
 
 include "PPCBackend.td"
 include "X86Backend.td"
+include "ARMBackend.td"

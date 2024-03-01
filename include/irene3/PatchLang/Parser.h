@@ -633,6 +633,7 @@ namespace irene3::patchlang
         ParseResult< StackOffset > ParseStackOffset();
 
         ParseResult< std::vector< LangDecl > > ParseDecls();
+        ParseResult< std::vector< Stmt > > ParseSexprBody();
 
       public:
         Parser(gap::generator< ParseResult< Token > > tokens);
