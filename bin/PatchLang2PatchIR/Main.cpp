@@ -36,6 +36,7 @@
 #include <mlir/IR/DialectRegistry.h>
 #include <mlir/IR/Location.h>
 #include <mlir/IR/MLIRContext.h>
+#include <mlir/IR/OpDefinition.h>
 #include <mlir/IR/Operation.h>
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/IR/TypeRange.h>
@@ -697,6 +698,73 @@ class MLIRCodegen {
         mlir_builder.create< mlir::LLVM::UnreachableOp >(loc);
     }
 
+    void LiftStmts(
+        const std::vector< irene3::patchlang::Stmt >& stmts,
+        mlir::OpBuilder& mlir_builder,
+        SymbolMap& smap,
+        mlir::LLVM::LLVMFuncOp& func) {
+        for (auto& stmt : stmts) {
+            ToLLVM(stmt, mlir_builder, smap, func);
+        }
+    }
+
+    template< typename T, typename... Ts >
+    void BuildOpIfReachable(mlir::OpBuilder& mlir_builder, mlir::LocationAttr loc, Ts... ts) {
+        if (mlir_builder.getBlock() && !mlir_builder.getBlock()->empty()) {
+            auto& last = mlir_builder.getBlock()->back();
+            if (last.hasTrait< mlir::OpTrait::IsTerminator >()) {
+                return;
+            }
+        }
+        mlir_builder.create< T >(loc, std::forward< Ts >(ts)...);
+    }
+
+    void ToLLVM(
+        const irene3::patchlang::WhileStmt& stmt,
+        mlir::OpBuilder& mlir_builder,
+        SymbolMap& smap,
+        mlir::LLVM::LLVMFuncOp& func) {
+        auto loc       = ToLocAttr(stmt);
+        auto& loophead = mlir_builder.getBlock()->getParent()->emplaceBlock();
+        auto& converge = mlir_builder.getBlock()->getParent()->emplaceBlock();
+        auto& then     = mlir_builder.getBlock()->getParent()->emplaceBlock();
+
+        mlir_builder.create< mlir::LLVM::BrOp >(loc, &loophead);
+        mlir_builder.setInsertionPointToStart(&loophead);
+        auto condval = ToLLVM(stmt.GetCond(), mlir_builder, smap);
+        mlir_builder.create< mlir::LLVM::CondBrOp >(loc, condval, &then, &converge);
+
+        mlir_builder.setInsertionPointToStart(&then);
+        LiftStmts(stmt.GetThen(), mlir_builder, smap, func);
+        // TODO(Ian): what if we have a noreturn?
+        BuildOpIfReachable< mlir::LLVM::BrOp >(mlir_builder, loc, &loophead);
+
+        mlir_builder.setInsertionPointToEnd(&converge);
+    }
+
+    void ToLLVM(
+        const irene3::patchlang::IfStmt& stmt,
+        mlir::OpBuilder& mlir_builder,
+        SymbolMap& smap,
+        mlir::LLVM::LLVMFuncOp& func) {
+        auto loc       = ToLocAttr(stmt);
+        auto& converge = mlir_builder.getBlock()->getParent()->emplaceBlock();
+        auto& then     = mlir_builder.getBlock()->getParent()->emplaceBlock();
+        auto& elseb    = mlir_builder.getBlock()->getParent()->emplaceBlock();
+        auto condval   = ToLLVM(stmt.GetCond(), mlir_builder, smap);
+        mlir_builder.create< mlir::LLVM::CondBrOp >(loc, condval, &then, &elseb);
+        mlir_builder.setInsertionPointToStart(&then);
+        LiftStmts(stmt.GetThen(), mlir_builder, smap, func);
+        // TODO(Ian): what if we have a noreturn?
+        BuildOpIfReachable< mlir::LLVM::BrOp >(mlir_builder, loc, &converge);
+
+        mlir_builder.setInsertionPointToStart(&elseb);
+        LiftStmts(stmt.GetElse(), mlir_builder, smap, func);
+        BuildOpIfReachable< mlir::LLVM::BrOp >(mlir_builder, loc, &converge);
+
+        mlir_builder.setInsertionPointToEnd(&converge);
+    }
+
     void ToLLVM(
         const irene3::patchlang::StoreStmt& stmt,
         mlir::OpBuilder& mlir_builder,
@@ -716,16 +784,12 @@ class MLIRCodegen {
         mlir::LLVM::LLVMFuncOp&) {}
 
     void ToLLVM(
-        const irene3::patchlang::CallStmt& stmt,
+        const irene3::patchlang::ExprStmt& stmt,
         mlir::OpBuilder& mlir_builder,
         SymbolMap& smap,
-        mlir::LLVM::LLVMFuncOp&) {}
-
-    void ToLLVM(
-        const irene3::patchlang::CallIntrinsicStmt& stmt,
-        mlir::OpBuilder& mlir_builder,
-        SymbolMap& smap,
-        mlir::LLVM::LLVMFuncOp&) {}
+        mlir::LLVM::LLVMFuncOp&) {
+        ToLLVM(stmt.GetExpr(), mlir_builder, smap);
+    }
 
     void ToLLVM(
         const irene3::patchlang::ValueStmt& stmt,

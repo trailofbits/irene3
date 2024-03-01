@@ -311,7 +311,10 @@ namespace irene3::patchlang
                     args.push_back(this->GetRefExport(arg));
                 }
 
-                return CallStmt(StrLitExpr(callee, Token()), std::move(args), Token(), Token());
+                return ExprStmt(
+                    MakeExpr< CallExpr >(
+                        StrLitExpr(callee, Token()), std::move(args), Token(), Token()),
+                    Token(), Token());
             } else if (auto call = mlir::dyn_cast< mlir::LLVM::CallIntrinsicOp >(op)) {
                 std::string callee = call.getIntrin().str();
                 std::vector< ExprPtr > args;
@@ -319,7 +322,10 @@ namespace irene3::patchlang
                     args.push_back(this->GetRefExport(arg));
                 }
 
-                return CallStmt(StrLitExpr(callee, Token()), std::move(args), Token(), Token());
+                return ExprStmt(
+                    MakeExpr< CallExpr >(
+                        StrLitExpr(callee, Token()), std::move(args), Token(), Token()),
+                    Token(), Token());
             }
         }
 

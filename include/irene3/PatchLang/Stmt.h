@@ -12,6 +12,7 @@
 #include <llvm/ADT/APSInt.h>
 #include <memory>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -20,25 +21,27 @@ namespace irene3::patchlang
     class LetDeclStmt;
     class StoreStmt;
     class ReturnStmt;
-    class CallStmt;
-    class CallIntrinsicStmt;
+    class ExprStmt;
     class ValueStmt;
     class GotoStmt;
     class NopStmt;
     class ConditionalGotoStmt;
     class FailedToLiftStmt;
+    class IfStmt;
+    class WhileStmt;
 
     using Stmt = std::variant<
         LetDeclStmt,
         StoreStmt,
         ReturnStmt,
-        CallStmt,
-        CallIntrinsicStmt,
+        ExprStmt,
         ValueStmt,
         GotoStmt,
         ConditionalGotoStmt,
         NopStmt,
-        FailedToLiftStmt >;
+        FailedToLiftStmt,
+        IfStmt,
+        WhileStmt >;
     using StmtPtr = std::unique_ptr< Stmt >;
     template< typename T >
     concept IsStmt = std::is_same_v< std::remove_cv_t< T >, Stmt >;
@@ -60,6 +63,43 @@ namespace irene3::patchlang
             , last_tok(last_tok) {}
 
         const StrLitExpr& GetMessage() const { return message; }
+        Token GetFirstToken() const { return first_tok; }
+        Token GetLastToken() const { return last_tok; }
+    };
+
+    class IfStmt {
+        ExprPtr cond;
+        std::vector< Stmt > then;
+        std::vector< Stmt > elsestmt;
+        Token first_tok;
+        Token last_tok;
+
+      public:
+        IfStmt(
+            ExprPtr&& cond,
+            std::vector< Stmt >&& then,
+            std::vector< Stmt >&& elsestmt,
+            Token first_tok,
+            Token last_tok);
+
+        const Expr& GetCond() const;
+        const std::vector< Stmt >& GetThen() const;
+        const std::vector< Stmt >& GetElse() const;
+        Token GetFirstToken() const { return first_tok; }
+        Token GetLastToken() const { return last_tok; }
+    };
+
+    class WhileStmt {
+        ExprPtr cond;
+        std::vector< Stmt > then;
+        Token first_tok;
+        Token last_tok;
+
+      public:
+        WhileStmt(ExprPtr&& cond, std::vector< Stmt >&& then, Token first_tok, Token last_tok);
+
+        const Expr& GetCond() const;
+        const std::vector< Stmt >& GetThen() const;
         Token GetFirstToken() const { return first_tok; }
         Token GetLastToken() const { return last_tok; }
     };
@@ -132,43 +172,18 @@ namespace irene3::patchlang
         Token GetLastToken() const { return last_tok; }
     };
 
-    class CallStmt {
-        StrLitExpr callee;
-        std::vector< ExprPtr > args;
+    class ExprStmt {
+        ExprPtr expr;
         Token first_tok;
         Token last_tok;
 
       public:
-        CallStmt(
-            StrLitExpr&& callee, std::vector< ExprPtr >&& args, Token first_tok, Token last_tok)
-            : callee(std::move(callee))
-            , args(std::move(args))
+        // TODO(Ian): we dont really need to store tokens twice
+        ExprStmt(ExprPtr&& expr, Token first_tok, Token last_tok)
+            : expr(std::move(expr))
             , first_tok(first_tok)
             , last_tok(last_tok) {}
-
-        const StrLitExpr& GetCallee() const { return callee; }
-        const std::vector< ExprPtr >& GetArgs() const { return args; }
-
-        Token GetFirstToken() const { return first_tok; }
-        Token GetLastToken() const { return last_tok; }
-    };
-
-    class CallIntrinsicStmt {
-        StrLitExpr callee;
-        std::vector< ExprPtr > args;
-        Token first_tok;
-        Token last_tok;
-
-      public:
-        CallIntrinsicStmt(
-            StrLitExpr&& callee, std::vector< ExprPtr >&& args, Token first_tok, Token last_tok)
-            : callee(std::move(callee))
-            , args(std::move(args))
-            , first_tok(first_tok)
-            , last_tok(last_tok) {}
-
-        const StrLitExpr& GetCallee() const { return callee; }
-        const std::vector< ExprPtr >& GetArgs() const { return args; }
+        const Expr& GetExpr() const { return *expr; }
 
         Token GetFirstToken() const { return first_tok; }
         Token GetLastToken() const { return last_tok; }

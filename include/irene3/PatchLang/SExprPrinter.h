@@ -81,7 +81,7 @@ namespace irene3::patchlang
             default: os << "<<unsupported>>"; break;
         }
     }
-    
+
     void PrintSExpr(auto&& os, const Literal& lit, int indent = 0) {
         std::visit([&os, indent](const auto& lit) { PrintSExpr(os, lit, indent); }, lit);
     }
@@ -381,6 +381,38 @@ namespace irene3::patchlang
         os << ')';
     }
 
+    void PrintSExpr(auto&& os, const IfStmt& stmt, int indent = 0) {
+        indent += 4;
+        os << "(if " << '\n' << std::string(indent, ' ');
+        PrintSExpr(os, stmt.GetCond(), indent);
+        os << "(";
+        PrintSExpr(os, stmt.GetThen(), indent);
+        os << ")";
+
+        os << "(";
+        PrintSExpr(os, stmt.GetElse(), indent);
+        os << ")";
+
+        os << ')';
+    }
+
+    void PrintSExpr(auto&& os, const WhileStmt& stmt, int indent = 0) {
+        indent += 4;
+        os << "(while " << '\n' << std::string(indent, ' ');
+        PrintSExpr(os, stmt.GetCond(), indent);
+        os << "(";
+        PrintSExpr(os, stmt.GetThen(), indent);
+        os << ")";
+        os << ')';
+    }
+
+    void PrintSExpr(auto&& os, const std::vector< Stmt >& stmt, int indent = 0) {
+        indent += 4;
+        for (auto& st : stmt) {
+            PrintSExpr(os, st, indent);
+        }
+    }
+
     void PrintSExpr(auto&& os, const StoreStmt& stmt, int indent = 0) {
         indent += 4;
         os << "(store\n" << std::string(indent, ' ');
@@ -403,26 +435,8 @@ namespace irene3::patchlang
         os << ')';
     }
 
-    void PrintSExpr(auto&& os, const CallStmt& stmt, int indent = 0) {
-        indent += 4;
-        os << "(call\n" << std::string(indent, ' ') << "callee: ";
-        PrintSExpr(os, stmt.GetCallee(), indent);
-        for (auto& arg : stmt.GetArgs()) {
-            os << '\n' << std::string(indent, ' ');
-            PrintSExpr(os, *arg, indent);
-        }
-        os << ')';
-    }
-
-    void PrintSExpr(auto&& os, const CallIntrinsicStmt& stmt, int indent = 0) {
-        indent += 4;
-        os << "(intrinsic\n" << std::string(indent, ' ') << "callee: ";
-        PrintSExpr(os, stmt.GetCallee(), indent);
-        for (auto& arg : stmt.GetArgs()) {
-            os << '\n' << std::string(indent, ' ');
-            PrintSExpr(os, *arg, indent);
-        }
-        os << ')';
+    void PrintSExpr(auto&& os, const ExprStmt& stmt, int indent = 0) {
+        PrintSExpr(os, stmt.GetExpr(), indent);
     }
 
     void PrintSExpr(auto&& os, const ValueStmt& stmt, int indent = 0) {

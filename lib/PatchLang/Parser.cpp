@@ -396,6 +396,18 @@ namespace irene3::patchlang
             std::move(stack_offset_at_exit), std::move(uid), std::move(stack_offsets_entry),
             std::move(stack_offsets_exit), lparen.TakeValue(), rparen.TakeValue());
     }
+    ParseResult< std::vector< Stmt > > Parser::ParseSexprBody() {
+        auto l = this->GetToken< Token::LParen >();
+        CHECK_PARSE(l);
+        auto res = this->ParseRegionBody();
+
+        CHECK_PARSE(res);
+        auto v = res.TakeValue();
+
+        auto r = this->GetToken< Token::RParen >();
+        CHECK_PARSE(r);
+        return v;
+    }
 
     ParseResult< std::vector< Stmt > > Parser::ParseRegionBody() {
         std::vector< Stmt > body;
@@ -693,7 +705,7 @@ namespace irene3::patchlang
         CHECK_PARSE(lparen);
 
         auto stmt_kind = GetIdent({ "let", "store", "return", "call", "intrinsic", "value", "goto",
-                                    "cond_goto", "nop", "failed_to_lift" });
+                                    "cond_goto", "nop", "failed_to_lift", "while", "if" });
 
         CHECK_PARSE(stmt_kind);
 
@@ -772,8 +784,11 @@ namespace irene3::patchlang
 
                 if (rparen->kind == Token::RParen) {
                     GetToken();
-                    return { CallStmt(
-                        std::move(callee), std::move(args), lparen.TakeValue(), *rparen) };
+                    auto lparen_grb = lparen.TakeValue();
+                    return { ExprStmt(
+                        MakeExpr< CallExpr >(
+                            std::move(callee), std::move(args), lparen_grb, *rparen),
+                        lparen_grb, *rparen) };
                 }
 
                 auto arg = ParseExpr();
@@ -799,8 +814,11 @@ namespace irene3::patchlang
 
                 if (rparen->kind == Token::RParen) {
                     GetToken();
-                    return { CallIntrinsicStmt(
-                        std::move(callee), std::move(args), lparen.TakeValue(), *rparen) };
+                    auto lparen_grb = lparen.TakeValue();
+                    return { ExprStmt(
+                        MakeExpr< CallIntrinsicExpr >(
+                            std::move(callee), std::move(args), lparen_grb, *rparen),
+                        lparen_grb, *rparen) };
                 }
 
                 auto arg = ParseExpr();
@@ -853,6 +871,27 @@ namespace irene3::patchlang
             CHECK_PARSE(rparen);
 
             return { NopStmt(lparen.TakeValue(), rparen.TakeValue()) };
+        } else if (stmt_kind->contents == "if") {
+            auto cond = this->ParseExpr();
+            CHECK_PARSE(cond);
+            auto then = this->ParseSexprBody();
+            CHECK_PARSE(then);
+            auto elseb = this->ParseSexprBody();
+            CHECK_PARSE(elseb);
+            auto rparen = GetToken< Token::RParen >();
+            CHECK_PARSE(rparen);
+            return { IfStmt(
+                cond.TakeValue(), then.TakeValue(), elseb.TakeValue(), lparen.TakeValue(),
+                rparen.TakeValue()) };
+        } else if (stmt_kind->contents == "while") {
+            auto cond = this->ParseExpr();
+            CHECK_PARSE(cond);
+            auto then = this->ParseSexprBody();
+            CHECK_PARSE(then);
+            auto rparen = GetToken< Token::RParen >();
+            CHECK_PARSE(rparen);
+            return { WhileStmt(
+                cond.TakeValue(), then.TakeValue(), lparen.TakeValue(), rparen.TakeValue()) };
         }
 
         UNREACHABLE;
