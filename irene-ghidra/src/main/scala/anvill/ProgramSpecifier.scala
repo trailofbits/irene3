@@ -11,6 +11,7 @@ import ghidra.program.model.data.{
   DataType,
   DataTypeComponent,
   DefaultDataType,
+  FunctionDefinition,
   GenericCallingConvention,
   Pointer,
   Structure,
@@ -248,7 +249,8 @@ object ProgramSpecifier {
           .flatMap(l => Some(TypeSpec(Type.Alias(l))))
           .orElse(
             t match
-              case _: VoidDataType => Some(TypeSpec(Type.Base(BT_VOID)))
+              case _: VoidDataType       => Some(TypeSpec(Type.Base(BT_VOID)))
+              case _: FunctionDefinition => Some(TypeSpec(Type.Base(BT_VOID)))
               case _: Undefined => Some(TypeSpec(Type.Unknown(t.getLength())))
               case _: DefaultDataType =>
                 Some(TypeSpec(Type.Unknown(t.getLength())))
@@ -351,7 +353,14 @@ object ProgramSpecifier {
                 aliases.put(l, ty)
                 Some(TypeSpec(Type.Alias(l)))
               }
-              case _ => Some(TypeSpec(Type.Unknown(t.getLength())))
+              case _ => {
+                // if length is negative, the type has no size
+                if (t.getLength() < 0) {
+                  Some(TypeSpec(Type.Base(BT_VOID)))
+                } else {
+                  Some(TypeSpec(Type.Unknown(t.getLength())))
+                }
+              }
           )
 
         spec
