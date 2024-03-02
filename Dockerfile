@@ -39,16 +39,16 @@ COPY . /app
 
 RUN git config --global user.email "root@localhost" && \
     git config --global user.name "root" && \
-    just install-irene3 install-patch-assembler
+    just install-irene3
 
 FROM base as dist
 ARG LIBRARIES
 
 ENV VIRTUAL_ENV=${LIBRARIES}
-RUN apt-get update && apt-get install -yq libmagic1
+RUN apt-get update && apt-get install -yq libmagic1 cmake
 
 VOLUME /workspace
 WORKDIR /workspace
-RUN mkdir -p /app
 COPY --from=build ${LIBRARIES} ${LIBRARIES}
 COPY --from=build /app/patch_assembler /app/patch_assembler
+RUN pip install /app/patch_assembler

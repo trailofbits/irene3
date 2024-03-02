@@ -18,9 +18,13 @@
 package anvill.plugin.anvillpatchgraph.graph;
 
 import anvill.PatchLangGrpcClient;
+import anvill.plugin.CompileAction;
+import anvill.plugin.PatchLowerInputWindow;
 import anvill.plugin.anvillpatchgraph.AnvillPatchInfo;
 import anvill.plugin.anvillpatchgraph.parser.AntlrCParser;
 import anvill.plugin.anvillpatchgraph.textarea.AnvillSyntaxTextArea;
+import compiler.DockerCommandLineDriver;
+import compiler.PatchCompiler;
 import docking.ActionContext;
 import docking.GenericHeader;
 import docking.action.DockingAction;
@@ -28,6 +32,7 @@ import docking.action.ToolBarData;
 import docking.widgets.OptionDialog;
 import docking.widgets.filechooser.GhidraFileChooser;
 import generic.theme.GColor;
+import ghidra.framework.preferences.Preferences;
 import ghidra.graph.viewer.vertex.AbstractVisualVertex;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressFactory;
@@ -71,14 +76,19 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
   private boolean editable = false;
   public static final ImageIcon LOCK_IMAGE;
   public static final ImageIcon UNLOCK_IMAGE;
+  public static final ImageIcon COMPILE_IMAGE;
   private int maxWidth = 500;
   private String oldPatchCode;
   private PatchLangGrpcClient patchGrpcClient;
   private DockingAction editLockAction;
+  private DockingAction compileAction;
+
+  private Optional<String> last_patched_module;
 
   static {
     LOCK_IMAGE = ResourceManager.loadImage("images/lock.gif");
     UNLOCK_IMAGE = ResourceManager.loadImage("images/unlock.gif");
+    COMPILE_IMAGE = ResourceManager.loadImage("images/editbytes.gif");
   }
 
   public AnvillVertex(CodeBlock block, AnvillPatchInfo.Patch patch, PatchLangGrpcClient client) {
@@ -94,6 +104,7 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
             address.getOffset() + Long.max(patch.getSize() - 1, 0));
     addressSetView = new AddressSet(address, maxAddress);
     this.patch = patch;
+    this.last_patched_module = Optional.empty();
 
     textArea = new AnvillSyntaxTextArea();
     textArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_C);
@@ -274,6 +285,7 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
 
       String module = resp.getPatchedModule();
       saveModule(module);
+      this.last_patched_module = Optional.of(module);
     }
     editable = !editable;
     setEditable(editable);
@@ -317,6 +329,40 @@ public class AnvillVertex extends AbstractVisualVertex implements BasicBlockVert
     editLockAction.setDescription(editable ? "Lock Editing" : "Unlock Editing");
     editLockAction.setToolBarData(new ToolBarData(editable ? UNLOCK_IMAGE : LOCK_IMAGE));
 
+    compileAction =
+        new DockingAction("Compile", genericHeader.getClass().getName()) {
+          @Override
+          public void actionPerformed(ActionContext context) {
+            var exePath = program.getExecutablePath();
+            if (new File(exePath).exists()) {
+              Preferences.setProperty(PatchLowerInputWindow.STARTING_DIR_PROP, exePath);
+            }
+            var window = new PatchLowerInputWindow(null);
+            var input = window.askUser();
+            // TODO: Call the binaries with input
+            Msg.info(this, "Compiling... " + input);
+            PatchCompiler compiler;
+            try {
+              compiler = new PatchCompiler(new DockerCommandLineDriver());
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+            if (input.isPresent() && AnvillVertex.this.last_patched_module.isPresent()) {
+              new CompileAction(
+                  AnvillVertex.this.mainPanel,
+                  compiler,
+                  patch.getUid(),
+                  AnvillVertex.this.last_patched_module.get(),
+                  input.get());
+            }
+          }
+        };
+    compileAction.setToolBarData(new ToolBarData(COMPILE_IMAGE));
+    // TODO: Only enable when editing or content has changed
+    compileAction.setEnabled(true);
+    compileAction.setDescription("Compile Patch Code");
+
+    genericHeader.actionAdded(compileAction);
     genericHeader.actionAdded(editLockAction);
     genericHeader.update();
   }

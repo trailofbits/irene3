@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
 
     // Send spec to server
     PatchLangClient client(grpc::CreateChannel(
-        "localhost:" + std::to_string(FLAGS_port), grpc::InsecureChannelCredentials()));
+        "0.0.0.0:" + std::to_string(FLAGS_port), grpc::InsecureChannelCredentials()));
 
     // TODO(alex): Doesn't seem like GFlags supports subcommands like you can do with Python's
     // argparse. Not sure if there's a better way of doing this.
