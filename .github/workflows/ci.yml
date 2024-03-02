@@ -405,14 +405,14 @@ jobs:
 
           TARGET_ADDRESS="12ffb0"
           echo ::group::irene3-examine-spec
-          TARGET_UID=`docker run --rm -v $(pwd):/workspace -w /workspace build-test irene3-examine-spec -spec /workspace/tests/demo/chall3-onMessageLength.proto | grep ${TARGET_ADDRESS} | awk '{print $3}'`
+          TARGET_UID=`docker run --rm -v $(pwd):/workspace -w /workspace build-test irene3-examine-spec -spec /workspace/tests/demo/chall3/chall3-onMessageLength.proto | grep ${TARGET_ADDRESS} | awk '{print $3}'`
           echo ::endgroup
           echo ::group::irene3-example-spec-output
           echo ${TARGET_UID}
           echo ::endgroup
 
           echo ::group::irene3-patchir-codegen
-          docker run --rm -v $(pwd):/workspace -w /workspace build-test irene3-patchir-codegen -spec /workspace/tests/demo/chall3-onMessageLength.proto -mlir_out /workspace/chall3-onMessageLength.mlir
+          docker run --rm -v $(pwd):/workspace -w /workspace build-test irene3-patchir-codegen -spec /workspace/tests/demo/chall3/chall3-onMessageLength.proto -mlir_out /workspace/chall3-onMessageLength.mlir
           echo ::endgroup
 
           echo ::group::irene3-patchlang-lift
@@ -432,7 +432,7 @@ jobs:
           echo ::endgroup
 
           echo ::group::irene3-patch-assembler
-          docker run --rm -v $(pwd):/workspace -w /workspace build-test patch-assembler --in_assembly /workspace/chall3-onMessageLength.S --metadata /workspace/chall3-onMessageLength.metadata.json /workspace/tests/demo/libroscpp.so --output /workspace/patched.so
+          docker run --rm -v $(pwd):/workspace -w /workspace build-test patch-assembler --in_assembly /workspace/chall3-onMessageLength.S --metadata /workspace/chall3-onMessageLength.metadata.json /workspace/tests/demo/chall3/libroscpp.so --output /workspace/patched.so
           echo ::endgroup
 
       # Push with proper tag once test ran

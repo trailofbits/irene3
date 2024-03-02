@@ -24,4 +24,5 @@ compile_commands.json
 .devcontainer
 deps/
 venv/
+tests/demo/
 irene-ghidra/src/test/resources/ghidra_dbs/
