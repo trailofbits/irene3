@@ -1,23 +1,18 @@
 package anvill.decompiler;
 
-import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.exception.DockerException;
 import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.PortBinding;
-import com.github.dockerjava.core.DefaultDockerClientConfig;
-import com.github.dockerjava.core.DockerClientBuilder;
-import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
-import javax.ws.rs.ProcessingException;
 
-public class DockerDecompilerServerManager implements DecompilerServerManager {
+public class DockerDecompilerServerManager extends DockerClientManager
+    implements DecompilerServerManager {
   public static final String IMAGE_NAME = "irene3:latest";
   public static final String CONTAINER_NAME = "irene-decompiler-server";
   public static final String EXECUTABLE = "irene3-server";
   public static final String EXPOSED_PORT = "50080";
   private final int port;
-  private DockerClient dockerClient;
   private CreateContainerResponse decompilerContainer;
 
   /**
@@ -34,7 +29,7 @@ public class DockerDecompilerServerManager implements DecompilerServerManager {
   }
 
   public void startPatchLangServer() throws DecompilerServerException {
-    startDecompilerServer("irene3-patchlang-server", "");
+    startDecompilerServer("irene3-patchlang-server", "--logtostderr");
   }
 
   /** Start the decompiler server. */
@@ -52,6 +47,18 @@ public class DockerDecompilerServerManager implements DecompilerServerManager {
     } else {
       // Start the server
       try {
+        dockerClient.stopContainerCmd(CONTAINER_NAME).exec();
+      } catch (DockerException ignored) {
+
+      }
+      try {
+        dockerClient.removeContainerCmd(CONTAINER_NAME).exec();
+      } catch (DockerException ignored) {
+
+      }
+
+      try {
+
         decompilerContainer =
             dockerClient
                 .createContainerCmd(IMAGE_NAME)
@@ -76,37 +83,6 @@ public class DockerDecompilerServerManager implements DecompilerServerManager {
   }
 
   /** Set up a connection to Docker. */
-  private void setupDockerClient() throws DecompilerServerException {
-    if (dockerClient == null) {
-      dockerClient =
-          DockerClientBuilder.getInstance()
-              .withDockerHttpClient(
-                  new ZerodepDockerHttpClient.Builder()
-                      .dockerHost(
-                          DefaultDockerClientConfig.createDefaultConfigBuilder()
-                              .build()
-                              .getDockerHost())
-                      .build())
-              .build();
-      if (dockerClient == null) {
-        throw new DecompilerServerException(
-            "Could not find Docker. Please install or start Docker on this computer");
-      }
-    }
-
-    // Check that Docker is actually available
-    testDockerIsConnected();
-  }
-
-  private void testDockerIsConnected() throws DecompilerServerException {
-    try {
-      dockerClient.pingCmd().exec();
-    } catch (ProcessingException exception) {
-      throw new DecompilerServerException(
-          "Please install or start Docker on this computer", exception);
-    }
-  }
-
   public void dispose() {
     if (decompilerContainer != null) {
       var containerId = decompilerContainer.getId();

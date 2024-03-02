@@ -56,6 +56,7 @@ public class PatchLangGrpcClient {
 
     while (ind < encoded.size()) {
       var next_end = Integer.min(encoded.size(), ind + CHUNK_SIZE);
+      Msg.info(this, "Sending next chunk of size:" + (next_end - ind));
       var chunk =
           PatchService.SpecChunk.newBuilder().setChunk(encoded.substring(ind, next_end)).build();
       resp_obs.onNext(chunk);

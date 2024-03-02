@@ -201,8 +201,8 @@ build-irene3-cpp: install-gap install-remill
       --preset ninja-multi-vcpkg  && \
     cmake --build --preset ninja-vcpkg-deb -j $(nproc)
 
-install-patch-assembler:
-    cd patch_assembler && poetry install
+install-patch-assembler TMPCXX=CXX TMPCC=CC:
+    cd patch_assembler && CXX={{ TMPCXX }} CC={{ TMPCC }} poetry install
 
 install-irene3: build-irene3-cpp
     cmake --build --preset ninja-vcpkg-deb --target install

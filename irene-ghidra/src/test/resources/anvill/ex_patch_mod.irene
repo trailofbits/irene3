@@ -1,0 +1,4786 @@
+(module
+    layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64"
+    triplet: "arm-pc-linux-gnu-elf"
+    image_base: 0x10000:32
+    (type_decl
+        "struct.State"
+        (struct
+            (struct
+                (struct
+                    i32
+                    i32
+                    (struct
+                        i64))
+                (struct
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32)
+                    i32
+                    (struct
+                        i32))
+                (struct
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128))
+                    (struct
+                        (struct
+                            i128)))
+                (struct
+                    i32
+                    (array
+                        size: 12:64
+                        type: i8))
+                (struct
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    i8
+                    (array
+                        size: 2:64
+                        type: i8))
+                i64)))
+    (type_decl
+        "TimerManager<ros::SteadyTime,ros::WallDuration,ros::SteadyTimerEvent>"
+        (struct
+            (array
+                size: 1:64
+                type: i8)))
+    (type_decl
+        shared_ptr
+        (struct
+            (array
+                size: 1:64
+                type: i8)))
+    (type_decl
+        basic_string
+        (struct
+            (array
+                size: 1:64
+                type: i8)))
+    (type_decl
+        sp_counted_base
+        (struct
+            (array
+                size: 1:64
+                type: i8)))
+    (type_decl
+        ros
+        (struct
+            (array
+                size: 1:64
+                type: i8)))
+    (type_decl
+        sysinfo
+        (struct
+            i32
+            (array
+                size: 3:64
+                type: i32)
+            i32
+            i32
+            i32
+            i32
+            i32
+            i32
+            i16
+            i16
+            i32
+            i32
+            i32
+            (array
+                size: 8:64
+                type: i8)))
+    (type_decl
+        TransportPublisherLink
+        (struct
+            (array
+                size: 1:64
+                type: i8)))
+    (type_decl
+        allocator
+        (struct
+            (array
+                size: 1:64
+                type: i8)))
+    (type_decl
+        pthread_mutex_t
+        (struct
+            (array
+                size: 24:64
+                type: i8)))
+    (type_decl
+        FilterBase
+        (struct
+            (array
+                size: 1:64
+                type: i8)))
+    (type_decl
+        LogLocation
+        (struct
+            (array
+                size: 1:64
+                type: i8)))
+    (type_decl
+        function
+        (struct
+            (array
+                size: 1:64
+                type: i8)))
+    (type_decl
+        Connection
+        (struct
+            (array
+                size: 1:64
+                type: i8)))
+    (external_global
+        address: 0x1a17dd:64
+        name: var_1a17dd_B
+        displacement: +0:64
+        is_external: false
+        bit_size: 8:64
+        i8)
+    (external_global
+        address: 0x1758a4:64
+        name: var_1758a4__CBx0_D
+        displacement: +0:64
+        is_external: false
+        bit_size: 0:64
+        (array
+            size: 0:64
+            type: i8))
+    (external_global
+        address: 0x178020:64
+        name: var_178020__CBx0_D
+        displacement: +0:64
+        is_external: false
+        bit_size: 0:64
+        (array
+            size: 0:64
+            type: i8))
+    (external_global
+        address: 0x178084:64
+        name: var_178084__CBx0_D
+        displacement: +0:64
+        is_external: false
+        bit_size: 0:64
+        (array
+            size: 0:64
+            type: i8))
+    (external_global
+        address: 0x1a17e0:64
+        name: var_1a17e0_I
+        displacement: +0:64
+        is_external: false
+        bit_size: 32:64
+        i32)
+    (external_global
+        address: 0x16f0b8:64
+        name: var_16f0b8__CBx0_D
+        displacement: +0:64
+        is_external: false
+        bit_size: 0:64
+        (array
+            size: 0:64
+            type: i8))
+    (external_global
+        address: 0x19f648:64
+        name: __DT_PLTGOT
+        displacement: +0:64
+        is_external: false
+        bit_size: 0:64
+        ptr)
+    (external_global
+        address: 0x1a17dc:64
+        name: _ZZN3ros22TransportPublisherLink15onMessageLengthERKN5boost10shared_ptrINS_10ConnectionEEERKNS1_12shared_arrayIhEEjbE33__rosconsole_define_location__loc
+        displacement: +0:64
+        is_external: false
+        bit_size: 8:64
+        i8)
+    (external_global
+        address: 0x1a30c0:64
+        name: __stack_chk_guard
+        displacement: +0:64
+        is_external: false
+        bit_size: 32:64
+        i32)
+    (external
+        name: initialize
+        address: 0x0:64
+        displacement: +0:64
+        is_external: false
+        i8)
+    (external
+        name: initializeLogLocation
+        address: 0x0:64
+        displacement: +0:64
+        is_external: false
+        i8
+        ptr
+        ptr
+        i32)
+    (external
+        name: "operator.delete"
+        address: 0x0:64
+        displacement: +0:64
+        is_external: false
+        void
+        ptr
+        i32)
+    (external
+        name: print
+        address: 0x0:64
+        displacement: +0:64
+        is_external: false
+        i8
+        ptr
+        ptr
+        i32
+        ptr
+        i32
+        ptr
+        ptr)
+    (external
+        name: __stack_chk_fail
+        address: 0x19ff78:64
+        displacement: +0:64
+        is_external: true
+        i8)
+    (external
+        name: setLogLocationLevel
+        address: 0x0:64
+        displacement: +0:64
+        is_external: false
+        i8
+        ptr
+        i32)
+    (external
+        name: checkLogLocationEnabled
+        address: 0x0:64
+        displacement: +0:64
+        is_external: false
+        i8
+        ptr)
+    (external
+        name: sysinfo
+        address: 0x19fb9c:64
+        displacement: +384:64
+        is_external: true
+        i32
+        ptr)
+    (external
+        name: release
+        address: 0x92a50:64
+        displacement: +0:64
+        is_external: false
+        i8
+        ptr)
+    (external
+        name: read
+        address: 0xa3e1c:64
+        displacement: +0:64
+        is_external: false
+        i8
+        ptr
+        i32
+        ptr)
+    (external
+        name: basic_string
+        address: 0x12eba4:64
+        displacement: +0:64
+        is_external: false
+        i8
+        ptr
+        ptr)
+    (external
+        name: remove
+        address: 0x133a54:64
+        displacement: +0:64
+        is_external: false
+        i8
+        ptr
+        i32)
+    (external
+        name: "function4<boost::_bi::bind_t<void,boost::_mfi::mf4<void,ros::TransportPublisherLink,boost::shared_ptr<ros::Connection>const&,boost::shared_array<unsigned_char>const&,unsigned_int,bool>,boost::_bi::list5<boost::_bi::value<ros::TransportPublisherLink*>,boost::arg<1>,boost::arg<2>,boost::arg<3>,boost::arg<4>>>>"
+        address: 0x133df8:64
+        displacement: +0:64
+        is_external: false
+        i8
+        i32
+        i32)
+    (external
+        name: getInternalTimerManager
+        address: 0x165020:64
+        displacement: +0:64
+        is_external: false
+        i8
+        ptr)
+    (function
+        name: onMessageLength
+        address: 0x12febc:64
+        displacement: +0:64
+        is_external: false
+        (region
+            address: 1245396:64
+            size: 8:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 98:64
+            reg_stack_offsets_entry: (
+                (-52:64(register name: R2 size: 32:64))
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-52:64(register name: R2 size: 32:64))
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_0_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_1_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_2_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_3_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_4_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_5_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_6_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_7_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_8_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_9_this ptr
+                at_entry: (register name: R0 size: 32:64)
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_10_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_11_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_12_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_13_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_14_param_3 i32
+                at_entry: (register name: R3 size: 32:64)
+                at_exit: (register name: R3 size: 32:64))
+            (value named_val_15_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_16_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_17_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_18_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_19_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_20_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_21_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_22_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_23_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64)))
+        (region
+            address: 1245044:64
+            size: 16:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 83:64
+            reg_stack_offsets_entry: (
+                (-52:64(register name: R2 size: 32:64))
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64))
+                (-48:64(register name: R0 size: 32:64))
+                (-52:64(register name: R4 size: 32:64))
+                (-48:64(register name: R1 size: 32:64)))
+            (value named_val_24_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_25_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_26_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_27_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_28_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_29_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_30_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_31_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_32_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_33_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_34_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_35_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_36_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_37_param_3 i32
+                at_entry: (register name: R3 size: 32:64))
+            (value named_val_38_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_39_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_40_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_41_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_42_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_43_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_44_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_45_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_46_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64)))
+        (region
+            address: 1244880:64
+            size: 48:64
+            stack_offset_at_entry: -20:64
+            stack_offset_at_exit: -20:64
+            region_uid: 77:64
+            reg_stack_offsets_entry: (
+                (-20:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_47_R5 i32
+                at_entry: (register name: R5 size: 32:64)
+                at_exit: (register name: R5 size: 32:64))
+            (value named_val_48_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_49_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_50_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_51_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_52_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_53_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_54_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_55_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_56_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_57_this ptr
+                at_entry: (register name: R0 size: 32:64)
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_58_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_59_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_60_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_61_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_62_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_63_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_64_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_65_param_1 ptr
+                at_entry: (register name: R1 size: 32:64))
+            (value named_val_66_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_67_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_68_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_69_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_70_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_71_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_72_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_73_R4 i32
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_74_R6 i32
+                at_exit: (register name: R6 size: 32:64))
+            (value named_val_75_R7 i32
+                at_exit: (register name: R7 size: 32:64)))
+        (region
+            address: 1245600:64
+            size: 4:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 106:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64))))
+        (region
+            address: 1245128:64
+            size: 20:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 88:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_76_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_77_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_78_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_79_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_80_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_81_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_82_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_83_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_84_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_85_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_86_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_87_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_88_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_89_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_90_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_91_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_92_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_93_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_94_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_95_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_96_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_97_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_98_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_99_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_100_R7 i32
+                at_entry: (register name: R7 size: 32:64)))
+        (region
+            address: 1245440:64
+            size: 52:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 101:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-44:64(register name: R3 size: 32:64))
+                (-52:64(register name: R6 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_101_R5 i32
+                at_entry: (register name: R5 size: 32:64))
+            (value named_val_102_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_103_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_104_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_105_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_106_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_107_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_108_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_109_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_110_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_111_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_112_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_113_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_114_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_115_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_116_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_117_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_118_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_119_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_120_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_121_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_122_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_123_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_124_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_125_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_126_this ptr
+                at_exit: (register name: R0 size: 32:64)))
+        (region
+            address: 1244860:64
+            size: 20:64
+            stack_offset_at_entry: +0:64
+            stack_offset_at_exit: +0:64
+            region_uid: 76:64
+            reg_stack_offsets_entry: (
+                (+0:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-20:64(register name: SP size: 32:64)))
+            (value named_val_127_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_128_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_129_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_130_R4 i32
+                at_entry: (register name: R4 size: 32:64))
+            (value named_val_131_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_132_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_133_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_134_LR i32
+                at_entry: (register name: LR size: 32:64))
+            (value named_val_135_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_136_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_137_this ptr
+                at_entry: (register name: R0 size: 32:64)
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_138_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_139_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_140_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_141_R6 i32
+                at_entry: (register name: R6 size: 32:64))
+            (value named_val_142_R5 i32
+                at_entry: (register name: R5 size: 32:64)
+                at_exit: (register name: R5 size: 32:64))
+            (value named_val_143_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_144_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_145_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_146_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_147_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_148_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_149_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_150_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_151_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_152_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_153_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_154_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_155_R7 i32
+                at_entry: (register name: R7 size: 32:64))
+            (value named_val_156_param_1 ptr
+                at_exit: (register name: R1 size: 32:64)))
+        (region
+            address: 1245592:64
+            size: 8:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 105:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_157_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_158_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_159_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_160_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_161_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_162_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_163_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_164_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_165_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_166_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_167_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_168_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_169_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_170_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_171_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_172_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_173_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_174_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_175_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_176_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_177_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_178_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_179_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_180_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64)))
+        (region
+            address: 1245420:64
+            size: 20:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 100:64
+            reg_stack_offsets_entry: (
+                (-52:64(register name: R2 size: 32:64))
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_181_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_182_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_183_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_184_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_185_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_186_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_187_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_188_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_189_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_190_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_191_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_192_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_193_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_194_param_3 i32
+                at_entry: (register name: R3 size: 32:64))
+            (value named_val_195_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_196_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_197_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_198_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_199_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_200_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_201_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_202_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_203_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_204_this ptr
+                at_exit: (register name: R0 size: 32:64)))
+        (region
+            address: 1245300:64
+            size: 4:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 95:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_205_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_206_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_207_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_208_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_209_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_210_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_211_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_212_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_213_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_214_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_215_this ptr
+                at_entry: (register name: R0 size: 32:64)
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_216_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_217_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_218_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_219_R6 i32
+                at_entry: (register name: R6 size: 32:64)
+                at_exit: (register name: R6 size: 32:64))
+            (value named_val_220_R5 i32
+                at_entry: (register name: R5 size: 32:64)
+                at_exit: (register name: R5 size: 32:64))
+            (value named_val_221_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_222_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_223_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_224_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_225_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_226_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_227_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_228_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_229_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_230_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_231_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_232_R7 i32
+                at_entry: (register name: R7 size: 32:64)
+                at_exit: (register name: R7 size: 32:64)))
+        (region
+            address: 1245096:64
+            size: 8:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 85:64
+            reg_stack_offsets_entry: (
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-32:64(register name: R4 size: 32:64))
+                (+0:64(register name: SP size: 32:64)))
+            (value named_val_233_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_234_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_235_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_236_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_237_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_238_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_239_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_240_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_241_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_242_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_243_this ptr
+                at_entry: (register name: R0 size: 32:64)
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_244_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_245_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_246_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_247_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_248_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_249_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_250_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_251_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_252_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_253_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_254_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_255_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_256_R6 i32
+                at_exit: (register name: R6 size: 32:64))
+            (value named_val_257_R5 i32
+                at_exit: (register name: R5 size: 32:64))
+            (value named_val_258_R7 i32
+                at_exit: (register name: R7 size: 32:64)))
+        (region
+            address: 1245268:64
+            size: 32:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 94:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_259_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_260_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_261_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_262_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_263_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_264_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_265_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_266_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_267_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_268_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_269_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_270_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_271_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_272_R6 i32
+                at_entry: (register name: R6 size: 32:64)
+                at_exit: (register name: R6 size: 32:64))
+            (value named_val_273_R5 i32
+                at_entry: (register name: R5 size: 32:64)
+                at_exit: (register name: R5 size: 32:64))
+            (value named_val_274_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_275_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_276_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_277_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_278_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_279_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_280_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_281_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_282_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_283_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_284_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_285_R7 i32
+                at_entry: (register name: R7 size: 32:64)
+                at_exit: (register name: R7 size: 32:64))
+            (value named_val_286_this ptr
+                at_exit: (register name: R0 size: 32:64)))
+        (region
+            address: 1245060:64
+            size: 36:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 84:64
+            reg_stack_offsets_entry: (
+                (-52:64(register name: R2 size: 32:64))
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_287_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_288_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_289_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_290_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_291_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_292_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_293_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_294_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_295_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_296_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_297_this ptr
+                at_entry: (register name: R0 size: 32:64)
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_298_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_299_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_300_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_301_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_302_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_303_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_304_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_305_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_306_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_307_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_308_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_309_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64)))
+        (region
+            address: 1245244:64
+            size: 24:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 93:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (+0:64(register name: SP size: 32:64)))
+            (value named_val_310_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_311_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_312_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_313_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_314_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_315_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_316_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_317_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_318_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_319_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_320_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_321_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_322_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_323_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_324_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_325_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_326_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_327_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_328_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_329_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_330_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_331_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_332_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_333_this ptr
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_334_R6 i32
+                at_exit: (register name: R6 size: 32:64))
+            (value named_val_335_R5 i32
+                at_exit: (register name: R5 size: 32:64))
+            (value named_val_336_R7 i32
+                at_exit: (register name: R7 size: 32:64)))
+        (region
+            address: 1245104:64
+            size: 4:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 86:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_337_R5 i32
+                at_entry: (register name: R5 size: 32:64))
+            (value named_val_338_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_339_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_340_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_341_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_342_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_343_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_344_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_345_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_346_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_347_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_348_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_349_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_350_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_351_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_352_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_353_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_354_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_355_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_356_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_357_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_358_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_359_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_360_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_361_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_362_R7 i32
+                at_entry: (register name: R7 size: 32:64)
+                at_exit: (register name: R7 size: 32:64)))
+        (region
+            address: 1245404:64
+            size: 16:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 99:64
+            reg_stack_offsets_entry: (
+                (-52:64(register name: R2 size: 32:64))
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-52:64(register name: R2 size: 32:64))
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_363_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_364_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_365_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_366_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_367_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_368_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_369_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_370_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_371_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_372_this ptr
+                at_entry: (register name: R0 size: 32:64)
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_373_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_374_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_375_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_376_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_377_param_3 i32
+                at_entry: (register name: R3 size: 32:64)
+                at_exit: (register name: R3 size: 32:64))
+            (value named_val_378_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_379_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_380_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_381_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_382_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_383_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_384_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_385_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_386_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64)))
+        (region
+            address: 1245208:64
+            size: 36:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 92:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_387_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_388_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_389_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_390_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_391_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_392_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_393_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_394_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_395_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_396_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_397_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_398_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_399_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_400_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_401_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_402_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_403_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_404_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_405_param_2 ptr
+                at_entry: (register name: R2 size: 32:64))
+            (value named_val_406_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_407_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_408_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_409_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_410_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64)))
+        (region
+            address: 1245108:64
+            size: 20:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 87:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_423_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_424_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_425_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_426_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_427_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_428_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_429_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_430_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_431_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_432_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_433_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_434_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_435_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_436_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_437_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_438_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_439_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_440_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_441_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_442_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_443_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_444_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_445_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_446_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_447_R7 i32
+                at_entry: (register name: R7 size: 32:64)
+                at_exit: (register name: R7 size: 32:64))
+            (value named_val_448_R5 i32
+                at_exit: (register name: R5 size: 32:64))
+            (let named_val_449
+                (load
+                    type: i32
+                    (load
+                        type: ptr
+                        named_val_436_param_2)))
+            (store
+                named_val_449
+                named_val_448_R5)
+            (cond_goto
+                1245316:32
+                (slt
+                    named_val_449
+                    +1000000001:32))
+            (goto
+                1245128:32))
+        (region
+            address: 1245148:64
+            size: 20:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 89:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_438_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_439_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_440_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_441_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_442_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_443_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_444_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_445_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_446_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_447_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_448_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_449_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_450_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_451_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_452_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_453_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_454_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_455_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_456_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_457_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_458_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_459_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_460_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_461_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_462_R5 i32
+                at_exit: (register name: R5 size: 32:64)))
+        (region
+            address: 1245492:64
+            size: 16:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 102:64
+            reg_stack_offsets_entry: (
+                (-44:64(register name: R3 size: 32:64))
+                (-52:64(register name: R6 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-44:64(register name: R3 size: 32:64))
+                (-52:64(register name: R6 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_463_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_464_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_465_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_466_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_467_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_468_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_469_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_470_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_471_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_472_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_473_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_474_this ptr
+                at_entry: (register name: R0 size: 32:64))
+            (value named_val_475_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_476_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_477_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_478_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_479_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_480_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_481_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_482_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_483_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_484_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_485_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_486_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_487_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64)))
+        (region
+            address: 1245532:64
+            size: 60:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 104:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_488_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_489_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_490_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_491_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_492_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_493_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_494_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_495_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_496_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_497_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_498_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_499_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_500_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_501_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_502_param_3 i32
+                at_entry: (register name: R3 size: 32:64))
+            (value named_val_503_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_504_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_505_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_506_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_507_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_508_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_509_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_510_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_511_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_512_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64)))
+        (region
+            address: 1244928:64
+            size: 8:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 78:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_513_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_514_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_515_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_516_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_517_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_518_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_519_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_520_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_521_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_522_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_523_this ptr
+                at_entry: (register name: R0 size: 32:64)
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_524_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_525_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_526_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_527_R6 i32
+                at_entry: (register name: R6 size: 32:64)
+                at_exit: (register name: R6 size: 32:64))
+            (value named_val_528_R5 i32
+                at_entry: (register name: R5 size: 32:64)
+                at_exit: (register name: R5 size: 32:64))
+            (value named_val_529_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_530_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_531_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_532_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_533_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_534_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_535_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_536_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_537_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_538_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_539_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_540_R7 i32
+                at_entry: (register name: R7 size: 32:64)
+                at_exit: (register name: R7 size: 32:64)))
+        (region
+            address: 1244948:64
+            size: 72:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 80:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-52:64(register name: R2 size: 32:64))
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_541_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_542_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_543_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_544_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_545_R4 i32
+                at_entry: (register name: R4 size: 32:64))
+            (value named_val_546_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_547_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_548_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_549_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_550_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_551_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_552_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_553_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_554_R6 i32
+                at_entry: (register name: R6 size: 32:64))
+            (value named_val_555_R5 i32
+                at_entry: (register name: R5 size: 32:64))
+            (value named_val_556_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_557_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_558_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_559_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_560_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_561_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_562_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_563_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_564_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_565_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_566_R7 i32
+                at_entry: (register name: R7 size: 32:64))
+            (value named_val_567_this ptr
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_568_param_3 i32
+                at_exit: (register name: R3 size: 32:64)))
+        (region
+            address: 1245168:64
+            size: 20:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 90:64
+            reg_stack_offsets_entry: (
+                (-44:64(register name: R3 size: 32:64))
+                (-52:64(register name: R6 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-52:64(register name: R6 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_569_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_570_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_571_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_572_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_573_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_574_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_575_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_576_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_577_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_578_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_579_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_580_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_581_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_582_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_583_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_584_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_585_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_586_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_587_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_588_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_589_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_590_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_591_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_592_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_593_R5 i32
+                at_exit: (register name: R5 size: 32:64)))
+        (region
+            address: 1245508:64
+            size: 24:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 103:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_594_R5 i32
+                at_entry: (register name: R5 size: 32:64))
+            (value named_val_595_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_596_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_597_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_598_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_599_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_600_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_601_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_602_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_603_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_604_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_605_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_606_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_607_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_608_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_609_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_610_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_611_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_612_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_613_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_614_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_615_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_616_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_617_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_618_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64)))
+        (region
+            address: 1244936:64
+            size: 12:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 79:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_619_R6 i32
+                at_entry: (register name: R6 size: 32:64)
+                at_exit: (register name: R6 size: 32:64))
+            (value named_val_620_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_621_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_622_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_623_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_624_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_625_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_626_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_627_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_628_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_629_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_630_this ptr
+                at_entry: (register name: R0 size: 32:64)
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_631_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_632_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_633_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_634_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_635_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_636_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_637_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_638_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_639_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_640_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_641_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_642_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_643_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_644_R7 i32
+                at_entry: (register name: R7 size: 32:64)
+                at_exit: (register name: R7 size: 32:64))
+            (value named_val_645_R5 i32
+                at_exit: (register name: R5 size: 32:64)))
+        (region
+            address: 1245020:64
+            size: 8:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 81:64
+            reg_stack_offsets_entry: (
+                (-52:64(register name: R2 size: 32:64))
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-52:64(register name: R2 size: 32:64))
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_646_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_647_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_648_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_649_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_650_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_651_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_652_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_653_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_654_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_655_this ptr
+                at_entry: (register name: R0 size: 32:64)
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_656_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_657_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_658_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_659_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_660_param_3 i32
+                at_entry: (register name: R3 size: 32:64)
+                at_exit: (register name: R3 size: 32:64))
+            (value named_val_661_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_662_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_663_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_664_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_665_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_666_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_667_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_668_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_669_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64)))
+        (region
+            address: 1245188:64
+            size: 20:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 91:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_670_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_671_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_672_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_673_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_674_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_675_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_676_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_677_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_678_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_679_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_680_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_681_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_682_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_683_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_684_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_685_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_686_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_687_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_688_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_689_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_690_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_691_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_692_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_693_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_694_param_3 i32
+                at_exit: (register name: R3 size: 32:64)))
+        (region
+            address: 1245304:64
+            size: 12:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 96:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_695_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_696_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_697_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_698_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_699_R4 i32
+                at_entry: (register name: R4 size: 32:64)
+                at_exit: (register name: R4 size: 32:64))
+            (value named_val_700_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_701_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_702_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_703_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_704_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_705_this ptr
+                at_entry: (register name: R0 size: 32:64)
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_706_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_707_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_708_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_709_R6 i32
+                at_entry: (register name: R6 size: 32:64)
+                at_exit: (register name: R6 size: 32:64))
+            (value named_val_710_R5 i32
+                at_entry: (register name: R5 size: 32:64)
+                at_exit: (register name: R5 size: 32:64))
+            (value named_val_711_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_712_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_713_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_714_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_715_param_2 ptr
+                at_entry: (register name: R2 size: 32:64)
+                at_exit: (register name: R2 size: 32:64))
+            (value named_val_716_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_717_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_718_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_719_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_720_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_721_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_722_R7 i32
+                at_entry: (register name: R7 size: 32:64)
+                at_exit: (register name: R7 size: 32:64)))
+        (region
+            address: 1245028:64
+            size: 16:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 82:64
+            reg_stack_offsets_entry: (
+                (-52:64(register name: R2 size: 32:64))
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-52:64(register name: R2 size: 32:64))
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_723_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_724_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_725_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_726_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_727_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_728_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_729_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_730_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_731_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_732_this ptr
+                at_entry: (register name: R0 size: 32:64)
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_733_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_734_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_735_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_736_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_737_param_3 i32
+                at_entry: (register name: R3 size: 32:64)
+                at_exit: (register name: R3 size: 32:64))
+            (value named_val_738_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_739_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_740_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_741_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_742_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_743_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_744_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_745_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_746_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64)))
+        (region
+            address: 1245316:64
+            size: 80:64
+            stack_offset_at_entry: -80:64
+            stack_offset_at_exit: -80:64
+            region_uid: 97:64
+            reg_stack_offsets_entry: (
+                (-80:64(register name: SP size: 32:64)))
+            reg_stack_offsets_exit: (
+                (-52:64(register name: R2 size: 32:64))
+                (-52:64(register name: R4 size: 32:64))
+                (-80:64(register name: SP size: 32:64)))
+            (value named_val_747_R5 i32
+                at_entry: (register name: R5 size: 32:64))
+            (value named_val_748_D8 i64
+                at_entry: (register name: D8 size: 64:64)
+                at_exit: (register name: D8 size: 64:64))
+            (value named_val_749_local_40 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -64:64
+                    size: 32:64))
+            (value named_val_750_D13 i64
+                at_entry: (register name: D13 size: 64:64)
+                at_exit: (register name: D13 size: 64:64))
+            (value named_val_751_local_2c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -44:64
+                    size: 32:64))
+            (value named_val_752_R4 i32
+                at_entry: (register name: R4 size: 32:64))
+            (value named_val_753_R9 i32
+                at_entry: (register name: R9 size: 32:64)
+                at_exit: (register name: R9 size: 32:64))
+            (value named_val_754_D15 i64
+                at_entry: (register name: D15 size: 64:64)
+                at_exit: (register name: D15 size: 64:64))
+            (value named_val_755_local_14 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -20:64
+                    size: 32:64))
+            (value named_val_756_D9 i64
+                at_entry: (register name: D9 size: 64:64)
+                at_exit: (register name: D9 size: 64:64))
+            (value named_val_757_local_50 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -80:64
+                    size: 32:64))
+            (value named_val_758_R8 i32
+                at_entry: (register name: R8 size: 32:64)
+                at_exit: (register name: R8 size: 32:64))
+            (value named_val_759_local_1c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -28:64
+                    size: 32:64))
+            (value named_val_760_D12 i64
+                at_entry: (register name: D12 size: 64:64)
+                at_exit: (register name: D12 size: 64:64))
+            (value named_val_761_local_48 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -72:64
+                    size: 32:64))
+            (value named_val_762_D14 i64
+                at_entry: (register name: D14 size: 64:64)
+                at_exit: (register name: D14 size: 64:64))
+            (value named_val_763_D11 i64
+                at_entry: (register name: D11 size: 64:64)
+                at_exit: (register name: D11 size: 64:64))
+            (value named_val_764_local_4c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -76:64
+                    size: 32:64))
+            (value named_val_765_D10 i64
+                at_entry: (register name: D10 size: 64:64)
+                at_exit: (register name: D10 size: 64:64))
+            (value named_val_766_local_38 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -56:64
+                    size: 32:64))
+            (value named_val_767_local_3c i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -60:64
+                    size: 32:64))
+            (value named_val_768_local_34 i32
+                at_entry: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64)
+                at_exit: (memory_indirect
+                    base: SP
+                    offset: -52:64
+                    size: 32:64))
+            (value named_val_769_R10 i32
+                at_entry: (register name: R10 size: 32:64)
+                at_exit: (register name: R10 size: 32:64))
+            (value named_val_770_R11 i32
+                at_entry: (register name: R11 size: 32:64)
+                at_exit: (register name: R11 size: 32:64))
+            (value named_val_771_R7 i32
+                at_entry: (register name: R7 size: 32:64))
+            (value named_val_772_this ptr
+                at_exit: (register name: R0 size: 32:64))
+            (value named_val_773_param_3 i32
+                at_exit: (register name: R3 size: 32:64)))))

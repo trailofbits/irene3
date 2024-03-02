@@ -12,6 +12,7 @@
 #include <irene3/PatchLang/Parser.h>
 #include <irene3/PatchLang/SExprPrinter.h>
 #include <irene3/PatchLang/Stmt.h>
+#include <memory>
 #include <mlir/Dialect/DLTI/DLTIDialect.h.inc>
 #include <mlir/IR/MLIRContext.h>
 #include <sstream>
@@ -75,7 +76,7 @@ irene3::server::PatchGraph BuildPatchGraph(
 
 class PatchLangServerImpl final : public irene3::server::PatchLangServer::Service {
   private:
-    mlir::MLIRContext mlir_context;
+    std::unique_ptr< mlir::MLIRContext > mlir_context;
     mlir::OwningOpRef< mlir::ModuleOp > mlir_module;
 
   public:
@@ -83,6 +84,8 @@ class PatchLangServerImpl final : public irene3::server::PatchLangServer::Servic
         grpc::ServerContext *context,
         grpc::ServerReader< irene3::server::SpecChunk > *reader,
         irene3::server::PatchGraph *response) override {
+        mlir_module.release();
+        mlir_context = std::make_unique< mlir::MLIRContext >();
         LOG(INFO) << "-------------- GeneratePatchGraph --------------";
         LOG(INFO) << "Reading specification...";
         std::unordered_set< uint64_t > target_funcs;
@@ -105,10 +108,10 @@ class PatchLangServerImpl final : public irene3::server::PatchLangServer::Servic
         registry.insert< irene3::patchir::PatchIRDialect >();
         registry.insert< mlir::LLVM::LLVMDialect >();
         registry.insert< mlir::DLTIDialect >();
-        mlir_context.appendDialectRegistry(registry);
+        mlir_context->appendDialectRegistry(registry);
         std::optional< irene3::PatchIRCodegen > codegen;
         try {
-            codegen.emplace(mlir_context, spec_stream);
+            codegen.emplace(*mlir_context, spec_stream);
         } catch (const std::runtime_error &err) {
             LOG(ERROR) << "Error generating PatchIR for spec: " << err.what();
             return grpc::Status::CANCELLED;
@@ -121,7 +124,7 @@ class PatchLangServerImpl final : public irene3::server::PatchLangServer::Servic
         const auto &spec = codegen->GetSpecification();
         std::optional< irene3::patchlang::PModule > pmod;
         try {
-            pmod = irene3::patchlang::LiftPatchLangModule(mlir_context, *mlir_module);
+            pmod = irene3::patchlang::LiftPatchLangModule(*mlir_context, *mlir_module);
         } catch (const irene3::patchlang::UnhandledMLIRLift &err) {
             LOG(ERROR) << "Error lifting PatchLang module: " << err.what();
             return grpc::Status::CANCELLED;
@@ -159,10 +162,10 @@ class PatchLangServerImpl final : public irene3::server::PatchLangServer::Servic
         }
         auto new_reg_body = maybe_reg_body.TakeValue();
 
-        irene3::patchlang::LifterContext lifter(mlir_context, *mlir_module);
+        irene3::patchlang::LifterContext lifter(*mlir_context, *mlir_module);
         std::optional< irene3::patchlang::PModule > pmod;
         try {
-            pmod = irene3::patchlang::LiftPatchLangModule(mlir_context, *mlir_module, target_uid);
+            pmod = irene3::patchlang::LiftPatchLangModule(*mlir_context, *mlir_module, target_uid);
         } catch (const irene3::patchlang::UnhandledMLIRLift &err) {
             LOG(ERROR) << "Error lifting PatchLang: " << err.what();
         }
@@ -202,7 +205,7 @@ class PatchLangServerImpl final : public irene3::server::PatchLangServer::Servic
 };
 
 void RunServer(grpc::ServerBuilder &builder, int32_t port, PatchLangServerImpl &service) {
-    std::string server_address("localhost:" + std::to_string(port));
+    std::string server_address("0.0.0.0:" + std::to_string(port));
 
     builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
     builder.RegisterService(&service);
