@@ -1,0 +1,30 @@
+[
+  {
+    "spec": "./specs/arm-linux-gnueabihf-fibonacci.proto",
+    "addr": 67296,
+    "bin": "./bins/arm-linux-gnueabihf-fibonacci",
+    "cpu": "cortex-a8",
+    "features": "",
+    "backend": "",
+    "tests": ["decompile", "roundtrip"]
+  },
+  {
+    "spec": "./specs/ppc-e500-fibonacci.proto",
+    "addr": 268437148,
+    "bin": "./bins/powerpc-e500-fibonacci",
+    "cpu": "e500",
+    "features": "",
+    "backend": "PPC",
+    "lang_override": "PowerPC:BE:32:e500",
+    "tests": ["decompile", "roundtrip"]
+  },
+  {
+    "spec": "./specs/x86_64-linux-fibonacci.proto",
+    "addr": 1053373,
+    "bin": "./bins/x86_64-linux-gnu-fibonacci",
+    "cpu": "",
+    "features": "",
+    "backend": "X86_64",
+    "tests": ["decompile", "roundtrip"]
+  }
+]

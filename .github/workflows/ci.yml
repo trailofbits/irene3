@@ -387,53 +387,27 @@ jobs:
         env:
           TOB_AMP_PASSPHRASE: ${{secrets.TOB_AMP_PASSPHRASE}}
         run: |
+          echo ::group::irene3-public
+          docker run --rm -v $(pwd):/workspace -w /workspace build-test /workspace/scripts/test-ci.py ./tests ./tests/test_spec.json --skip-decompile --check --outputfile out1.log
+          echo ::endgroup
+
           ./scripts/download_and_unpack_demo.sh
 
-          echo ::group::irene3-decompile
-          docker run --rm -v $(pwd):/workspace -w /workspace build-test irene3-decompile -spec /workspace/tests/specs/chal3_rx_brake_routine_amd64.json -bc_out /workspace/hello.bc -ir_out /workspace/hello.ll -c_out /workspace/hello.c
-          echo ::endgroup
-          echo ::group::irene3-decompile-output
-          cat ./hello.c
+          echo ::group::irene3-private
+          docker run --rm -v $(pwd):/workspace -w /workspace build-test /workspace/scripts/test-ci.py ./tests/demo ./tests/demo/test_spec.json --skip-decompile --check --outputfile out2.log
           echo ::endgroup
 
-          echo ::group::irene3-codegen
-          docker run --rm -v $(pwd):/workspace -w /workspace build-test irene3-codegen -spec /workspace/tests/specs/chal3_init_can_amd64.json -output /workspace/hello-patch.json
-          echo ::endgroup
-          echo ::group::irene3-codegen-output
-          jq . ./hello-patch.json
-          echo ::endgroup
+      - name: "Tar test logs"
+        if: ${{ failure() }}
+        run: |
+          tar -cvf test-out.tar.gz out*.log
 
-          TARGET_ADDRESS="12ffb0"
-          echo ::group::irene3-examine-spec
-          TARGET_UID=`docker run --rm -v $(pwd):/workspace -w /workspace build-test irene3-examine-spec -spec /workspace/tests/demo/chall3/chall3-onMessageLength.proto | grep ${TARGET_ADDRESS} | awk '{print $3}'`
-          echo ::endgroup
-          echo ::group::irene3-example-spec-output
-          echo ${TARGET_UID}
-          echo ::endgroup
-
-          echo ::group::irene3-patchir-codegen
-          docker run --rm -v $(pwd):/workspace -w /workspace build-test irene3-patchir-codegen -spec /workspace/tests/demo/chall3/chall3-onMessageLength.proto -mlir_out /workspace/chall3-onMessageLength.mlir
-          echo ::endgroup
-
-          echo ::group::irene3-patchlang-lift
-          docker run --rm -v $(pwd):/workspace -w /workspace build-test irene3-patchlang-lift -mlir_in /workspace/chall3-onMessageLength.mlir -target_uid ${TARGET_UID} >./chall3-onMessageLength.patchlang
-          echo ::endgroup
-
-          # Use the modified patchlang file since patchlang doesn't round trip and needs to be manually adjusted
-          echo ::group::irene3-patchlang2patchir
-          docker run --rm -v $(pwd):/workspace -w /workspace build-test irene3-patchlang2patchir -input ./chall3-onMessageLength.patchlang -output /workspace/chall3-onMessageLength.patch.mlir
-          echo ::endgroup
-
-          echo ::group::irene3-patchir-compiler
-          docker run --rm -v $(pwd):/workspace -w /workspace build-test irene3-patchir-compiler -patch_def /workspace/chall3-onMessageLength.patch.mlir -cpu cortex-a8 -region_uid ${TARGET_UID} -json_metadata /workspace/chall3-onMessageLength.metadata.json -out /workspace/chall3-onMessageLength.S
-          echo ::endgroup
-          echo ::group::irene3-patchir-compiler-output
-          cat ./chall3-onMessageLength.S
-          echo ::endgroup
-
-          echo ::group::irene3-patch-assembler
-          docker run --rm -v $(pwd):/workspace -w /workspace build-test patch-assembler --in_assembly /workspace/chall3-onMessageLength.S --metadata /workspace/chall3-onMessageLength.metadata.json /workspace/tests/demo/chall3/libroscpp.so --output /workspace/patched.so
-          echo ::endgroup
+      - name: "Upload test logs"
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: Test Report
+          path: test-out.tar.gz
 
       # Push with proper tag once test ran
       - name: Build and push
