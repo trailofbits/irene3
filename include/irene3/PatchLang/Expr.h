@@ -25,6 +25,7 @@ namespace irene3::patchlang
     class AddrOf;
     class Splat;
     class ConstantOp;
+    class FailedToLiftExpr;
 
     using Expr = std::variant<
         StrLitExpr,
@@ -40,7 +41,8 @@ namespace irene3::patchlang
         CastExpr,
         SelectExpr,
         AddrOf,
-        ConstantOp >;
+        ConstantOp,
+        FailedToLiftExpr >;
 
     using Literal    = std::variant< IntLitExpr, FloatLitExpr, BoolLitExpr, Splat >;
     using LiteralPtr = std::unique_ptr< Literal >;

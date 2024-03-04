@@ -463,7 +463,7 @@ namespace irene3::patchlang
         os << ')';
     }
 
-    void PrintSExpr(auto&& os, const FailedToLiftStmt& stmt, int indent = 0) {
+    void PrintSExpr(auto&& os, const FailedToLiftExpr& stmt, int indent = 0) {
         indent += 4;
         os << "(failed_to_lift\n" << std::string(indent, ' ');
         PrintSExpr(os, stmt.GetMessage(), indent);

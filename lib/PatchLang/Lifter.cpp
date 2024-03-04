@@ -297,8 +297,9 @@ namespace irene3::patchlang
                     std::move(cond), std::move(true_expr), std::move(false_expr), Token{}, Token{});
             })
             .Default([&](auto& v) -> patchlang::ExprPtr {
-                throw UnhandledMLIRLift(
-                    op.getLoc(), "No expr match for " + op.getName().getStringRef().str());
+                return MakeExpr< FailedToLiftExpr >(
+                    StrLitExpr("No expr match for " + op.getName().getStringRef().str(), Token()),
+                    Token{}, Token{});
             });
     }
 
@@ -399,9 +400,11 @@ namespace irene3::patchlang
             body.push_back(patchlang::GotoStmt(std::move(rhs), Token(), Token()));
             return;
         }
-        body.push_back(patchlang::FailedToLiftStmt(
-            patchlang::StrLitExpr(
-                "Unhandled terminator for region: " + MLIRThingToString(*term), Token()),
+        body.push_back(patchlang::ExprStmt(
+            patchlang::MakeExpr< FailedToLiftExpr >(
+                patchlang::StrLitExpr(
+                    "Unhandled terminator for region: " + MLIRThingToString(*term), Token()),
+                Token(), Token()),
             Token(), Token()));
     }
 
@@ -443,9 +446,11 @@ namespace irene3::patchlang
         if (term) {
             this->LowerTerminator(stmts, term);
         } else {
-            stmts.push_back(patchlang::FailedToLiftStmt(
-                patchlang::StrLitExpr(
-                    "no terminator for region: " + funcop.getSymName().str(), Token()),
+            stmts.push_back(patchlang::ExprStmt(
+                patchlang::MakeExpr< FailedToLiftExpr >(
+                    patchlang::StrLitExpr(
+                        "no terminator for region: " + funcop.getSymName().str(), Token()),
+                    Token(), Token()),
                 Token(), Token()));
         }
     }

@@ -26,7 +26,6 @@ namespace irene3::patchlang
     class GotoStmt;
     class NopStmt;
     class ConditionalGotoStmt;
-    class FailedToLiftStmt;
     class IfStmt;
     class WhileStmt;
 
@@ -39,7 +38,6 @@ namespace irene3::patchlang
         GotoStmt,
         ConditionalGotoStmt,
         NopStmt,
-        FailedToLiftStmt,
         IfStmt,
         WhileStmt >;
     using StmtPtr = std::unique_ptr< Stmt >;
@@ -50,22 +48,6 @@ namespace irene3::patchlang
     StmtPtr MakeStmt(Ts&&... ts) {
         return std::make_unique< Stmt >(TStmt(std::forward< Ts >(ts)...));
     }
-
-    class FailedToLiftStmt {
-        StrLitExpr message;
-        Token first_tok;
-        Token last_tok;
-
-      public:
-        FailedToLiftStmt(StrLitExpr&& message, Token first_tok, Token last_tok)
-            : message(std::move(message))
-            , first_tok(first_tok)
-            , last_tok(last_tok) {}
-
-        const StrLitExpr& GetMessage() const { return message; }
-        Token GetFirstToken() const { return first_tok; }
-        Token GetLastToken() const { return last_tok; }
-    };
 
     class IfStmt {
         ExprPtr cond;

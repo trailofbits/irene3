@@ -489,4 +489,21 @@ namespace irene3::patchlang
         Token GetFirstToken() const;
         Token GetLastToken() const;
     };
+
+    class FailedToLiftExpr {
+        StrLitExpr message;
+        Token first_tok;
+        Token last_tok;
+
+      public:
+        FailedToLiftExpr(StrLitExpr&& message, Token first_tok, Token last_tok)
+            : message(std::move(message))
+            , first_tok(first_tok)
+            , last_tok(last_tok) {}
+
+        const StrLitExpr& GetMessage() const { return message; }
+        Token GetFirstToken() const { return first_tok; }
+        Token GetLastToken() const { return last_tok; }
+    };
+
 } // namespace irene3::patchlang
