@@ -315,7 +315,7 @@ object BasicBlockSplit {
       val ins = iter.next
       if (!block.contains(ins.getAddress())) {
         // If we reach the next block, the entire block is an epilogue and we have nothing to do.
-        return None
+        return addr
       }
       // NOTE(alex): We're currently leveraging Ghidra's decompiler and its provenance information
       // to figure out where the epilogue boundary is. We're also keeping the hand-written Pcode
