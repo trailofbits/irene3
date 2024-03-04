@@ -97,8 +97,10 @@ class TestLiveness extends BaseProgramLoadTest {
     val copy_op = target_insn.getPcode()(0)
 
     assertEquals(
-      Set("RDX", "EDX"),
-      getLiveRegisters(liveanalysis.kill(copy_op, target_insn))
+      Set("RDX"),
+      getLiveRegisters(
+        liveanalysis.params_from_live(liveanalysis.kill(copy_op, target_insn))
+      )
         .map(r => r.registerName)
     )
   }
@@ -188,11 +190,13 @@ class TestLiveness extends BaseProgramLoadTest {
         ProgramSpecifier.getCFG(func)
       )
 
-    val orig_stack_locs = bb_prod.live_analysis.local_paramspecs().toSeq
-    println(orig_stack_locs.flatMap(_.name).toSet)
+    val orig_stack_locs = bb_prod.live_analysis.params_from_live(
+      bb_prod.live_analysis.local_paramspecs()
+    )
+    println(orig_stack_locs.flatMap(_.name))
     val legit_stack_locations = bb_prod.filterStackLocationsByStackDepth(
       bb_prod.max_depth,
-      orig_stack_locs
+      orig_stack_locs.toSeq
     )
     val stack_var_names = legit_stack_locations.flatMap(_.name).toSet
     println(stack_var_names)
