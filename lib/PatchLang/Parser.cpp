@@ -1141,7 +1141,7 @@ namespace irene3::patchlang
                                "fule",
                                "fune",
                                "funo",
-                               "failed_to_lift"
+                               "failed_to_lift",
                                "addrof" });
         CHECK_PARSE(kind);
 
