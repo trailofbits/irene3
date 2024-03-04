@@ -100,9 +100,20 @@ namespace irene3
             std::unordered_map< size_t, RegisterComponent > comps;
             auto to_reg = tbl.lookup(insert.to);
             CHECK(to_reg);
-            auto comp = RegisterComponent(insert.res_ty, *to_reg);
+            // TODO(Ian): currently we only really support treating components as integers
+            // we load them at an integer type and hope things work out. If the bitwidth between
+            // floats isnt the same things will go bad.
+
             for (auto app_ty : insert.applyto) {
-                comps.insert({ app_ty.getFixedSizeInBits(), comp });
+                // TODO(Ian): this is a hack. in the future we should define some notion of legal
+                // conversions ie. r1 on ppc is applicable with the type (f32 -> f64) where f64 is
+                // the native type and f32 would need to be extended into the f64
+
+                comps.insert(
+                    { app_ty.getFixedSizeInBits(),
+                      RegisterComponent(
+                          llvm::MVT::getIntegerVT(insert.res_ty.getFixedSizeInBits()), *to_reg,
+                          llvm::MVT::getIntegerVT(app_ty.getFixedSizeInBits())) });
             }
             register_info.insert({ tgt_reg, MappingRecord(tgt_reg, comps) });
         }
