@@ -28,7 +28,7 @@
 #define CHECK_PARSE(name)                                                                  \
     do {                                                                                   \
         if (!name.Succeeded()) {                                                           \
-            LOG(FATAL) << (ERR << "From " << __func__ << ":\n" << name.TakeError()).str(); \
+            return (ERR << "From " << __func__ << ":\n" << name.TakeError()).str(); \
         }                                                                                  \
     } while (false)
 #define ATTR(klass, nm, ty)                               \
