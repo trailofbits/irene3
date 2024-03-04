@@ -94,7 +94,7 @@ namespace irene3
                              = this->reg_info->legalclasstypes_begin(*r),
                              end = this->reg_info->legalclasstypes_end(*r);
                              st != end; st++) {
-                            return { std::make_unique< RegisterComponent >(*st, *maybe_reg) };
+                            return { std::make_unique< RegisterComponent >(*st, *maybe_reg, *st) };
                         }
                     }
                 }

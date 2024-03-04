@@ -55,23 +55,47 @@ namespace irene3
     class RegisterComponent : public RegionComponent {
       private:
         llvm::MCPhysReg physical_register;
+        llvm::MVT applied_to;
 
       public:
-        RegisterComponent(llvm::MVT machine_type, llvm::MCPhysReg phys_reg)
+        RegisterComponent(llvm::MVT machine_type, llvm::MCPhysReg phys_reg, llvm::MVT applied_to)
             : RegionComponent(machine_type)
-            , physical_register(phys_reg) {}
+            , physical_register(phys_reg)
+            , applied_to(applied_to) {}
 
+        // the idea of a register component is it maps an mvt into an another mvt for a given byte
+        // offset, this does not support composites we should have a composite component to support
+        // reg by value structs.
+
+        // instead of returning a vector of components we should return a single component for an HV
+        // and that comp may be a composite.
         virtual llvm::Value* Load(llvm::IRBuilder<>& bldr, llvm::Value* high_value) const override {
-            // TODO(Ian): no conversions we just expect to load the whole thing
-            return bldr.CreateLoad(
-                ConvertMVT(high_value->getContext(), this->machine_type), high_value);
+            auto output_type     = ConvertMVT(high_value->getContext(), this->machine_type);
+            auto applicable_type = ConvertMVT(high_value->getContext(), this->applied_to);
+            auto hv              = bldr.CreateLoad(applicable_type, high_value);
+
+            // it's very explicit that we dont allow <-> conversions on anyting but integer mvt
+            // mappings
+            if (applicable_type != output_type && hv->getType()->isIntegerTy()
+                && output_type->isIntegerTy()) {
+                return bldr.CreateZExtOrTrunc(hv, output_type);
+            } else {
+                return hv;
+            }
         }
         // TODO(Ian): we arent doing any splitting of high variables just store and load
         // everything one go,
         // Given a MVT component, stores it
         virtual void Store(
             llvm::IRBuilder<>& bldr, llvm::Argument* arg, llvm::Value* high_value) const override {
-            bldr.CreateStore(arg, high_value);
+            auto output_type      = ConvertMVT(high_value->getContext(), this->machine_type);
+            auto applicable_type  = ConvertMVT(high_value->getContext(), this->applied_to);
+            llvm::Value* to_store = arg;
+            if (output_type != applicable_type && to_store->getType()->isIntegerTy()
+                && applicable_type->isIntegerTy()) {
+                to_store = bldr.CreateZExtOrTrunc(to_store, applicable_type);
+            }
+            bldr.CreateStore(to_store, high_value);
         }
 
         // allocates this component in a calling convention.
