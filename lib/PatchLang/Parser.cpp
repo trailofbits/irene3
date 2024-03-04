@@ -728,8 +728,9 @@ namespace irene3::patchlang
             CHECK_PARSE(message);
             auto rparen = GetToken< TokenKind::RParen >();
             CHECK_PARSE(rparen);
-            return { FailedToLiftStmt(
-                message.TakeValue(), lparen.TakeValue(), rparen.TakeValue()) };
+            auto lp = lparen.TakeValue();
+            auto rp = rparen.TakeValue();
+            return { ExprStmt(MakeExpr< FailedToLiftExpr >(message.TakeValue(), lp, rp), lp, rp) };
         } else if (stmt_kind->contents == "store") {
             auto volatile_attr = ParseAttributes< mem_attrs::IsVolatileAttr >(stmt_kind.Value());
             CHECK_PARSE(volatile_attr);
@@ -1140,7 +1141,7 @@ namespace irene3::patchlang
                                "fule",
                                "fune",
                                "funo",
-
+                               "failed_to_lift"
                                "addrof" });
         CHECK_PARSE(kind);
 
@@ -1458,6 +1459,14 @@ namespace irene3::patchlang
             CHECK_PARSE(rparen);
 
             return MakeExpr< AddrOf >(gv.TakeValue(), lparen.TakeValue(), rparen.TakeValue());
+        } else if (kind->contents == "failed_to_lift") {
+            auto message = ParseStrLit();
+            CHECK_PARSE(message);
+            auto rparen = GetToken< TokenKind::RParen >();
+            CHECK_PARSE(rparen);
+            auto lp = lparen.TakeValue();
+            auto rp = rparen.TakeValue();
+            return { MakeExpr< FailedToLiftExpr >(message.TakeValue(), lp, rp) };
         }
 
         UNREACHABLE;

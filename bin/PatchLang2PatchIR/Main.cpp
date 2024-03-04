@@ -41,6 +41,7 @@
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/IR/TypeRange.h>
 #include <mlir/IR/Types.h>
+#include <mlir/IR/Value.h>
 #include <mlir/IR/ValueRange.h>
 #include <mlir/IR/Verifier.h>
 #include <mlir/Support/LLVM.h>
@@ -480,6 +481,16 @@ class MLIRCodegen {
     }
 
     mlir::Value ToLLVM(
+        const irene3::patchlang::FailedToLiftExpr& exp,
+        mlir::OpBuilder& mlir_builder,
+        const SymbolMap& smap) {
+        std::stringstream ss;
+        ss << "Failed to lower statement: ";
+        irene3::patchlang::PrintSExpr(ss, exp);
+        throw std::runtime_error(ss.str());
+    }
+
+    mlir::Value ToLLVM(
         const irene3::patchlang::CastExpr& expr,
         mlir::OpBuilder& mlir_builder,
         const SymbolMap& smap) {
@@ -650,17 +661,6 @@ class MLIRCodegen {
         return mlir_builder.create< mlir::LLVM::ConstantOp >(
             ToLocAttr(addr),
             mlir::IntegerAttr::get(iptr, addr.GetValue().zextOrTrunc(iptr.getWidth())));
-    }
-
-    void ToLLVM(
-        const irene3::patchlang::FailedToLiftStmt& stmt,
-        mlir::OpBuilder& mlir_builder,
-        SymbolMap& smap,
-        mlir::LLVM::LLVMFuncOp& func) {
-        std::stringstream ss;
-        ss << "Failed to lower statement: ";
-        irene3::patchlang::PrintSExpr(ss, stmt);
-        throw std::runtime_error(ss.str());
     }
 
     void ToLLVM(
