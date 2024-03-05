@@ -25,6 +25,7 @@ import ghidra.program.model.listing.Program
 import ghidra.program.model.listing.Parameter
 import ghidra.program.model.mem.Memory
 import ghidra.program.model.mem.MemoryBlock
+import ghidra.program.model.listing.Data
 import ghidra.program.model.symbol.{
   ExternalLocation,
   RefType,
@@ -1210,7 +1211,7 @@ object ProgramSpecifier {
       .toSet
   }
 
-  def getGlobalsFromFunction(func: Function): Iterator[Symbol] = {
+  def getGlobalsFromFunction(func: Function): Set[Symbol] = {
     val func_insns: ju.Iterator[Instruction] = func.getProgram
       .getListing()
       .getInstructions(func.getBody(), true)
@@ -1218,7 +1219,12 @@ object ProgramSpecifier {
     func_insns.asScala
       .flatMap(x => x.getReferencesFrom())
       .filter(ref => ref.getReferenceType().isData())
-      .flatMap(data_ref => Option(prog.getSymbolTable().getSymbol(data_ref)))
+      .flatMap(r =>
+        Option(func.getProgram.getListing.getDataContaining(r.getToAddress))
+      )
+      .map(d => d.getRoot)
+      .flatMap(d => prog.getSymbolTable().getSymbols(d.getAddress).toSeq)
+      .toSet
 
   }
 
