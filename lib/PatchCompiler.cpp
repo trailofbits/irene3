@@ -271,8 +271,9 @@ namespace irene3
         }
 
         // llvm::DebugFlag = true;
-        auto pipeline = pb.buildModuleOptimizationPipeline(
-            llvm::OptimizationLevel::O3, llvm::ThinOrFullLTOPhase::None);
+
+        auto pipeline
+            = pb.buildModuleOptimizationPipeline(this->opt_level, llvm::ThinOrFullLTOPhase::None);
 
         pipeline.run(*mod, mam);
 

@@ -21,6 +21,9 @@ public class PatchLowerInputWindow {
   private JTextField backendField;
 
   private JTextField detourLocationField;
+
+  private JCheckBox shouldOptForSize;
+
   private PatchLowerInput userInput;
   /** Property name for setting the starting directory for file chooser */
   public static final String STARTING_DIR_PROP = "PatchLowering Input Binary";
@@ -39,6 +42,7 @@ public class PatchLowerInputWindow {
     cpuField = new JTextField();
     backendField = new JTextField();
     detourLocationField = new JTextField();
+    this.shouldOptForSize = new JCheckBox();
 
     JButton okButton = new JButton("OK");
     JButton cancelButton = new JButton("Cancel");
@@ -47,7 +51,7 @@ public class PatchLowerInputWindow {
         new GhidraFileChooserPanel(
             "Select Input Binary", STARTING_DIR_PROP, "", false, GhidraFileChooserPanel.INPUT_MODE);
 
-    var text_inputs = new JPanel(new GridLayout(4, 2));
+    var text_inputs = new JPanel(new GridLayout(5, 2));
 
     text_inputs.add(new JLabel("Features:"));
     text_inputs.add(featuresField);
@@ -57,6 +61,8 @@ public class PatchLowerInputWindow {
     text_inputs.add(backendField);
     text_inputs.add(new JLabel("Detour Location:"));
     text_inputs.add(this.detourLocationField);
+    text_inputs.add(new JLabel("Optimize for size:"));
+    text_inputs.add(this.shouldOptForSize);
     dialog.add(text_inputs);
     dialog.add(orig_bin);
 
@@ -75,7 +81,8 @@ public class PatchLowerInputWindow {
                     cpuField.getText(),
                     backendField.getText(),
                     Path.of(orig_bin.getFileName()).toFile(),
-                    detourLocationField.getText());
+                    detourLocationField.getText(),
+                    shouldOptForSize.isSelected());
 
             dialog.dispose();
           }

@@ -7,6 +7,7 @@
 #include <irene3/PatchIR/PatchIROps.h>
 #include <irene3/TypeDecoder.h>
 #include <irene3/Util.h>
+#include <llvm/Passes/OptimizationLevel.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/JSON.h>
 #include <mlir/Dialect/DLTI/DLTI.h>
@@ -40,6 +41,7 @@ DEFINE_string(cpu, "", "LLVM CPU Profile");
 DEFINE_string(backend, "", "Which compilation backend to use defaults to generic");
 DEFINE_string(
     json_metadata, "", "Where to write additional patch data required for patch situation");
+DEFINE_bool(opt_space, false, "enable space optimiation");
 
 int main(int argc, char* argv[]) {
     google::SetUsageMessage("IRENE3 decompiler");
@@ -87,7 +89,8 @@ int main(int argc, char* argv[]) {
     CHECK(region);
     irene3::PatchCompiler comp(
         mlir_context, FLAGS_features, FLAGS_cpu,
-        FLAGS_backend.empty() ? std::nullopt : std::optional< std::string >(FLAGS_backend));
+        FLAGS_backend.empty() ? std::nullopt : std::optional< std::string >(FLAGS_backend),
+        FLAGS_opt_space ? llvm::OptimizationLevel::Os : llvm::OptimizationLevel::O3);
 
     std::error_code ec;
     llvm::raw_fd_ostream os(FLAGS_out, ec);

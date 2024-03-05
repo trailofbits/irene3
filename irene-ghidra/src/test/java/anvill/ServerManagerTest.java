@@ -111,7 +111,7 @@ public class ServerManagerTest extends AbstractGhidraHeadlessIntegrationTest {
         Files.readString(new File(getClass().getResource("ex_patch_mod.irene").getFile()).toPath());
     var demo = getClass().getResource("binaries/libroscpp.so");
     Objects.requireNonNull(demo);
-    var input = new PatchLowerInput("", "cortex-a8", "", new File(demo.getFile()), "");
+    var input = new PatchLowerInput("", "cortex-a8", "", new File(demo.getFile()), "", false);
     man.compileModule(moduletxt, 87, input);
   }
 }
