@@ -36,6 +36,8 @@
 #include <mlir/Support/LLVM.h>
 #include <mlir/Target/LLVMIR/Import.h>
 #include <stdexcept>
+#include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace
@@ -239,11 +241,16 @@ namespace irene3
 
         removeIntrinsics(*llvm_module);
 
+        std::unordered_set< std::string > symbols_to_lift = spec.GetRequiredGlobals();
+        spec.ForEachSymbol([&symbols_to_lift](uint64_t addr, const std::string &name) -> bool {
+            symbols_to_lift.insert(name);
+            return true;
+        });
         for (auto &f : llvm_module->functions()) {
             auto uid = anvill::GetBasicBlockUid(&f);
             if (uid) {
-                for (auto var : irene3::UsedGlobalValue< llvm::GlobalVariable >(
-                         &f, spec.GetRequiredGlobals())) {
+                for (auto var :
+                     irene3::UsedGlobalValue< llvm::GlobalVariable >(&f, symbols_to_lift)) {
                     auto pc_metadata = lifter.AddressOfEntity(var);
                     if (!pc_metadata) {
                         continue;
