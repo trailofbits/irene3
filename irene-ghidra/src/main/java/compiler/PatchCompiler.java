@@ -8,6 +8,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Optional;
 
 public class PatchCompiler {
@@ -118,19 +120,28 @@ public class PatchCompiler {
     var assembler_log = this.getWdirPath("assembler.stdout.log");
     var assembler_stderr = this.getWdirPath("assembler.stderr.log");
     try {
+      ArrayList<String> command =
+          new ArrayList<>(
+              Arrays.asList(
+                  "python3",
+                  "-m",
+                  "patch_assembler.assembler",
+                  "--in_assembly",
+                  assembly_file.toString(),
+                  "--metadata",
+                  metadata.toString(),
+                  "--output",
+                  tmp_ouput_bin.toString()));
+      if (!plinput.getDetourLoc().isEmpty()) {
+        command.add("--detour_pos");
+        command.add(plinput.getDetourLoc());
+      }
+      command.add(target_orig_bin.toString());
+      String[] comm_array = new String[command.size()];
+      comm_array = command.toArray(comm_array);
+
       this.driver.runCommand(
-          new String[] {
-            "python3",
-            "-m",
-            "patch_assembler.assembler",
-            "--in_assembly",
-            assembly_file.toString(),
-            "--metadata",
-            metadata.toString(),
-            "--output",
-            tmp_ouput_bin.toString(),
-            target_orig_bin.toString()
-          },
+          comm_array,
           Optional.empty(),
           Optional.of(assembler_log.toFile()),
           Optional.of(assembler_stderr.toFile()));

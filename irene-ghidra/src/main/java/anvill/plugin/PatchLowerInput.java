@@ -10,11 +10,15 @@ public class PatchLowerInput {
 
   private File origBin;
 
-  public PatchLowerInput(String features, String cpu, String backend, File origBin) {
+  private String detourLoc;
+
+  public PatchLowerInput(
+      String features, String cpu, String backend, File origBin, String detour_loc) {
     this.features = features;
     this.cpu = cpu;
     this.backend = backend;
     this.origBin = origBin;
+    this.detourLoc = detour_loc;
   }
 
   public File getOrigBin() {
@@ -23,6 +27,14 @@ public class PatchLowerInput {
 
   public void setOrigBin(File orig_bin) {
     this.origBin = orig_bin;
+  }
+
+  public String getDetourLoc() {
+    return detourLoc;
+  }
+
+  public void setDetourLoc(String detourLoc) {
+    this.detourLoc = detourLoc;
   }
 
   // Getters

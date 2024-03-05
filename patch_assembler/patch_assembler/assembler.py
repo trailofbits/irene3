@@ -211,7 +211,7 @@ def main():
     prsr.add_argument("--output", required=True, type=str)
     prsr.add_argument("--trim_heuristics", action="store_true", default=True)
     prsr.add_argument(
-        "--detour_pos", type=int, default=-1, help="Address to free space (if known)"
+        "--detour_pos", type=lambda x: int(x,0), default=-1, help="Address to free space (if known)"
     )
     prsr.add_argument("--no_rewrite_thumb", action="store_true", default=False)
     prsr.add_argument("target_binary")
