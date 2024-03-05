@@ -125,7 +125,10 @@ namespace irene3
     } // namespace
 
     std::unique_ptr< llvm::TargetMachine > BuildMachine(
-        const llvm::Triple &triple, llvm::StringRef features, llvm::StringRef cpu) {
+        const llvm::Triple &triple,
+        llvm::StringRef features,
+        llvm::StringRef cpu,
+        llvm::CodeGenOpt::Level lvl) {
         std::string err;
         llvm::TargetOptions options;
 
@@ -144,7 +147,7 @@ namespace irene3
         CHECK(tgt);
 
         auto target_machine = tgt->createTargetMachine(
-            triple.getTriple(), cpu, features, options, llvm::Reloc::PIC_);
+            triple.getTriple(), cpu, features, options, llvm::Reloc::PIC_, std::nullopt, lvl);
 
         return std::unique_ptr< llvm::TargetMachine >(target_machine);
     }
@@ -339,7 +342,7 @@ namespace irene3
                 modop.getOperation()->getAttr(mlir::LLVM::LLVMDialect::getTargetTripleAttrName()))
                 .str());
 
-        auto tgt         = BuildMachine(triple, this->feature_string, this->cpu);
+        auto tgt = BuildMachine(triple, this->feature_string, this->cpu, this->codegen_opt_level);
         auto &sub_target = GetSubTargetForRegion(region, tgt.get());
 
         auto reg_info = sub_target.getRegisterInfo();

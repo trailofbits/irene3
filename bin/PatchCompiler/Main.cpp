@@ -9,6 +9,7 @@
 #include <irene3/Util.h>
 #include <llvm/Passes/OptimizationLevel.h>
 #include <llvm/Support/Casting.h>
+#include <llvm/Support/CodeGen.h>
 #include <llvm/Support/JSON.h>
 #include <mlir/Dialect/DLTI/DLTI.h>
 #include <mlir/Dialect/LLVMIR/LLVMAttrs.h>
@@ -90,7 +91,8 @@ int main(int argc, char* argv[]) {
     irene3::PatchCompiler comp(
         mlir_context, FLAGS_features, FLAGS_cpu,
         FLAGS_backend.empty() ? std::nullopt : std::optional< std::string >(FLAGS_backend),
-        FLAGS_opt_space ? llvm::OptimizationLevel::Os : llvm::OptimizationLevel::O3);
+        FLAGS_opt_space ? llvm::OptimizationLevel::Os : llvm::OptimizationLevel::O3,
+        FLAGS_opt_space ? llvm::CodeGenOpt::Level::Default : llvm::CodeGenOpt::Level::Aggressive);
 
     std::error_code ec;
     llvm::raw_fd_ostream os(FLAGS_out, ec);
