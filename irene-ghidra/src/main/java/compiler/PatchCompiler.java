@@ -97,7 +97,9 @@ public class PatchCompiler {
             "-json_metadata",
             metadata.toString(),
             "-out",
-            assembly_file.toString()
+            assembly_file.toString(),
+            "-opt_space",
+            plinput.isShouldOptForSize() ? "true" : "false"
           },
           Optional.empty(),
           Optional.of(assembly_file_log.toFile()),

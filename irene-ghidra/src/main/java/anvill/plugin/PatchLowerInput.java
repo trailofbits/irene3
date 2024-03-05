@@ -12,13 +12,29 @@ public class PatchLowerInput {
 
   private String detourLoc;
 
+  private boolean shouldOptForSize;
+
   public PatchLowerInput(
-      String features, String cpu, String backend, File origBin, String detour_loc) {
+      String features,
+      String cpu,
+      String backend,
+      File origBin,
+      String detour_loc,
+      boolean shouldOptForSize) {
     this.features = features;
     this.cpu = cpu;
     this.backend = backend;
     this.origBin = origBin;
     this.detourLoc = detour_loc;
+    this.shouldOptForSize = shouldOptForSize;
+  }
+
+  public boolean isShouldOptForSize() {
+    return shouldOptForSize;
+  }
+
+  public void setShouldOptForSize(boolean shouldOptForSize) {
+    this.shouldOptForSize = shouldOptForSize;
   }
 
   public File getOrigBin() {
