@@ -217,6 +217,7 @@ class LivenessAnalysis(
   def local_paramspecs(): LiveAddresses = {
     LiveAddresses.from(
       func.getAllVariables.toSeq
+        .filter(v => v.isStackVariable)
         .flatMap(v => v.getVariableStorage.getVarnodes)
     )
   }
@@ -350,7 +351,10 @@ class LivenessAnalysis(
 
   def gen(op: PcodeOp, insn: Instruction): LiveAddresses = {
     val svars = gen_stack_vars(op)
-    gen_call_live(insn, op) ++ svars ++ gen_registers(op)
+    val gcall = gen_call_live(insn, op)
+    val gregs = gen_registers(op)
+
+    svars ++ gcall ++ gregs
   }
 
   def kill(op: PcodeOp, insn: Instruction): LiveAddresses = {
@@ -364,7 +368,9 @@ class LivenessAnalysis(
       n: PcodeOp,
       live_after: LiveAddresses
   ): LiveAddresses = {
-    (live_after -- kill(n, insn)) ++ gen(n, insn)
+    val killed = kill(n, insn)
+    val genned = gen(n, insn)
+    (live_after -- killed) ++ genned
   }
 
   def get_return_liveness(): LiveAddresses = {
