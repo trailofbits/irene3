@@ -20,6 +20,7 @@
 #include <llvm/IR/Module.h>
 #include <llvm/MC/MCRegisterInfo.h>
 #include <llvm/Passes/OptimizationLevel.h>
+#include <llvm/Support/CodeGen.h>
 #include <llvm/Support/raw_ostream.h>
 #include <memory>
 #include <mlir/IR/BuiltinOps.h>
@@ -45,6 +46,7 @@ namespace irene3
         std::string cpu;
         std::optional< std::string > backend_name;
         llvm::OptimizationLevel opt_level;
+        llvm::CodeGenOpt::Level codegen_opt_level;
 
         std::unique_ptr< IreneLoweringInterface > BuildILI(
             const llvm::TargetSubtargetInfo &, const llvm::TargetRegisterInfo *);
@@ -55,12 +57,14 @@ namespace irene3
             std::string feature_string,
             std::string cpu,
             std::optional< std::string > backend_name,
-            llvm::OptimizationLevel opt_level)
+            llvm::OptimizationLevel opt_level,
+            llvm::CodeGenOpt::Level codegen_opt_level)
             : mlir_cont(mlir_cont)
             , feature_string(std::move(feature_string))
             , cpu(std::move(cpu))
             , backend_name(backend_name)
-            , opt_level(opt_level) {}
+            , opt_level(opt_level)
+            , codegen_opt_level(codegen_opt_level) {}
 
         void RewriteModuleToLLVM(mlir::Operation *op);
 
