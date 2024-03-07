@@ -620,7 +620,7 @@ class MLIRCodegen {
         std::transform(
             type.GetElements().begin(), type.GetElements().end(), std::back_inserter(body),
             [this](const irene3::patchlang::TypePtr& t) { return ToLLVM(*t); });
-        return mlir::LLVM::LLVMStructType::getLiteral(&mlir_context, body);
+        return mlir::LLVM::LLVMStructType::getLiteral(&mlir_context, body, true);
     }
 
     mlir::Type ToLLVM(const irene3::patchlang::ArrayType& type) {
