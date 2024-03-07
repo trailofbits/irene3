@@ -319,6 +319,7 @@ object ProgramSpecifier {
                           if padding > 0 then Some(get_pad(padding)) else None
                         })
                       }) ++ struct.getComponents.toList.lastOption
+                      .filter(_ => struct.getNumComponents >= 2)
                       .map(c => Left(c.getDataType)) ++ epad_ty).toSeq,
                     aliases
                   )
