@@ -1,0 +1,10 @@
+[book]
+authors = ["2over12"]
+language = "en"
+multilingual = false
+src = "src"
+title = "IRENE Usage"
+
+[output.html]
+
+[output.linkcheck]
