@@ -35,6 +35,11 @@ namespace irene3
         };
     } // namespace
 
+    std::optional< llvm::MCPhysReg > GenericBackend::PhysRegForValue(
+        irene3::patchir::RegisterAttr reg, const RegTable& tbl) const {
+        return tbl.lookup(reg.getReg().str());
+    }
+
     std::optional< llvm::MCPhysReg > GenericBackend::StackRegister() const {
         auto nm = this->subtarget.getTargetTriple().getArchName().str();
         if (stack_register_names.contains(nm)) {

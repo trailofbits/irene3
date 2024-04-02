@@ -35,6 +35,7 @@ namespace irene3::patchlang
                 bin_lit = [+-]? "0b" [01]+;
                 oct_lit = [+-]? "0" [0-7]+;
                 dec_lit = [+-]? ("0" | [1-9] [0-9]*);
+                fltbin_lit = [-]? [0-9]+ "." [0-9]+;
                 hex_lit = [+-]? "0x" [0-9a-fA-F]+;
                 str_chr = [^\\"\n]
                         | "\\\\"
@@ -72,6 +73,7 @@ namespace irene3::patchlang
                 dec_lit ":" int_size   { EMIT_TOKEN(Token::DecIntLit) }
                 hex_lit ":" int_size   { EMIT_TOKEN(Token::HexIntLit) }
                 hex_lit ":" float_kind { EMIT_TOKEN(Token::HexFloatLit) }
+                fltbin_lit ":" float_kind {EMIT_TOKEN(Token::DecFloatLit)}
                 str_lit { EMIT_TOKEN(Token::StrLit) }
                 "("     { EMIT_TOKEN(Token::LParen) }
                 "'("    { EMIT_TOKEN(Token::EscapedLParen) }

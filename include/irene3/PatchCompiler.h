@@ -44,6 +44,7 @@ namespace irene3
         mlir::MLIRContext &mlir_cont;
         std::string feature_string;
         std::string cpu;
+        bool no_pic;
         std::optional< std::string > backend_name;
         llvm::OptimizationLevel opt_level;
         llvm::CodeGenOpt::Level codegen_opt_level;
@@ -56,12 +57,14 @@ namespace irene3
             mlir::MLIRContext &mlir_cont,
             std::string feature_string,
             std::string cpu,
+            bool no_pic,
             std::optional< std::string > backend_name,
             llvm::OptimizationLevel opt_level,
             llvm::CodeGenOpt::Level codegen_opt_level)
             : mlir_cont(mlir_cont)
             , feature_string(std::move(feature_string))
             , cpu(std::move(cpu))
+            , no_pic(no_pic)
             , backend_name(backend_name)
             , opt_level(opt_level)
             , codegen_opt_level(codegen_opt_level) {}

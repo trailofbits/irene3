@@ -25,11 +25,11 @@
 #define STRINGIFY_(x) #x
 #define UNREACHABLE \
     return { "Reached the unreachable in " __FILE__ ":" STRINGIFY(__LINE__) }
-#define CHECK_PARSE(name)                                                                  \
-    do {                                                                                   \
-        if (!name.Succeeded()) {                                                           \
+#define CHECK_PARSE(name)                                                           \
+    do {                                                                            \
+        if (!name.Succeeded()) {                                                    \
             return (ERR << "From " << __func__ << ":\n" << name.TakeError()).str(); \
-        }                                                                                  \
+        }                                                                           \
     } while (false)
 #define ATTR(klass, nm, ty)                               \
     struct klass {                                        \
@@ -116,6 +116,29 @@ namespace irene3::patchlang
         } else {
             throw std::logic_error("invalid floating point type");
         }
+    }
+
+    ParseResult< FloatLitExpr > Parser::ParseDecFloatLit() {
+        auto tok = GetToken< Token::DecFloatLit >();
+        CHECK_PARSE(tok);
+
+        std::string_view view = tok->contents;
+
+        std::string_view bitwidth_view = view;
+        // Remove everything up before ':'
+        size_t post = 0;
+        while (bitwidth_view[0] != ':') {
+            post += 1;
+            bitwidth_view.remove_prefix(1);
+        }
+        bitwidth_view.remove_prefix(1);
+        post += 1;
+        auto [sema, bitwidth] = getFltSemantics(bitwidth_view);
+
+        view.remove_suffix(post);
+        llvm::APFloat flt(*sema, std::string(view));
+
+        return FloatLitExpr(flt, tok.TakeValue());
     }
 
     ParseResult< FloatLitExpr > Parser::ParseFloatLit() {
@@ -921,6 +944,11 @@ namespace irene3::patchlang
                 }
                 case Token::HexFloatLit: {
                     auto lit = ParseFloatLit();
+                    CHECK_PARSE(lit);
+                    return { std::make_unique< Literal >(lit.TakeValue()) };
+                }
+                case Token::DecFloatLit: {
+                    auto lit = ParseDecFloatLit();
                     CHECK_PARSE(lit);
                     return { std::make_unique< Literal >(lit.TakeValue()) };
                 }

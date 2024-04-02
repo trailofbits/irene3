@@ -13,6 +13,7 @@ shellphish_qemu = { path = "./shellphish_qemu" }
 # if develop = true, the keystone import won't import anything from the native library
 keystone-engine = { path = "./keystone/bindings/python", develop = false }
 patcherex2 = { path = "./Patcherex2", develop = true }
+pypcode = "^2.0.0"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.17.2"
