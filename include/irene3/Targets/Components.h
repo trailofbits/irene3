@@ -1,5 +1,6 @@
 #include <irene3/IreneLoweringInterface.h>
 #include <irene3/Util.h>
+#include <llvm/MC/MCRegister.h>
 #include <llvm/Support/raw_ostream.h>
 #include <remill/BC/Util.h>
 
@@ -67,6 +68,8 @@ namespace irene3
         // offset, this does not support composites we should have a composite component to support
         // reg by value structs.
 
+        llvm::MCPhysReg GetPhysReg() const { return this->physical_register; }
+
         // instead of returning a vector of components we should return a single component for an HV
         // and that comp may be a composite.
         virtual llvm::Value* Load(llvm::IRBuilder<>& bldr, llvm::Value* high_value) const override {
@@ -79,6 +82,9 @@ namespace irene3
             if (applicable_type != output_type && hv->getType()->isIntegerTy()
                 && output_type->isIntegerTy()) {
                 return bldr.CreateZExtOrTrunc(hv, output_type);
+            } else if (applicable_type != output_type) {
+                // TODO(Ian): this can go bad...
+                return bldr.CreateBitCast(hv, output_type);
             } else {
                 return hv;
             }

@@ -43,6 +43,7 @@ DEFINE_string(backend, "", "Which compilation backend to use defaults to generic
 DEFINE_string(
     json_metadata, "", "Where to write additional patch data required for patch situation");
 DEFINE_bool(opt_space, false, "enable space optimiation");
+DEFINE_bool(no_pic, false, "disable pic relocation model");
 
 int main(int argc, char* argv[]) {
     google::SetUsageMessage("IRENE3 decompiler");
@@ -89,7 +90,7 @@ int main(int argc, char* argv[]) {
     }
     CHECK(region);
     irene3::PatchCompiler comp(
-        mlir_context, FLAGS_features, FLAGS_cpu,
+        mlir_context, FLAGS_features, FLAGS_cpu, FLAGS_no_pic,
         FLAGS_backend.empty() ? std::nullopt : std::optional< std::string >(FLAGS_backend),
         FLAGS_opt_space ? llvm::OptimizationLevel::Os : llvm::OptimizationLevel::O3,
         FLAGS_opt_space ? llvm::CodeGenOpt::Level::Default : llvm::CodeGenOpt::Level::Aggressive);

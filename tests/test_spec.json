@@ -5,7 +5,7 @@
     "bin": "./bins/arm-linux-gnueabihf-fibonacci",
     "cpu": "cortex-a8",
     "features": "",
-    "backend": "",
+    "backend": "ARM",
     "tests": ["decompile", "roundtrip"]
   },
   {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <irene3/RegTable.h>
 #include <irene3/Util.h>
 #include <llvm/CodeGen/MachineValueType.h>
 #include <llvm/CodeGen/TargetLowering.h>
@@ -15,29 +16,6 @@ namespace irene3
     struct LowAssignment {
         size_t byte_offset;
         llvm::MVT type;
-    };
-
-    class RegTable {
-      public:
-        std::unordered_map< std::string, llvm::MCPhysReg > registers;
-
-        std::optional< llvm::MCPhysReg > lookup(const std::string &a) const {
-            auto r = this->registers.find(a);
-            if (r != this->registers.end()) {
-                return r->second;
-            }
-
-            return std::nullopt;
-        }
-
-        void Populate(const llvm::TargetRegisterInfo *reg_info) {
-            for (auto cls : reg_info->regclasses()) {
-                for (auto reg : cls->getRegisters()) {
-                    auto nm = reg_info->getName(reg);
-                    registers.insert({ std::string(nm), reg });
-                }
-            }
-        }
     };
 
     class PhysTypeTranslator {

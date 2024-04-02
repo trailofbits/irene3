@@ -34,6 +34,7 @@ class InsertPIEInstructionPatch(Patch):
                 is_thumb=is_thumb,
             )
         )
+
         load_addr_size = len(
             p.assembler.assemble(
                 p.target.emit_load_addr(self.addr),
@@ -67,6 +68,7 @@ class InsertPIEInstructionPatch(Patch):
         )
         thunk_instrs_len = 0
         # emit thunk with addr instead of the trampoline address to calculate the size
+        print(p.target.emit_thunk(self.base_reg, self.addr, is_thumb))
         thunk_instrs_len = len(
             p.assembler.assemble(
                 p.target.emit_thunk(self.base_reg, self.addr, is_thumb),
@@ -116,7 +118,8 @@ class InsertPIEInstructionPatch(Patch):
         )
 
         # uses a fake address to get the approximate size of
-        load_addr_insns_size = len(p.assembler.assemble(p.target.emit_load_addr(addr)))
+        load_addr_insns_size = len(
+            p.assembler.assemble(p.target.emit_load_addr(addr)))
 
         instrs_size = (
             len(
@@ -143,7 +146,8 @@ class InsertPIEInstructionPatch(Patch):
             if match_result := pointer_pat.search(line):
                 reg_name = match_result.group("register")
                 goto_addr = int(match_result.group("imm"))
-                repair_if_moved = bool(int(match_result.group("repair_if_moved")))
+                repair_if_moved = bool(
+                    int(match_result.group("repair_if_moved")))
                 # only rewrite goto addresses in between the start of the moved instructions
                 # to the end of the moved instructions
                 if (
@@ -155,7 +159,8 @@ class InsertPIEInstructionPatch(Patch):
                     goto_addr = mem_addr + instrs_size + (goto_addr - addr)
                 if is_thumb and not no_rewrite_thumb:
                     goto_addr = goto_addr | int(is_thumb)
-                new_line = p.target.emit_load_addr(goto_addr, reg_name=reg_name)
+                new_line = p.target.emit_load_addr(
+                    goto_addr, reg_name=reg_name)
                 logger.debug(f"POINTER_HANDLER -> {new_line}")
             new_instrs.append(new_line)
         instrs = "\n".join(new_instrs)
@@ -203,7 +208,6 @@ def trim_asm(asm: str):
         logger.error("Missing size directive! Assembly output not filtered.")
     return asm
 
-
 def main():
     prsr = argparse.ArgumentParser("patch assembly compiler")
     prsr.add_argument("--in_assembly", type=argparse.FileType("r"))
@@ -211,7 +215,7 @@ def main():
     prsr.add_argument("--output", required=True, type=str)
     prsr.add_argument("--trim_heuristics", action="store_true", default=True)
     prsr.add_argument(
-        "--detour_pos", type=lambda x: int(x,0), default=-1, help="Address to free space (if known)"
+        "--detour_pos", type=lambda x: int(x, 0), default=-1, help="Address to free space (if known)"
     )
     prsr.add_argument("--no_rewrite_thumb", action="store_true", default=False)
     prsr.add_argument("target_binary")
@@ -221,7 +225,7 @@ def main():
         args.target_binary,
         target_cls=RelocTarget.detect_reloc_target(args.target_binary),
     )
-
+   
     meta = json.load(args.metadata)
     target_addr = meta["patch_offset_from_base"]
     base_reg = meta["base_register"]

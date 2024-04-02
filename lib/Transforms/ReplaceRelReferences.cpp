@@ -203,9 +203,7 @@ namespace irene3
         }
 
         for (auto curr_r : additionalregs) {
-            auto nm = curr_r.getReg().str();
-            std::transform(nm.begin(), nm.end(), nm.begin(), ::toupper);
-            auto maybe_reg = rtable.lookup(nm);
+            auto maybe_reg = this->ILI.PhysRegForValue(curr_r, this->rtable);
             if (maybe_reg) {
                 regs.push_back(*maybe_reg);
             }

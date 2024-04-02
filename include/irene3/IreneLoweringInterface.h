@@ -1,7 +1,10 @@
 #pragma once
 
+#include "irene3/PatchIR/PatchIRAttrs.h"
+
 #include <cstdint>
 #include <irene3/PatchIR/PatchIROps.h>
+#include <irene3/RegTable.h>
 #include <llvm/CodeGen/MachineValueType.h>
 #include <llvm/CodeGen/TargetRegisterInfo.h>
 #include <llvm/IR/Argument.h>
@@ -51,6 +54,10 @@ namespace irene3
     class IreneLoweringInterface {
       public:
         virtual std::vector< llvm::MCPhysReg > PointerRegs() const = 0;
+
+        virtual std::optional< llvm::MCPhysReg > PhysRegForValue(
+            irene3::patchir::RegisterAttr reg, const RegTable& tbl) const
+            = 0;
 
         virtual std::optional< llvm::MCPhysReg > StackRegister() const = 0;
 

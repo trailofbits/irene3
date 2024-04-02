@@ -11,6 +11,7 @@
 #include <irene3/Util.h>
 #include <llvm/CodeGen/MachineValueType.h>
 #include <llvm/IR/Attributes.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/InstrTypes.h>
 #include <llvm/IR/LLVMContext.h>
@@ -260,8 +261,11 @@ namespace irene3
     }
 
     llvm::Type* ConvertMVT(llvm::LLVMContext& context, llvm::MVT svt) {
-        if (svt.isInteger()) {
+        if (svt.isInteger() && svt.isScalarInteger()) {
             return llvm::IntegerType::get(context, svt.getFixedSizeInBits());
+        } else if(svt.isVector() && svt.isInteger()) {
+            // hack we should build up more types.
+            return llvm::VectorType::get(llvm::IntegerType::get(context,svt.getVectorElementType().getSizeInBits()), svt.getVectorElementCount());
         } else if (svt.isFloatingPoint()) {
             switch (svt.getFixedSizeInBits()) {
                 case 16: return llvm::Type::getHalfTy(context);

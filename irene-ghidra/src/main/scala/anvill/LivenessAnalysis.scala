@@ -174,6 +174,21 @@ class LivenessAnalysis(
     )
   }
 
+  // We refuse to pair registers on SPARC
+  private val sparc_pair_reg_names = (for {
+    x <- 0 until 7 by 2; y <- List("g", "o", "l", "i")
+  } yield (x, y)).map((ind, rname) =>
+    (s"$rname${ind}_${ind + 1}", List(s"$rname$ind", s"$rname${ind + 1}"))
+  ) :+ ("fp_7", List("fp", "i7")) :+ ("sp_7", List("sp", "o7"))
+  private val forced_splits =
+    (if lang.getProcessor.toString.contains("Sparc") then
+       sparc_pair_reg_names
+         .map((to_split, into) =>
+           (lang.getRegister(to_split), into.map(s => lang.getRegister(s)))
+         )
+         .toMap
+     else Map())
+
   def collect_live_regs(addr: Iterator[Address]): Seq[Register] =
     // Select the smallest register for each base reg that covers all live regs.
     // TODO(Ian): we dont handle splitting within a base reg
@@ -201,8 +216,10 @@ class LivenessAnalysis(
         }
       )
       .toList
-
-    res.flatMap(s => s.minByOption(r => r.getNumBytes))
+    Msg.info(this, s"forced_splits $forced_splits")
+    res
+      .flatMap(s => s.minByOption(r => r.getNumBytes))
+      .flatMap(r => forced_splits.getOrElse(r, List(r)))
 
   def params_from_live(l: LiveAddresses): Set[ParamSpec] =
     val stacks = l.live_addrs

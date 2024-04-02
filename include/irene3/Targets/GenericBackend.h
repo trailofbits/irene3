@@ -25,6 +25,9 @@ namespace irene3
             supported_registers.Populate(this->reg_info);
         }
 
+        virtual std::optional< llvm::MCPhysReg > PhysRegForValue(
+            irene3::patchir::RegisterAttr reg, const RegTable& tbl) const override;
+
         virtual std::optional< llvm::MCPhysReg > StackRegister() const override;
         virtual std::vector< llvm::MCPhysReg > PointerRegs() const override;
         virtual bool IsSupportedValue(mlir::Attribute vop) const override;

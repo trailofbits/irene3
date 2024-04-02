@@ -291,6 +291,7 @@ namespace irene3::patchlang
         ParseResult< StrLitExpr > ParseStrLit();
         ParseResult< BoolLitExpr > ParseBexpr();
         ParseResult< FloatLitExpr > ParseFloatLit();
+        ParseResult< FloatLitExpr > ParseDecFloatLit();
 
         template< AttrKind Kind, typename Tup, size_t I >
         struct parse_into_tuple;

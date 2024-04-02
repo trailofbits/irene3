@@ -52,6 +52,16 @@ namespace irene3
         return false;
     }
 
+    std::optional< llvm::MCPhysReg > ExplicitMappingBackend::PhysRegForValue(
+        irene3::patchir::RegisterAttr reg, const RegTable& tbl) const {
+        auto regrec = this->GetRegisterRecord(reg);
+        if (regrec && regrec->GetRegComp(reg.getSizeBits())) {
+            return regrec->GetRegComp(reg.getSizeBits())->GetPhysReg();
+        }
+
+        return std::nullopt;
+    }
+
     std::vector< RegionComponentPtr > ExplicitMappingBackend::LowerValue(
         mlir::Attribute vop) const {
         if (auto reg = mlir::dyn_cast< patchir::RegisterAttr >(vop)) {
@@ -59,7 +69,8 @@ namespace irene3
             LOG_IF(FATAL, !reg_record)
                 << "Should have record, because if unsupported should have been removed by pass: "
                 << reg.getReg().str();
-            return { reg_record->GetRegComp(reg.getSizeBits()) };
+            auto comp = reg_record->GetRegComp(reg.getSizeBits());
+            return { std::move(comp) };
         } else if (auto stk = mlir::dyn_cast< patchir::MemoryIndirectAttr >(vop)) {
             return { std::make_unique< StackComponent >(
                 llvm::MVT::getIntegerVT(stk.getSizeBits()), stk.getOffset(), this->lao_offset) };
@@ -108,12 +119,18 @@ namespace irene3
                 // TODO(Ian): this is a hack. in the future we should define some notion of legal
                 // conversions ie. r1 on ppc is applicable with the type (f32 -> f64) where f64 is
                 // the native type and f32 would need to be extended into the f64
-
-                comps.insert(
-                    { app_ty.getFixedSizeInBits(),
-                      RegisterComponent(
-                          llvm::MVT::getIntegerVT(insert.res_ty.getFixedSizeInBits()), *to_reg,
-                          llvm::MVT::getIntegerVT(app_ty.getFixedSizeInBits())) });
+                if (insert.res_ty.isFloatingPoint()) {
+                    comps.insert({ app_ty.getFixedSizeInBits(),
+                                   RegisterComponent(
+                                       insert.res_ty, *to_reg,
+                                       llvm::MVT::getFloatingPointVT(app_ty.getFixedSizeInBits())) });
+                } else {
+                    comps.insert(
+                        { app_ty.getFixedSizeInBits(),
+                          RegisterComponent(
+                              llvm::MVT::getIntegerVT(insert.res_ty.getFixedSizeInBits()), *to_reg,
+                              llvm::MVT::getIntegerVT(app_ty.getFixedSizeInBits())) });
+                }
             }
             register_info.insert({ tgt_reg, MappingRecord(tgt_reg, comps) });
         }

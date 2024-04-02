@@ -1217,6 +1217,40 @@ files = [
 diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
+name = "pypcode"
+version = "2.0.0"
+description = "Machine code disassembly and IR translation library"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "pypcode-2.0.0-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:7c5386b225f4d526368c90c2498cffa2c19d0e0367d5ef17c7ffeaef3faf2f93"},
+    {file = "pypcode-2.0.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:01af8074f659c775e090406537381a1df0a89ee3ca1edecc4a16bc26958d9ec5"},
+    {file = "pypcode-2.0.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:bdfac2e007f850bf66dc2826de51a1f147e803f056135ec59be4e0ba113ad05c"},
+    {file = "pypcode-2.0.0-cp310-cp310-win_amd64.whl", hash = "sha256:b354a611dd3a67413ca311bce18beb051bb874f7a44f078d28f86a743780775a"},
+    {file = "pypcode-2.0.0-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:00db825454e1e7c34f4b4da245e81db9de0503aa45d2a7268a7e0c6b5de3438c"},
+    {file = "pypcode-2.0.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:e79886e38f76f919dfbd99beb1697b8d42ba52581a3a816e275c2542e53ae7a1"},
+    {file = "pypcode-2.0.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:bc806b9f573529b0b70c16c44edca79853f0bb727df9d51581268a61dbb8bc11"},
+    {file = "pypcode-2.0.0-cp311-cp311-win_amd64.whl", hash = "sha256:4343748e23ba9a535a438f1ccb0ea92de482ae4173b167e2dc997a3a7a31cf97"},
+    {file = "pypcode-2.0.0-cp312-cp312-macosx_10_14_x86_64.whl", hash = "sha256:a949b554eae15032cfb809fdb1dee875b8a0a422ce0f713a644ba30e8ba76ad0"},
+    {file = "pypcode-2.0.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:7e6d9ef2ef82526a45aa955d0dcbaf7cf89b11dfb44a1bbdb1b78f0f9797b1cf"},
+    {file = "pypcode-2.0.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dcc33a424a9c3cb100bfd94dd0dbc49cb72ea065c715a13102175faf11bf2254"},
+    {file = "pypcode-2.0.0-cp312-cp312-win_amd64.whl", hash = "sha256:ea4850d47c7536d5c9f37ead3ecb81764fa65856f934826ec5a94200a42b2172"},
+    {file = "pypcode-2.0.0-cp38-cp38-macosx_10_14_x86_64.whl", hash = "sha256:be0c76b2a18205578d1fe4727f4967ae9ffa3fe12b149ffdb3938276fa6a600a"},
+    {file = "pypcode-2.0.0-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:00590dd280e46d677dd76782e6aafdbfa10a4af636698b25ea7c33b239e0875e"},
+    {file = "pypcode-2.0.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7f3e846e2c8552c1c3e0dcab24cd9d5c877ea902cc0332cf507433ea63ea5ef1"},
+    {file = "pypcode-2.0.0-cp38-cp38-win_amd64.whl", hash = "sha256:e635065bbb8613ea5e740c518e1f22d6ddc1fdda0eb2e8e6a78035bb4abe1ee6"},
+    {file = "pypcode-2.0.0-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:78cccc338eab8971ef42a6ef7fdd8687dcd5cc1653f8178536f604a40dd95e98"},
+    {file = "pypcode-2.0.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:270dbe3707beb46f6e678cb458ff032ea23a59d90ccd2518cfa3c79889d086ba"},
+    {file = "pypcode-2.0.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a0ed68489bf63991be3949b9d84c9407f49aec5df3c80d553b741fbd3a46005a"},
+    {file = "pypcode-2.0.0-cp39-cp39-win_amd64.whl", hash = "sha256:7fef3ea4e7d86408eaa150d01dc351774f181bb5869891874c5428366b0e1b16"},
+    {file = "pypcode-2.0.0-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:bedaf459e32c0d150550a047820928d1ddbee89c5a21ad04b4b2a0419feb4758"},
+    {file = "pypcode-2.0.0.tar.gz", hash = "sha256:30ed8c732cbb205a79067b83f1efd4a6867dc06ca212dba9996e6711f51da398"},
+]
+
+[package.extras]
+docs = ["furo", "ipython", "myst-parser", "sphinx", "sphinx-autodoc-typehints"]
+
+[[package]]
 name = "pysmt"
 version = "0.9.5"
 description = "A solver-agnostic library for SMT Formulae manipulation and solving"
@@ -1515,4 +1549,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10,<3.12"
-content-hash = "74fda5ccab60bc4c20933e099ae607314075ac51c09ddf828ff83dd84f6a2e2f"
+content-hash = "30327277be9274b789cca4750729a1dd3496efb64456917703d473aa416cc600"

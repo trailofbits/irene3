@@ -39,6 +39,7 @@ namespace irene3::patchlang
         DecIntLit,
         HexIntLit,
         HexFloatLit,
+        DecFloatLit,
         StrLit,
         Ident,
         EscapedIdent,
