@@ -80,7 +80,7 @@ namespace irene3
 
     // TODO(Ian): we arent doing any splitting of high variables just store and load
     // everything one go, we should handle this in other backends
-    std::vector< RegionComponentPtr > GenericBackend::LowerValue(mlir::Attribute vop) const {
+    std::vector< RegionComponentPtr > GenericBackend::LowerValue(mlir::Attribute vop, llvm::Type*) const {
         auto frame_lowering = this->subtarget.getFrameLowering();
 
         if (auto reg = mlir::dyn_cast< patchir::RegisterAttr >(vop)) {

@@ -51,4 +51,5 @@ VOLUME /workspace
 WORKDIR /workspace
 COPY --from=build ${LIBRARIES} ${LIBRARIES}
 COPY --from=build /app/patch_assembler /app/patch_assembler
+RUN rm -rf /app/patch_assembler/keystone/bindings/python/src/build/
 RUN pip install /app/patch_assembler

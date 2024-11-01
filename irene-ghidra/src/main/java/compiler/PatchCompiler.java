@@ -99,7 +99,9 @@ public class PatchCompiler {
             "-out",
             assembly_file.toString(),
             "-opt_space",
-            plinput.isShouldOptForSize() ? "true" : "false"
+            plinput.isShouldOptForSize() ? "true" : "false",
+            "-no_pic",
+            plinput.isNoPic() ? "true" : "false,"
           },
           Optional.empty(),
           Optional.of(assembly_file_log.toFile()),

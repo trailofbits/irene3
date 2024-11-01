@@ -1,6 +1,7 @@
 #pragma once
 
 #include "irene3/PatchIR/PatchIRAttrs.h"
+#include "irene3/PatchIR/PatchIRTypes.h"
 
 #include <cstdint>
 #include <irene3/PatchIR/PatchIROps.h>
@@ -9,6 +10,7 @@
 #include <llvm/CodeGen/TargetRegisterInfo.h>
 #include <llvm/IR/Argument.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Type.h>
 #include <llvm/MC/CCRegistry.h>
 #include <llvm/MC/MCRegister.h>
 #include <memory>
@@ -61,8 +63,10 @@ namespace irene3
 
         virtual std::optional< llvm::MCPhysReg > StackRegister() const = 0;
 
-        virtual bool IsSupportedValue(mlir::Attribute vop) const                        = 0;
-        virtual std::vector< RegionComponentPtr > LowerValue(mlir::Attribute vop) const = 0;
+        virtual bool IsSupportedValue(mlir::Attribute vop) const = 0;
+        virtual std::vector< RegionComponentPtr > LowerValue(
+            mlir::Attribute vop, llvm::Type* ty) const
+            = 0;
 
         virtual ~IreneLoweringInterface() = default;
     };

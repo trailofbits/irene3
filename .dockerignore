@@ -2,6 +2,7 @@ builds/
 *build/
 install/
 deps/
+assets
 venv
 .cache/
 .env

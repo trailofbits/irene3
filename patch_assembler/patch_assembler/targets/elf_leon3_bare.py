@@ -1,5 +1,6 @@
 from patcherex2.targets.elf_leon3_bare import ElfLeon3Bare
 from .reloc_target import RelocTarget
+from patcherex2.components.binfmt_tools.elf import ELF
 
 
 class ElfArmRelocLinux(RelocTarget, ElfLeon3Bare):
@@ -17,6 +18,7 @@ class ElfArmRelocLinux(RelocTarget, ElfLeon3Bare):
         st %o7, [%sp]
         st %{scratch_reg}, [%sp+4]
         call lb
+        nop
         lb:
         mov %o7, %{base_reg}
         set {thunk_loc},%{scratch_reg}
@@ -39,3 +41,9 @@ class ElfArmRelocLinux(RelocTarget, ElfLeon3Bare):
         set {addr}, %{reg_name}
         """
         return load_instrs
+
+    def get_binfmt_tool(self, binfmt_tool):
+        binfmt_tool = binfmt_tool or "pyelftools"
+        if binfmt_tool == "pyelftools":
+            return ELF(self.p, self.binary_path)
+        raise NotImplementedError()
