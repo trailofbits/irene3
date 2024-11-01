@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <irene3/Targets/ExplicitMappingBackend.h>
+#include <llvm/CodeGen/MachineValueType.h>
 #include <llvm/CodeGen/TargetFrameLowering.h>
 #include <llvm/CodeGen/TargetRegisterInfo.h>
 #include <llvm/IR/LLVMContext.h>
@@ -63,7 +64,7 @@ namespace irene3
     }
 
     std::vector< RegionComponentPtr > ExplicitMappingBackend::LowerValue(
-        mlir::Attribute vop) const {
+        mlir::Attribute vop, llvm::Type* ty) const {
         if (auto reg = mlir::dyn_cast< patchir::RegisterAttr >(vop)) {
             auto reg_record = this->GetRegisterRecord(reg);
             LOG_IF(FATAL, !reg_record)
@@ -72,8 +73,17 @@ namespace irene3
             auto comp = reg_record->GetRegComp(reg.getSizeBits());
             return { std::move(comp) };
         } else if (auto stk = mlir::dyn_cast< patchir::MemoryIndirectAttr >(vop)) {
-            return { std::make_unique< StackComponent >(
-                llvm::MVT::getIntegerVT(stk.getSizeBits()), stk.getOffset(), this->lao_offset) };
+            // TODO(Ian): we really really need to shift stack values to pointer values rather than
+            // value types.
+            if (ty->isFloatingPointTy()) {
+                return { std::make_unique< StackComponent >(
+                    llvm::MVT::getFloatingPointVT(stk.getSizeBits()), stk.getOffset(),
+                    this->lao_offset) };
+            } else {
+                return { std::make_unique< StackComponent >(
+                    llvm::MVT::getIntegerVT(stk.getSizeBits()), stk.getOffset(),
+                    this->lao_offset) };
+            }
         }
         LOG(FATAL) << "Unsupported value attribute";
     }
@@ -120,10 +130,11 @@ namespace irene3
                 // conversions ie. r1 on ppc is applicable with the type (f32 -> f64) where f64 is
                 // the native type and f32 would need to be extended into the f64
                 if (insert.res_ty.isFloatingPoint()) {
-                    comps.insert({ app_ty.getFixedSizeInBits(),
-                                   RegisterComponent(
-                                       insert.res_ty, *to_reg,
-                                       llvm::MVT::getFloatingPointVT(app_ty.getFixedSizeInBits())) });
+                    comps.insert(
+                        { app_ty.getFixedSizeInBits(),
+                          RegisterComponent(
+                              insert.res_ty, *to_reg,
+                              llvm::MVT::getFloatingPointVT(app_ty.getFixedSizeInBits())) });
                 } else {
                     comps.insert(
                         { app_ty.getFixedSizeInBits(),

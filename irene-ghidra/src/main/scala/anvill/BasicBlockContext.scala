@@ -65,7 +65,7 @@ class BasicBlockContextProducer(
   ): Map[Register, Int] = {
 
     val regs = gfunc.getProgram.getLanguage.getRegisters.asScala.filter(r =>
-      r.isBaseRegister()
+      r.getBitLength == gfunc.getProgram.getLanguage.getProgramCounter.getBitLength
     )
 
     if (!hasPredecessorInsn(block_addr)) {

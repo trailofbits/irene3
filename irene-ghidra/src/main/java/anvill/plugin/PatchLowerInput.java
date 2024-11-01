@@ -14,19 +14,31 @@ public class PatchLowerInput {
 
   private boolean shouldOptForSize;
 
+  public boolean isNoPic() {
+    return isNoPic;
+  }
+
+  public void setNoPic(boolean noPic) {
+    isNoPic = noPic;
+  }
+
+  private boolean isNoPic;
+
   public PatchLowerInput(
       String features,
       String cpu,
       String backend,
       File origBin,
       String detour_loc,
-      boolean shouldOptForSize) {
+      boolean shouldOptForSize,
+      boolean isNoPic) {
     this.features = features;
     this.cpu = cpu;
     this.backend = backend;
     this.origBin = origBin;
     this.detourLoc = detour_loc;
     this.shouldOptForSize = shouldOptForSize;
+    this.isNoPic = isNoPic;
   }
 
   public boolean isShouldOptForSize() {

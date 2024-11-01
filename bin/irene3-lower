@@ -17,6 +17,7 @@ def _main():
     parser.add_argument("--feature_list", type=str, default="")
     parser.add_argument("--cpu", type=str, default="")
     parser.add_argument("--backend", type=str, default="")
+    parser.add_argument("--no-pic", action="store_true",default=False)
     args = parser.parse_args()
 
     patchname = args.patch.stem
@@ -50,6 +51,8 @@ def _main():
             json_file,
             "--backend",
             f"{args.backend}",
+            "--no_pic",
+            "true" if args.no_pic else "false",
             "--out",
             s_file,
         ],

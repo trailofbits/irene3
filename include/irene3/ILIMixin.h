@@ -47,7 +47,7 @@ namespace irene3
 
         std::vector< RegionComponentPtr > LowerVariable(
             mlir::Attribute attr, size_t hv_index, llvm::Type* high_ty) {
-            return static_cast< T* >(this)->ILI.LowerValue(attr);
+            return static_cast< T* >(this)->ILI.LowerValue(attr, high_ty);
         }
     };
 } // namespace irene3

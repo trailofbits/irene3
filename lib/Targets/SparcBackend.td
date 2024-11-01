@@ -21,10 +21,16 @@ foreach Index = 0-31 in {
 
 foreach Index = 0-7 in {
     foreach Rtype = ["G", "I", "O", "L"] in { 
-        def : SPARCPointerReg<Rtype # Index>;
+        if !not(!and(!eq(Index, 7), !eq(Rtype, "O"))) then
+        {
+            def : SPARCPointerReg<Rtype # Index>;
+        }
         def : SPARCMappingRecord<Rtype # Index, Rtype # Index, [i32, i16, i8], i32>;
     }
 }
+
+def : SPARCMappingRecord<"SP", "O6", [i32, i16, i8], i32>;
+def : SPARCMappingRecord<"FP", "I6", [i32, i16, i8], i32>;
 
 /* dont support pairs directly for now, instead we split them in ghidra
 foreach Index = [0, 2, 4, 6] in  {
