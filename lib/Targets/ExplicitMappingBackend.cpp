@@ -129,7 +129,7 @@ namespace irene3
                 // TODO(Ian): this is a hack. in the future we should define some notion of legal
                 // conversions ie. r1 on ppc is applicable with the type (f32 -> f64) where f64 is
                 // the native type and f32 would need to be extended into the f64
-                if (insert.res_ty.isFloatingPoint()) {
+                if (insert.res_ty.isFloatingPoint() && !insert.res_ty.isVector()) {
                     comps.insert(
                         { app_ty.getFixedSizeInBits(),
                           RegisterComponent(
