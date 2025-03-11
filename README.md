@@ -116,3 +116,12 @@ brew install --cask temurin17
 `just build-irene3-cpp` will compile the C++ project
 `just install-irene3-cpp` will compile and install the C++ project to `./install/bin` the specified install prefix
 `just test-irene3-cpp` will do a simple test for output on some sample specifications and a simple roundtrip test
+
+## Acknowledgements:
+This research was developed with funding from the Defense Advanced
+Research Projects Agency (DARPA). The views, opinions, and/or findings
+contained in this material are those of the authors and should not be
+interpreted as representing the official views or policies of the Department
+of Defense or the U.S. Government.
+
+Distribution Statement A – Approved for Public Release, Distribution Unlimited
