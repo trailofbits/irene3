@@ -1,0 +1,73 @@
+version: 2
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "pip"
+    directory: "/eval-scripts"
+    schedule:
+      interval: "weekly"
+    groups:
+      pip-eval-scripts:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "python"
+
+  - package-ecosystem: "pip"
+    directory: "/patch_assembler"
+    schedule:
+      interval: "weekly"
+    groups:
+      pip-patch-assembler:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "python"
+
+  - package-ecosystem: "pip"
+    directory: "/ui_script"
+    schedule:
+      interval: "weekly"
+    groups:
+      pip-ui-script:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "python"
+
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      gradle-root:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "java"
+
+  - package-ecosystem: "gradle"
+    directory: "/irene-ghidra"
+    schedule:
+      interval: "weekly"
+    groups:
+      gradle-irene-ghidra:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "java"
