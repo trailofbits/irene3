@@ -1389,6 +1389,15 @@ object ProgramSpecifier {
       required_globals: Set[Symbol] = Set.empty,
       zero_byte_addrs: Set[Address] = Set.empty
   ): Specification = {
+    // Apple-platform guards, only active on Mach-O binaries. Throws on
+    // FairPlay-encrypted input (spec would be meaningless) and logs a
+    // diagnostic when LC_DYLD_CHAINED_FIXUPS is present but Ghidra
+    // resolved zero externals (the user's Ghidra is likely too old).
+    if (anvill.macho.MachoDetection.isMachO(prog)) {
+      anvill.macho.MachoHeaderReader.assertNotEncrypted(prog)
+      anvill.macho.MachoFixups.verifyExternalsResolved(prog)
+    }
+
     val function_split_addrs: Set[Address] =
       if function_split_addrs_in.isEmpty then
         SplitsManager(prog).getSplits().asScala.map(_._2).toSet
