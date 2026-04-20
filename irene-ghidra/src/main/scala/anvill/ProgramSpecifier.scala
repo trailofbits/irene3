@@ -385,6 +385,13 @@ object ProgramSpecifier {
   }
 
   def getCallingConvention(func: Function): CallingConvention = {
+    // Mach-O binaries get Apple-aware detection (AArch64 Darwin CC,
+    // Swift / Objective-C / arm64e). Non-Mach-O binaries keep the
+    // original x86-only mapping below.
+    if (anvill.macho.MachoDetection.isMachO(func.getProgram)) {
+      return anvill.macho.AppleCallingConventions.detect(func)
+    }
+
     val conv = func.getCallingConvention()
 
     if (
@@ -913,7 +920,15 @@ object ProgramSpecifier {
 
   def getProgramOS(prog: Program): OS = {
     val format = prog.getExecutableFormat().toLowerCase();
-    if (format.indexOf("mac os") >= 0) {
+    if (anvill.macho.MachoDetection.isMachO(prog)) {
+      // Prefer LC_BUILD_VERSION / LC_VERSION_MIN_* for Apple binaries
+      // so iOS / tvOS / watchOS binaries are distinguishable from
+      // macOS ones (shimmed down to OS_MACOS when the vendored proto
+      // lacks the new OS values).
+      anvill.macho.EnumShim.osForApplePlatform(
+        anvill.macho.MachoHeaderReader.platform(prog)
+      )
+    } else if (format.indexOf("mac os") >= 0) {
       OS_MACOS
     } else if (format.indexOf("win") >= 0) {
       OS_WINDOWS
@@ -933,7 +948,13 @@ object ProgramSpecifier {
     val processor = lang.getProcessor()
     val procName = processor.toString().toLowerCase()
     if (procName.indexOf("aarch64") >= 0) {
-      ARCH_AARCH64
+      // arm64e (pointer authentication) collapses to ARCH_AARCH64 until
+      // the anvill proto grows an ARCH_AARCH64E value; EnumShim takes
+      // care of the upgrade automatically once the proto lands.
+      if (anvill.macho.MachoHeaderReader.isArm64e(prog))
+        anvill.macho.EnumShim.archForArm64e()
+      else
+        ARCH_AARCH64
     } else if (procName.indexOf("arm") >= 0) {
       ARCH_AARCH32
     } else if (procName.indexOf("x86") >= 0) {
