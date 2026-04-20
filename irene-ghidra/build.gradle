@@ -242,6 +242,11 @@ test {
 			'--add-opens=java.desktop/javax.swing=ALL-UNNAMED',      // allow reflection for tests
 			'--add-opens=java.desktop/javax.swing.text=ALL-UNNAMED'  // allow reflection for tests
 
+	// The default 256m heap is not enough for real iOS binaries: the
+	// type-constraint solver scales with the number of functions and
+	// a mid-sized app pushes past 1GB during analysis.
+	maxHeapSize = '6g'
+
 	// Required due to global state that gets messed up if we don't use a new
 	// JVM for each test
 	forkEvery 1
