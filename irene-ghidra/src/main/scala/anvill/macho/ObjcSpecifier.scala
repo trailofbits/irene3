@@ -211,8 +211,16 @@ object ObjcSpecifier:
   //  ARC + msgSend call-sites
   // ------------------------------------------------------------------
 
+  /** Tags ObjC ARC calls **and** Swift ARC calls. Both share the
+   *  same `__irene_arc_<kind>_<hex>` sentinel prefix because the
+   *  downstream lifter treats them as a single refcount channel.
+   */
   private def extractArcCallSites(prog: Program): Seq[SymbolSpec] =
-    callSiteSentinels(prog, ArcRuntime.objcArcSymbols, ArcRuntime.objcArcSentinel)
+    callSiteSentinels(
+      prog,
+      ArcRuntime.objcArcSymbols ++ ArcRuntime.swiftArcSymbols,
+      ArcRuntime.objcArcSentinel,
+    )
 
   private def extractMsgSendCallSites(prog: Program): Seq[SymbolSpec] =
     callSiteSentinels(prog, ArcRuntime.objcMsgSendFamily, ArcRuntime.objcMsgSendSentinel)

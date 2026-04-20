@@ -30,9 +30,16 @@ import specification.specification.CallingConvention as AnvillCC
  */
 object AppleCallingConventions:
 
-  /** Runtime feature flags — flipped to `true` in Phases 4/5. */
+  /** Runtime feature flags. `enableSwift` flipped on in Phase 5.
+   *
+   *  `enableObjcMethod` deliberately stays off: ObjC method *bodies*
+   *  use plain AArch64 Darwin CC; only *call sites* into
+   *  `_objc_msgSend` carry the OBJC_MSGSEND CC, and those are
+   *  tagged via call-site sentinels in `ObjcSpecifier`, not via the
+   *  CC detector.
+   */
   @volatile var enableObjcMethod: Boolean = false
-  @volatile var enableSwift: Boolean = false
+  @volatile var enableSwift: Boolean = true
 
   /** Detect the anvill calling convention for a Mach-O function. */
   def detect(func: Function): AnvillCC =
