@@ -1487,13 +1487,20 @@ object ProgramSpecifier {
       })
       .toMap
 
+    // Apple-platform sentinel symbols (ObjC classes, methods,
+    // selrefs, ARC call sites, msgSend variants). Empty on non-Mach-O
+    // programs. Intentionally appended rather than merged so the
+    // existing symbol_specs stay byte-identical to pre-Phase-4 output
+    // when the binary has no ObjC footprint.
+    val apple_symbols = anvill.macho.ObjcSpecifier.extract(prog)
+
     Specification(
       arch,
       os,
       func_specs,
       callsite_overrides,
       global_specs.toArray.toSeq,
-      symbol_specs.toArray.toSeq,
+      symbol_specs.toArray.toSeq ++ apple_symbols,
       mem_specs.toArray.toSeq,
       Some(specifyControlFlow(prog)),
       aliases.view.toMap,
