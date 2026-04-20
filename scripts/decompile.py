@@ -71,7 +71,7 @@ if __name__ == "__main__":
         if item.is_file():
             name, ext = os.path.splitext(item.name)
             # Allow for READMEs and data/headers
-            if ext == ".pb.bin":
+            if ext == ".proto":
                 test_name = f"test_{name}"
                 test = test_generator(item.path)
                 setattr(TestDecompile, test_name, test)

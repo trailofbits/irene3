@@ -6,20 +6,20 @@
 #
 
 string(TOLOWER "${PROJECT_NAME}" lower_project_name)
-set(IRENE3_DECOMP "${lower_project_name}-eval-tool")
-set(IRENE3_DECOMP
-  "${IRENE3_DECOMP}"
+set(IRENE3_EVAL_TOOL "${lower_project_name}-eval-tool")
+set(IRENE3_EVAL_TOOL
+  "${IRENE3_EVAL_TOOL}"
   PARENT_SCOPE
 )
 
-add_executable("${IRENE3_DECOMP}" "Main.cpp")
+add_executable("${IRENE3_EVAL_TOOL}" "Main.cpp")
 
-set_target_properties("${IRENE3_DECOMP}" PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries("${IRENE3_DECOMP}" PRIVATE irene3)
+set_target_properties("${IRENE3_EVAL_TOOL}" PROPERTIES LINKER_LANGUAGE CXX)
+target_link_libraries("${IRENE3_EVAL_TOOL}" PRIVATE irene3)
 
 if(IRENE3_ENABLE_INSTALL)
   install(
-    TARGETS "${IRENE3_DECOMP}"
+    TARGETS "${IRENE3_EVAL_TOOL}"
     EXPORT irene3Targets
     RUNTIME DESTINATION bin
   )

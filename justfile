@@ -11,7 +11,7 @@ CXX_COMMON_NAME := if "macos" == os() {
 CXX_COMMON_URL := "https://github.com/lifting-bits/cxx-common/releases/download/v" + CXX_COMMON_VERSION + "/" + CXX_COMMON_NAME + ".tar.xz"
 
 CMAKE_OS := os()
-CMAKE_ARCH := if "macos" == "{{CMAKE_OS}}" { "universal" } else { arch() }
+CMAKE_ARCH := if "macos" == CMAKE_OS { "universal" } else { arch() }
 CMAKE_VERSION := "3.26.4"
 CMAKE_DIR := "cmake-"+CMAKE_VERSION+"-"+CMAKE_OS+"-"+CMAKE_ARCH
 
@@ -27,8 +27,11 @@ DOCKER_CMD := "docker"
 # Add local cmake to path
 export PATH := env_var("PATH") + ":" + justfile_directory() + "/deps/" + CMAKE_DIR + "/bin"
 # Use clang (apple clang) on MacOS, otherwise clang-{{LLVM_VERSION}}
-export CC := if "macos" == os() {"clang"} else { "clang-" + LLVM_VERSION }
-export CXX := if "macos" == os() {"clang++"} else { "clang++-" + LLVM_VERSION }
+export CC := if "macos" == os() {"/usr/bin/clang"} else { "clang-" + LLVM_VERSION }
+export CXX := if "macos" == os() {"/usr/bin/clang++"} else { "clang++-" + LLVM_VERSION }
+# Pin to MacOSX15.sdk on macOS: cxx-common's clang-17 can't parse MacOSX26.sdk's libc++
+# (which unconditionally uses __builtin_ctzg / __builtin_clzg, clang-19+ only).
+export SDKROOT := env_var_or_default("SDKROOT", if "macos" == os() { "/Library/Developer/CommandLineTools/SDKs/MacOSX15.sdk" } else { "" })
 VCPKG_OS := if "macos" == os() { "osx" } else { "linux" }
 VCPKG_ARCH := if "x86_64" == arch() { "x64" } else { "arm64" }
 export VCPKG_TARGET_TRIPLET := env_var_or_default("VCPKG_TARGET_TRIPLET", VCPKG_ARCH + "-" + VCPKG_OS + "-rel")
