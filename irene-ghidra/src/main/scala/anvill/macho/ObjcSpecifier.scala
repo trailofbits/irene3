@@ -54,6 +54,7 @@ object ObjcSpecifier:
     val selrefs       = extractSelrefs(prog)
     val arcCalls      = extractArcCallSites(prog)
     val msgSendCalls  = extractMsgSendCallSites(prog)
+    val arcPairs      = extractArcPairs(prog)
 
     // Warn exactly once per program if we saw ObjC sections but
     // recovered no classes — suggests the analyser did not run.
@@ -64,7 +65,7 @@ object ObjcSpecifier:
           "'Objective-C 2 Class' analyser and re-analyse."
       )
 
-    classes ++ methods ++ selrefs ++ arcCalls ++ msgSendCalls
+    classes ++ methods ++ selrefs ++ arcCalls ++ msgSendCalls ++ arcPairs
 
   // ------------------------------------------------------------------
   //  Classes
@@ -265,6 +266,80 @@ object ObjcSpecifier:
                 )
               case None => ()
           case None => ()
+
+  // ------------------------------------------------------------------
+  //  ARC retain-autoreleased-return peephole
+  // ------------------------------------------------------------------
+
+  /** Detect the Apple ARC `mov x29,x29` (arm64) / `mov ebp,ebp`
+   *  (x86_64) marker-nop handshake that immediately precedes every
+   *  optimised call to `_objc_retainAutoreleasedReturnValue` /
+   *  `_objc_unsafeClaimAutoreleasedReturnValue`. Emits a triple
+   *  sentinel
+   *    `__irene_arc_pair_<prev-bl>_<marker-nop>_<arc-call>`
+   *  so the downstream lifter can fuse the returning call, the
+   *  marker, and the ARC call into a single "retain autoreleased
+   *  return value" operation (eliminates the autorelease-then-retain
+   *  round trip that the regular ARC codepath would emit).
+   *
+   *  Only triples with all three addresses recovered are emitted —
+   *  partial matches are ignored so the lifter never has to guess
+   *  whether the peephole is applicable.
+   */
+  private def extractArcPairs(prog: Program): Seq[SymbolSpec] =
+    val fm = prog.getFunctionManager
+    val iter = fm.getFunctions(true)
+    val out = scala.collection.mutable.ArrayBuffer.empty[SymbolSpec]
+    while iter.hasNext do
+      val f = iter.next()
+      collectArcPairs(prog, f, out)
+    out.toSeq
+
+  private def collectArcPairs(
+      prog: Program,
+      func: Function,
+      out: scala.collection.mutable.ArrayBuffer[SymbolSpec],
+  ): Unit =
+    val listing = prog.getListing
+    val instrIter = listing.getInstructions(func.getBody, true)
+    while instrIter.hasNext do
+      val arcInstr = instrIter.next()
+      if arcInstr.getFlowType.isCall then
+        resolveCallTargetName(prog, arcInstr.getAddress) match
+          case Some(name) if ArcRuntime.arcRetainAutoreleasedReturnSymbols.contains(name) =>
+            val marker = Option(listing.getInstructionBefore(arcInstr.getAddress))
+            val retCall = marker.flatMap(m =>
+              Option(listing.getInstructionBefore(m.getAddress))
+            )
+            for {
+              m <- marker if isArcMarkerNop(m)
+              r <- retCall if r.getFlowType.isCall
+            } {
+              val triple = s"${r.getAddress.getOffset.toHexString}_" +
+                s"${m.getAddress.getOffset.toHexString}_" +
+                s"${arcInstr.getAddress.getOffset.toHexString}"
+              out += SymbolSpec(
+                name    = s"${ArcRuntime.objcArcPairSentinel}$triple",
+                address = arcInstr.getAddress.getOffset
+              )
+            }
+          case _ => ()
+
+  /** True iff `instr` is the Apple ARC marker nop. Apple encodes
+   *  this as `mov x29, x29` on arm64 and `mov ebp, ebp` on x86_64
+   *  (the nop-equivalent that the ARC runtime sniffs at return
+   *  time). Uses Ghidra's disassembled mnemonic + operand text so
+   *  both encodings — and any future register-alias spellings like
+   *  `fp`/`rbp` — are caught.
+   */
+  private def isArcMarkerNop(instr: ghidra.program.model.listing.Instruction): Boolean =
+    val mnem = instr.getMnemonicString.toLowerCase
+    if mnem != "mov" then return false
+    if instr.getNumOperands != 2 then return false
+    val op0 = Option(instr.getDefaultOperandRepresentation(0)).map(_.toLowerCase).getOrElse("")
+    val op1 = Option(instr.getDefaultOperandRepresentation(1)).map(_.toLowerCase).getOrElse("")
+    op0 == op1 && (op0 == "x29" || op0 == "fp" ||
+                   op0 == "ebp" || op0 == "rbp")
 
   /** Resolve the name of the called symbol at `callAddr`, chasing one
    *  level of thunk. Returns `None` if the call target isn't a known

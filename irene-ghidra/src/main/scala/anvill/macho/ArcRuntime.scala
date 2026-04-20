@@ -85,3 +85,19 @@ object ArcRuntime:
   val objcSelrefSentinel: String  = s"${sentinelPrefix}objc_selref_"
   val objcArcSentinel: String     = s"${sentinelPrefix}arc_"
   val objcMsgSendSentinel: String = s"${sentinelPrefix}objc_msgsend_"
+  /** Paired retain-autorelease peephole: three-instruction triple
+   *  `bl <callee>; mov x29, x29; bl _objc_retainAutoreleasedReturnValue`.
+   *  Name suffix encodes the three instruction addresses in hex
+   *  separated by `_`.
+   */
+  val objcArcPairSentinel: String = s"${sentinelPrefix}arc_pair_"
+
+  /** ARC runtime helpers that participate in the retain-autoreleased-
+   *  return marker-nop handshake. Always preceded by `mov x29, x29`
+   *  (arm64) / `mov ebp, ebp` (x86_64) when the paired optimisation
+   *  applies.
+   */
+  val arcRetainAutoreleasedReturnSymbols: Set[String] = Set(
+    "_objc_retainAutoreleasedReturnValue",
+    "_objc_unsafeClaimAutoreleasedReturnValue",
+  )
