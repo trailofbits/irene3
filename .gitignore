@@ -13,6 +13,7 @@ vendor/cxx-common.tar.xz
 vendor/vcpkg_*
 vendor/llvm.sh
 *.dylib
+!irene-ghidra/src/test/resources/binaries/*.dylib
 .cache
 .venv
 build
