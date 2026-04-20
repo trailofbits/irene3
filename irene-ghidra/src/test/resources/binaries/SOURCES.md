@@ -41,6 +41,46 @@ clang -target arm64-apple-macos14 -dynamiclib -fobjc-arc \
       -framework Foundation -o arm64-macos-objc-hello.dylib Hello.m
 ```
 
+## arm64-macos-objc-categories.dylib
+
+Exercises ObjC protocol + category extraction (Phase 7.1). Defines
+one protocol `Greeter`, a class `Hello` conforming to it, and a
+category `Hello (Loud)` adding a `shout:` selector.
+
+```objc
+// Greeter.m
+#import <Foundation/Foundation.h>
+
+@protocol Greeter <NSObject>
+- (NSString *)greet:(NSString *)name;
+@end
+
+@interface Hello : NSObject <Greeter>
+@end
+
+@implementation Hello
+- (NSString *)greet:(NSString *)name {
+    return [NSString stringWithFormat:@"Hello, %@", name];
+}
+@end
+
+@interface Hello (Loud)
+- (NSString *)shout:(NSString *)name;
+@end
+
+@implementation Hello (Loud)
+- (NSString *)shout:(NSString *)name {
+    return [[self greet:name] uppercaseString];
+}
+@end
+```
+
+Build:
+```
+clang -target arm64-apple-macos14 -dynamiclib -fobjc-arc \
+      -framework Foundation -o arm64-macos-objc-categories.dylib Greeter.m
+```
+
 ## arm64-macos-swift-hello
 
 ```swift

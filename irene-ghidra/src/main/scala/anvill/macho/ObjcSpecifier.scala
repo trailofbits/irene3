@@ -55,6 +55,8 @@ object ObjcSpecifier:
     val arcCalls      = extractArcCallSites(prog)
     val msgSendCalls  = extractMsgSendCallSites(prog)
     val arcPairs      = extractArcPairs(prog)
+    val protocols     = extractProtocols(prog)
+    val categories    = extractCategories(prog)
 
     // Warn exactly once per program if we saw ObjC sections but
     // recovered no classes — suggests the analyser did not run.
@@ -65,7 +67,8 @@ object ObjcSpecifier:
           "'Objective-C 2 Class' analyser and re-analyse."
       )
 
-    classes ++ methods ++ selrefs ++ arcCalls ++ msgSendCalls ++ arcPairs
+    classes ++ methods ++ selrefs ++ arcCalls ++ msgSendCalls ++
+      arcPairs ++ protocols ++ categories
 
   // ------------------------------------------------------------------
   //  Classes
@@ -266,6 +269,110 @@ object ObjcSpecifier:
                 )
               case None => ()
           case None => ()
+
+  // ------------------------------------------------------------------
+  //  Protocols
+  // ------------------------------------------------------------------
+
+  /** Enumerate Objective-C protocols.
+   *
+   *  Ghidra's ObjC analyser registers each protocol as a child
+   *  namespace of `objc/Protocols` whose name is the protocol name
+   *  (e.g. `objc.Protocols.Greeter`). The concrete storage label is
+   *  `_OBJC_PROTOCOL_$_<Name>`; we use its address when available,
+   *  otherwise fall back to 0.
+   */
+  private def extractProtocols(prog: Program): Seq[SymbolSpec] =
+    val global = prog.getGlobalNamespace
+    val objcNs = Option(
+      prog.getSymbolTable.getNamespace("objc", global)
+    ).getOrElse(return Seq.empty)
+    val protocolsNs = Option(
+      prog.getSymbolTable.getNamespace("Protocols", objcNs)
+    ).getOrElse(return Seq.empty)
+
+    val out = scala.collection.mutable.ArrayBuffer.empty[SymbolSpec]
+    val iter = prog.getSymbolTable.getSymbols(protocolsNs)
+    while iter.hasNext do
+      val s = iter.next()
+      val name = s.getName
+      val addr = protocolStorageAddress(prog, name)
+        .orElse(Option(s.getAddress).map(_.getOffset))
+        .getOrElse(0L)
+      out += SymbolSpec(
+        name    = s"${ArcRuntime.objcProtocolSentinel}$name",
+        address = addr
+      )
+    out.toSeq
+
+  /** Look up the `_OBJC_PROTOCOL_$_<Name>` label's address. */
+  private def protocolStorageAddress(prog: Program, protocolName: String): Option[Long] =
+    val label = s"_OBJC_PROTOCOL_\\$$_$protocolName"
+    val syms = prog.getSymbolTable.getGlobalSymbols(label)
+    if syms.isEmpty then None
+    else Some(syms.get(0).getAddress.getOffset)
+
+  // ------------------------------------------------------------------
+  //  Categories
+  // ------------------------------------------------------------------
+
+  /** Enumerate Objective-C categories.
+   *
+   *  Small in-binary categories get merged into the owning class by
+   *  the linker, so `__objc_catlist` is often empty; the category
+   *  information survives as Ghidra labels of the form
+   *  `-[Class(Category)_selector]` / `+[Class(Category)_selector]`.
+   *  We scan all labels for that shape and emit one sentinel per
+   *  distinct `Class(Category)_selector` triple.
+   *
+   *  Label names use `_` between class and selector on some Ghidra
+   *  versions and space on others; both are accepted.
+   */
+  private def extractCategories(prog: Program): Seq[SymbolSpec] =
+    val out = scala.collection.mutable.ArrayBuffer.empty[SymbolSpec]
+    val seen = scala.collection.mutable.Set.empty[String]
+    val iter = prog.getSymbolTable.getAllSymbols(false)
+    while iter.hasNext do
+      val s = iter.next()
+      parseCategoryLabel(s.getName) match
+        case Some((kind, cls, cat, sel)) =>
+          val addr = Option(s.getAddress).map(_.getOffset).getOrElse(0L)
+          val key = s"${addr.toHexString}_${kind}[$cls($cat) $sel]"
+          if !seen.contains(key) then
+            seen += key
+            out += SymbolSpec(
+              name    = s"${ArcRuntime.objcCategorySentinel}$key",
+              address = addr
+            )
+        case None => ()
+    out.toSeq
+
+  /** Parse `-[Class(Category)_selector]` / `+[Class(Category)_selector]`
+   *  (also accepts a space in place of `_`) into
+   *  `(kind, class, category, selector)` where `kind` is `+` or `-`.
+   */
+  def parseCategoryLabel(name: String): Option[(String, String, String, String)] =
+    val trimmed = name.trim
+    if !(trimmed.startsWith("-[") || trimmed.startsWith("+[")) ||
+       !trimmed.endsWith("]") then
+      return None
+    val kind = trimmed.charAt(0).toString
+    val inner = trimmed.substring(2, trimmed.length - 1)
+    // Separator between class-with-category and selector is either
+    // `_` or ` `.
+    val sepIdx = inner.indexWhere(c => c == '_' || c == ' ')
+    if sepIdx <= 0 || sepIdx + 1 >= inner.length then return None
+    val clsPart = inner.substring(0, sepIdx)
+    val selPart = inner.substring(sepIdx + 1)
+    // Class part must match `Class(Category)` (both non-empty).
+    val openIdx = clsPart.indexOf('(')
+    val closeIdx = clsPart.lastIndexOf(')')
+    if openIdx <= 0 || closeIdx != clsPart.length - 1 ||
+       closeIdx <= openIdx + 1 then
+      return None
+    val cls = clsPart.substring(0, openIdx)
+    val cat = clsPart.substring(openIdx + 1, closeIdx)
+    Some((kind, cls, cat, selPart))
 
   // ------------------------------------------------------------------
   //  ARC retain-autoreleased-return peephole

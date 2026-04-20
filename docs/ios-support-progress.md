@@ -59,7 +59,10 @@ via `.git/info/exclude`):
 | 3     | `1d24409` | arm64e + FairPlay fail-fast + chained-fixup guard         |
 | 4     | `b19b1f4` | Objective-C extraction (classes / methods / selrefs / msgSend / ARC) |
 | 5     | `df10ff7` | Swift extraction (functions / demangled / pins / §5 sections / ARC) |
-| 6     | pending   | ARC pair peephole + integration harness + README matrix + this doc |
+| 6     | `00c55ba` | ARC pair peephole + integration harness + README matrix + this doc |
+| 7.1   | pending   | ObjC protocol + category enumeration + new fixture                |
+| 7.5   | pending   | Fat / universal binary slicer script                              |
+| 7.6   | pending   | dyld shared-cache dylib extractor wrapper                         |
 
 Vendor proto additions (Phase 2) live on isolated branches:
 `vendor/anvill@irene3/ios-macho-enums` (submodule) and
@@ -103,6 +106,28 @@ They have not been merged into `kumarak/test_aarch64`; the
 - Per-function `uses_pac: bool` on arm64e binaries (scanning each
   function for PAC mnemonics — the detection plumbing is a
   one-pass listing walk; the field is what we need).
+
+### Phase 7 stretch — not done in this session
+
+Three Phase 7 items from the plan remain untouched:
+
+- **7.2 Swift generic specialisation + dynamic replacement tracking.**
+  Medium effort; Swift specialised functions get separate mangled
+  names (`TA`, `Tc`, etc.) but aren't paired with their generic
+  origin in the spec today. Requires more Swift mangling-grammar
+  parsing.
+- **7.3 Swift async continuation graph.** The biggest Phase 7 item
+  by effort. Phase 5 flags async functions via the `YaF` / `YaK`
+  mangled suffix and pins `x22`; full async-partial graph
+  reconstruction (walking `__swift5_acfuncs`, correlating partials
+  through the context pointer, emitting grouping sentinels) is
+  deferred. Only worth doing for async-heavy workloads — zero
+  payoff on apps that don't use Swift concurrency.
+- **7.4 arm64e PAC key / discriminator extraction.** Scan each
+  arm64e function for PAC mnemonics and record
+  `(instr_addr, key, discriminator)` triples. Gated on remill
+  arm64e PAC semantics landing — until then the data has no
+  consumer.
 
 ### Out of scope (documented for completeness)
 

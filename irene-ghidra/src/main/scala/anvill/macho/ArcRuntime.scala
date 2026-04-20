@@ -80,11 +80,13 @@ object ArcRuntime:
    */
   val sentinelPrefix: String = "__irene_"
 
-  val objcClassSentinel: String   = s"${sentinelPrefix}objc_class_"
-  val objcMethodSentinel: String  = s"${sentinelPrefix}objc_method_"
-  val objcSelrefSentinel: String  = s"${sentinelPrefix}objc_selref_"
-  val objcArcSentinel: String     = s"${sentinelPrefix}arc_"
-  val objcMsgSendSentinel: String = s"${sentinelPrefix}objc_msgsend_"
+  val objcClassSentinel: String    = s"${sentinelPrefix}objc_class_"
+  val objcMethodSentinel: String   = s"${sentinelPrefix}objc_method_"
+  val objcSelrefSentinel: String   = s"${sentinelPrefix}objc_selref_"
+  val objcArcSentinel: String      = s"${sentinelPrefix}arc_"
+  val objcMsgSendSentinel: String  = s"${sentinelPrefix}objc_msgsend_"
+  val objcProtocolSentinel: String = s"${sentinelPrefix}objc_protocol_"
+  val objcCategorySentinel: String = s"${sentinelPrefix}objc_category_"
   /** Paired retain-autorelease peephole: three-instruction triple
    *  `bl <callee>; mov x29, x29; bl _objc_retainAutoreleasedReturnValue`.
    *  Name suffix encodes the three instruction addresses in hex

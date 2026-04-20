@@ -41,6 +41,8 @@ filter by `symbol.name.startsWith(prefix)`:
 |------------------------------------------|--------------------------------------------------------|
 | `__irene_objc_class_<Name>`              | ObjC class (address = `_OBJC_CLASS_$_<Name>` label)    |
 | `__irene_objc_method_<hex>_<±>[Class sel]` | ObjC method, address = entry point                   |
+| `__irene_objc_protocol_<Name>`           | ObjC protocol (address = `_OBJC_PROTOCOL_$_<Name>`)    |
+| `__irene_objc_category_<hex>_<±>[Class(Cat) sel]` | ObjC category method (class + category + selector) |
 | `__irene_objc_selref_<hex>`              | `__objc_selrefs` slot                                  |
 | `__irene_objc_msgsend_<variant>_<hex>`   | `objc_msgSend` family call site                        |
 | `__irene_arc_<kind>_<hex>`               | ObjC or Swift ARC runtime call site                    |
@@ -61,6 +63,7 @@ reproduction recipes):
 |----------------------------------|----------------------------------------|
 | `arm64-macos-collatz`            | Plain C, arm64 Mach-O                  |
 | `arm64-macos-objc-hello.dylib`   | ObjC with Foundation, `-fobjc-arc`     |
+| `arm64-macos-objc-categories.dylib` | ObjC with a protocol + category     |
 | `arm64-macos-swift-hello`        | Swift executable                       |
 | `arm64e-macos-sample`            | arm64e (CPU_SUBTYPE_ARM64E)            |
 | `arm64-ios-encrypted-stub`       | iOS Mach-O with cryptid patched to 1   |
@@ -76,6 +79,16 @@ GHIDRA_INSTALL_DIR=/path/to/amp-ghidra \
 JAVA_HOME=/opt/homebrew/opt/openjdk@17 \
 tests/integration/macho/run.sh
 ```
+
+### Companion scripts
+
+- `scripts/slice_fat_macho.py` — split a FAT_MAGIC / FAT_MAGIC_64
+  binary into per-arch Mach-O slices (stdlib-only, no `lipo` needed).
+  Used for workflows that don't go through Ghidra's loader.
+- `scripts/extract_from_dyld_cache.py` — front-end over `ipsw` /
+  Apple's `dsc_extractor` for pulling individual dylibs out of an
+  iOS shared cache. Run `… check` to see which backends are on PATH
+  and their install hints.
 
 ### Real-world smoke
 
